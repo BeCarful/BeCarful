@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { DEFAULT_PROVIDER_ID } from "@/services/insurance/providers";
+import { FloridaPlanPicker } from "./FloridaPlanPicker";
 import { PolicyUpload } from "./PolicyUpload";
 import { ProviderPicker } from "./ProviderPicker";
 
@@ -32,6 +33,10 @@ export function InsuranceSetup({ vehicleId }: { vehicleId: string }) {
           Upload your policy or declarations page (PDF, up to 20 MB). We&apos;ll pull out what it covers.
         </p>
         <PolicyUpload vehicleId={vehicleId} providerId={providerId} uploadLabel="Upload policy PDF" />
+        <details className="mt-4 rounded-xl border border-border bg-panel-shade/60 p-4 [&[open]>summary]:mb-3">
+          <summary className="min-h-11 cursor-pointer content-center font-semibold text-accent">No policy on hand? Pick your Florida plan</summary>
+          <FloridaPlanPicker key={providerId} vehicleId={vehicleId} providerId={providerId} />
+        </details>
       </Step>
     </div>
   );

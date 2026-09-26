@@ -13,7 +13,7 @@ const MOON = "M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z";
 
 function Icon({ d, className }: { d: string; className: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={`size-5 ${className}`} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg viewBox="0 0 24 24" className={`shrink-0 ${className}`} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d={d} />
     </svg>
   );
@@ -28,12 +28,12 @@ export function ThemeToggle({ className = "", labeled = false }: { className?: s
       aria-label={labeled ? undefined : "Toggle day and night"}
       className={
         labeled
-          ? `flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium hover:bg-white/60 dark:hover:bg-white/10 ${className}`
+          ? `flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition hover:bg-(--road-hover) ${className}`
           : `grid size-11 shrink-0 place-items-center rounded-lg border border-border bg-panel text-ink hover:bg-panel-shade ${className}`
       }
     >
-      <Icon d={MOON} className="dark:hidden" />
-      <Icon d={SUN} className="hidden dark:block" />
+      <Icon d={MOON} className={`dark:hidden ${labeled ? "size-[22px]" : "size-5"}`} />
+      <Icon d={SUN} className={`hidden dark:block ${labeled ? "size-[22px]" : "size-5"}`} />
       {labeled && (
         <>
           <span className="dark:hidden">Night mode</span>

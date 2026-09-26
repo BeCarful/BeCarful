@@ -11,7 +11,10 @@ import { User } from "@/models/User";
 import { Vehicle } from "@/models/Vehicle";
 import { refreshIncidentStatus } from "@/services/claims/state";
 import { makeKey, putObject } from "@/services/storage/s3";
-import type { DamagedComponent } from "@/types";
+import type { CoverageItem } from "@/services/ai/coverage-rules";
+import { NOT_FOUND_IN_POLICY, type DamagedComponent } from "@/types";
+
+const cov = (peril: CoverageItem["peril"], status: CoverageItem["status"], detail: string): CoverageItem => ({ peril, status, detail, law: null });
 
 const DEMO_EMAIL = "demo@becarful.app";
 const DEMO_PASSWORD = "demo1234";
@@ -145,6 +148,23 @@ async function main() {
       otherCoverage: [],
       exclusions: ["Racing", "Commercial ride-share use", "Intentional damage"],
     },
+    coverageChecklist: {
+      generatedAt: new Date(),
+      items: [
+        cov("collision", "covered", "Covered by collision, $500 deductible."),
+        cov("liability", "covered", "$100,000 / $300,000 bodily injury; $100,000 property damage."),
+        cov("injury", "unknown", NOT_FOUND_IN_POLICY),
+        cov("uninsured_driver", "unknown", NOT_FOUND_IN_POLICY),
+        cov("theft", "covered", "Covered by comprehensive, $250 deductible."),
+        cov("fire", "covered", "Covered by comprehensive, $250 deductible."),
+        cov("flood", "covered", "Covered by comprehensive, $250 deductible."),
+        cov("storm", "covered", "Covered by comprehensive, $250 deductible."),
+        cov("vandalism", "covered", "Covered by comprehensive; intentional damage by you is excluded."),
+        cov("animal", "covered", "Covered by comprehensive, $250 deductible."),
+        cov("glass", "covered", "Covered by comprehensive, $250 deductible."),
+        cov("roadside", "covered", "Emergency road service included."),
+      ],
+    },
     aiSummary:
       "Your Camry has collision coverage with a $500 deductible, so a crash repair like this is likely covered after you pay the first $500. Rental cars are covered up to $40/day. Racing and ride-share use are excluded.",
   });
@@ -184,6 +204,23 @@ async function main() {
       roadsideAssistance: null,
       otherCoverage: [],
       exclusions: [],
+    },
+    coverageChecklist: {
+      generatedAt: new Date(),
+      items: [
+        cov("collision", "covered", "Covered by collision, $1,000 deductible."),
+        cov("liability", "covered", "$50,000 / $100,000 bodily injury; $50,000 property damage."),
+        cov("injury", "unknown", NOT_FOUND_IN_POLICY),
+        cov("uninsured_driver", "unknown", NOT_FOUND_IN_POLICY),
+        cov("theft", "unknown", "No comprehensive coverage found, so theft likely isn't covered."),
+        cov("fire", "unknown", "No comprehensive coverage found, so fire likely isn't covered."),
+        cov("flood", "unknown", "No comprehensive coverage found, so flood likely isn't covered."),
+        cov("storm", "unknown", "No comprehensive coverage found, so hail and wind likely aren't covered."),
+        cov("vandalism", "unknown", NOT_FOUND_IN_POLICY),
+        cov("animal", "unknown", NOT_FOUND_IN_POLICY),
+        cov("glass", "unknown", NOT_FOUND_IN_POLICY),
+        cov("roadside", "unknown", NOT_FOUND_IN_POLICY),
+      ],
     },
     aiSummary:
       "Your Civic has liability and collision coverage with a $1,000 collision deductible. Comprehensive, rental and roadside coverage were not found in the uploaded policy.",

@@ -12,6 +12,7 @@ import { geminiModel } from "@/services/ai/gemini";
 import { getOrCreateOpenIncident, refreshIncidentStatus } from "@/services/claims/state";
 import {
   createUpload,
+  deleteObject,
   getObjectBytes,
   getViewUrl,
   headObject,
@@ -133,6 +134,24 @@ export async function getPhotoViewUrl(vehicleId: string, photoId: string): Promi
     console.error("getPhotoViewUrl", err);
     return { ok: false, error: "We couldn't load this photo. Refresh the page to try again." };
   }
+}
+
+/** Removes a photo, its AI result and the stored file. Only reachable from an explicit user tap. */
+export async function deletePhoto(vehicleId: string, photoId: string): Promise<ActionResult> {
+  const { user, vehicle } = await requireVehicle(vehicleId);
+  if (!isValidObjectId(photoId)) return { ok: false, error: "Photo not found." };
+  try {
+    const photo = await DamagePhoto.findOneAndDelete({ _id: photoId, userId: user._id, vehicleId: vehicle._id });
+    if (!photo) return { ok: false, error: "Photo not found." };
+    await DamageAssessment.deleteOne({ photoId: photo._id, userId: user._id, vehicleId: vehicle._id });
+    await deleteObject(photo.s3Key).catch((err) => console.error("deletePhoto S3", err));
+    await refreshIncidentStatus(user._id, vehicle._id);
+  } catch (err) {
+    console.error("deletePhoto", err);
+    return { ok: false, error: TRY_AGAIN };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true, data: undefined };
 }
 
 async function analyze(photo: HydratedDocument<DamagePhotoDoc>): Promise<PhotoResult> {

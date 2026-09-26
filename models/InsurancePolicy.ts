@@ -13,6 +13,10 @@ const InsurancePolicySchema = new Schema(
     status: { type: String, enum: POLICY_STATUSES, default: "processing" },
     extractedData: { type: Schema.Types.Mixed, default: null },
     aiSummary: { type: String, default: null },
+    // { items: CoverageItem[] } from the coverage agent; null until it has run.
+    coverageChecklist: { type: Schema.Types.Mixed, default: null },
+    // Set when the user picked a catalog plan (services/insurance/florida-plans.ts) instead of uploading their policy.
+    planId: { type: String },
     error: { type: String },
   },
   { timestamps: true },

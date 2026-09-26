@@ -95,3 +95,41 @@ export function componentLabel(id: ComponentId): string {
   const s = id.replace(/_/g, " ");
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+// Coverage checklist: the risks a policy can protect against. Uncovered ones show up as Tuxemon "attackers".
+export const PERILS = [
+  "collision",
+  "liability",
+  "injury",
+  "uninsured_driver",
+  "theft",
+  "fire",
+  "flood",
+  "storm",
+  "vandalism",
+  "animal",
+  "glass",
+  "roadside",
+] as const;
+export type Peril = (typeof PERILS)[number];
+
+export const PERIL_LABELS: Record<Peril, string> = {
+  collision: "Crashes with a car or object",
+  liability: "Damage or injuries you cause others",
+  injury: "Your own medical bills (PIP)",
+  uninsured_driver: "Uninsured or hit-and-run drivers",
+  theft: "Theft",
+  fire: "Fire",
+  flood: "Flood",
+  storm: "Hail, wind and hurricanes",
+  vandalism: "Vandalism",
+  animal: "Hitting an animal",
+  glass: "Windshield and glass",
+  roadside: "Breakdowns and towing",
+};
+
+export const COVERAGE_STATUSES = ["covered", "not_covered", "unknown"] as const;
+export type CoverageStatus = (typeof COVERAGE_STATUSES)[number];
+
+export const CHAT_ACTION_STATUSES = ["pending", "running", "done", "failed", "cancelled"] as const;
+export type ChatActionStatus = (typeof CHAT_ACTION_STATUSES)[number];

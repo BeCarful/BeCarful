@@ -42,8 +42,10 @@ npm run dev         # http://localhost:3000
 npm run build
 npm run lint
 npm run typecheck   # next typegen + tsc
-npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, 3D zones)
+npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, 3D zones, statute search, Jev guard, coverage rules)
 ```
+
+**Gemini via Vertex AI** (instead of an API key): `brew install --cask gcloud-cli`, `gcloud auth application-default login`, enable the Vertex AI API, then set `GOOGLE_GENAI_USE_VERTEXAI=true` + `GOOGLE_CLOUD_PROJECT` in `.env.local`.
 
 **S3 bucket CORS** (browser uploads go straight to S3 with a presigned POST): allow `POST` from your app origins, e.g.
 `[{"AllowedOrigins":["http://localhost:3000","https://<your-app>.vercel.app"],"AllowedMethods":["POST"],"AllowedHeaders":["*"]}]`. Block all public access stays on.
@@ -62,7 +64,12 @@ npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage m
 | Selected vehicle | `User.lastVehicleId`, changed by `selectVehicle()`; pages read it via `getVehicleContext()`. |
 | 3D car | R3F + drei GLB viewer (`Car3D.tsx`) behind `CarDamageView`; parts are position zones (`car-zones.ts`) because the sample GLB is split by material. 2D map (`CarDamageMap2D.tsx`) is the toggle + error fallback. |
 | Local S3 | Optional `S3_ENDPOINT` (e.g. MinIO) for dev without AWS. |
-| Design system | HouseToClaim-style tokens + Tailwind v4 `@utility` classes in `globals.css`; no component library. Fonts: Inter + Pixelify Sans via `next/font`. |
+| Design system | HouseToClaim-style tokens + Tailwind v4 `@utility` classes in `globals.css`; no component library. Fonts: Rubik (body) + Tektur (display) via `next/font`. |
+| Agents | Google ADK for TypeScript (`@google/adk`): chat (`services/ai/chat-agent.ts`) and coverage checklist (`services/ai/coverage.ts`) are `LlmAgent`s with `FunctionTool`s. `runAgent()` (`services/ai/adk.ts`) rebuilds an in-memory ADK session per request from MongoDB history. `serverExternalPackages: ["@google/adk"]` (its optional peer deps break bundling). |
+| Agent write guard | Jev (TypeSafe AI, `POST /v1/systemone`) classifies each non-read tool call in `beforeToolCallback`; code decides via `decide()` (`services/ai/guard.ts`, tested): reads run, `destructive` tools always wait for a Confirm tap, writes run alone only when Jev says benign + requested, confident "suspicious" is blocked, no key/outage → Confirm. A waiting write is stored as `ChatMessage.action` and run once by `resolveChatAction`. |
+| Law RAG | In-memory BM25 over `data/florida` + `data/federal` (`services/law/statutes.ts`, tool `search_insurance_law`); files traced with `outputFileTracingIncludes`. Swap for embeddings if recall suffers. |
+| Gemini auth | `genaiAuth()` in `services/ai/gemini.ts`: `GEMINI_API_KEY`, or Vertex AI (ADC) when `GOOGLE_GENAI_USE_VERTEXAI=true`. Used by `@google/genai` and ADK. |
+| Florida plans | Static, sourced `services/insurance/florida-plans.ts` (4 example configurations per insurer, retrieved 2026-09-26, no premiums). Picking one stores its text as the policy original, sets `planId` and skips Gemini extraction. |
 | Dev origin | `allowedDevOrigins: ["127.0.0.1"]` in `next.config.ts` so the dev server also hydrates when opened via 127.0.0.1 (Next 16 blocks dev assets from other hostnames). |
 
 ---
@@ -115,7 +122,7 @@ components/        retro/ layout/ auth/ vehicle/ photos/ insurance/ chat/ summar
 lib/               env (zod, lazy), db (cached mongoose), session (jose), auth, upload-client
 models/            User Vehicle InsurancePolicy Incident DamagePhoto DamageAssessment ChatMessage
 schemas/           zod: damage, policy, vehicle
-services/          ai/ storage/ insurance/ vehicles/ claims/
+services/          ai/ storage/ insurance/ vehicles/ claims/ law/
 types/             shared constants + types (component IDs, statuses, task codes)
 proxy.ts           optimistic auth redirect (Next 16 name for middleware)
 scripts/seed.ts    demo data
@@ -128,6 +135,8 @@ Key service files:
 - `services/storage/s3.ts` — all S3 access (presigned POST uploads, `isOwnedKey`, presigned view URLs, key generation)
 - `services/ai/gemini.ts` — shared client + `generateJson()` (structured output validated by Zod)
 - `services/ai/damage-analysis.ts`, `policy-analysis.ts`, `chat.ts` — one Gemini service per responsibility, never one giant prompt
+- `services/ai/adk.ts` (ADK model + `runAgent`), `chat-agent.ts` (chat agent + guard), `agent-tools.ts` (every tool the agent can call, with `kind`: read / write / destructive), `coverage.ts` + `coverage-rules.ts` (coverage agent + deterministic evidence check), `guard.ts` (Jev + `decide`)
+- `services/law/statutes.ts` — statute chunking + BM25 search over `data/`
 - `services/claims/todos.ts` — deterministic to-do rules + incident status (pure, tested); `state.ts` loads a vehicle's claim state; `damage.ts` merges per-photo assessments
 - `services/vehicles/context.ts` — `getVehicleContext()` for pages, `requireVehicle(vehicleId)` ownership gate for every vehicle-scoped action
 
@@ -142,8 +151,13 @@ AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 S3_BUCKET_NAME=
 S3_ENDPOINT=        # optional, S3-compatible endpoint for local dev (MinIO)
-GEMINI_API_KEY=
+GEMINI_API_KEY=     # or Vertex AI below
+GOOGLE_GENAI_USE_VERTEXAI=  # true = Vertex AI with Application Default Credentials
+GOOGLE_CLOUD_PROJECT=       # required with Vertex AI
+GOOGLE_CLOUD_LOCATION=      # optional, default global
 GEMINI_MODEL=       # optional, default gemini-2.5-flash
+TYPESAFE_API_KEY=   # optional, Jev classifier; without it every agent write asks the user to confirm
+JEV_MODEL=          # optional, default jev-latest
 AUTH_SECRET=        # 32+ chars, signs the session cookie
 ```
 
@@ -173,8 +187,10 @@ Mongoose models in `models/`: `User`, `Vehicle`, `InsurancePolicy`, `Incident`, 
 **InsurancePolicy:**
 ```ts
 { userId, vehicleId, providerId, s3Key, fileName, uploadedAt,
-  status: "processing" | "processed" | "failed", extractedData: PolicyExtraction | null, aiSummary, error? }
+  status: "processing" | "processed" | "failed", extractedData: PolicyExtraction | null, aiSummary, error?,
+  coverageChecklist: { items: CoverageItem[], generatedAt } | null, planId? }
 ```
+`CoverageItem = { peril, status: "covered" | "not_covered" | "unknown", detail, law: { citation, url } | null }`, one per `PERILS` (types/index.ts: collision, liability, injury, uninsured_driver, theft, fire, flood, storm, vandalism, animal, glass, roadside).
 The newest `uploadedAt` per vehicle is the active policy (`getActivePolicy`); older ones are history.
 
 **Insurance providers:** `PROVIDERS` in `services/insurance/providers.ts`: `{ id, name, claimsUrl, phone, officialDomains, supportedStates }`. **State Farm** (`state-farm`) is the preferred/demo insurer. `isOfficialUrl()` validates any URL against `officialDomains`.
@@ -182,7 +198,7 @@ The newest `uploadedAt` per vehicle is the active policy (`getActivePolicy`); ol
 **Incident:** userId, vehicleId, insurancePolicyId, type (`INCIDENT_TYPES`), occurredAt, location, notes, status, filedAt. Photos/assessments reference it by `incidentId`.
 Statuses: `documenting` → `analyzing` → `action_required` → `ready_to_file` → `filed` → `closed`. The open incident is the newest non-`closed` one; the first photo creates it (`getOrCreateOpenIncident`). `filed`/`closed` are set only by explicit user actions; the rest by `refreshIncidentStatus()`.
 
-**ChatMessage:** `{ userId, vehicleId, role: "user" | "assistant", content }`, survives refreshes and new sessions.
+**ChatMessage:** `{ userId, vehicleId, role: "user" | "assistant", content, action? }`, survives refreshes and new sessions. `action = { tool, args, label, status: pending | running | done | failed | cancelled, result? }` is a guarded write waiting for the user's tap; a new user message cancels pending ones.
 
 Store stable S3 keys, not just URLs.
 
@@ -263,15 +279,19 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 - Built: `/insurance` (no policy → pick insurer, then upload PDF or paste text; with policy → provider card, status, Retry/Replace, AI summary, coverage list). `actions/insurance.ts` runs `analyzePolicy()` then `summarizePolicy()` on the extraction only (never the raw doc). Unrelated documents throw `NotAPolicyError`.
 - Originals open via `/insurance/original?vehicleId=` (owner-checked route that redirects to a fresh presigned URL), never a stored or pre-rendered URL.
 - Pages whose actions call Gemini set `export const maxDuration` in the page file (not in `actions/*`). PDFs go to Gemini inline (base64); switch to the Files API if large PDFs fail.
+- **Coverage checklist (ADK):** after a policy is processed, `checkCoverage()` runs an ADK agent over the extraction (+ `search_insurance_law` for Florida rules) and returns one item per peril. `enforceEvidence()` then keeps "covered" only when the named policy field has a value (else "unknown", shown as "Not found") and drops statute citations we don't have. Retry: `recheckCoverage`. Creating a vehicle now lands on `/insurance`.
+- **Tuxemon attackers:** `CoverageChecklist.tsx` lists not-covered/unknown perils like the Damage list: the peril's Tuxemon on the left ("Agnidon may attack you"), details on the right; covered perils are a ✓ list. Sprites per peril in `components/insurance/peril-monsters.ts` (12 licensed Tuxemon, credits in `public/tuxemon/ATTRIBUTION.md`); the card must keep its sprite credits line.
+- **No policy on hand:** "Pick your Florida plan" (`FloridaPlanPicker`) → `chooseFloridaPlan(vehicleId, planId)`; the insurance page labels it "Example Florida plan, not your actual policy".
 
 ## Chat
 
-- Scoped to the selected vehicle only. Context: vehicle info, policy + summary, photos, damage assessments, current incident, that vehicle's prior messages.
+- One thread per vehicle. Context: vehicle info, policy + summary, photos, damage assessments, current incident, that vehicle's prior messages. The ADK agent can also read/act on the user's other vehicles through tools when the user names one (every tool checks `userId` ownership).
 - Assistant is a friendly Tuxemon character (licensed asset, with attribution). Retro dialog-box bubbles. Friendly but not childish.
 - Answers are concise by default. No authoritative coverage determinations the policy doesn't clearly support.
 - Example questions: "What does my insurance cover?", "What's my deductible?", "Which parts look damaged?", "Do I need more photos?", "Where do I file my claim?", "Summarize everything that happened."
 - Built: the assistant is **Propellercat** (Tuxemon, by tamashihoshi, CC BY-SA 4.0; credits in `public/tuxemon/ATTRIBUTION.md`). The chat page must keep showing `<TuxemonAttribution />`.
 - `sendChatMessage(vehicleId, text)`; retry = resend the same text (the server reuses an unanswered identical last message). Gemini context comes from `buildVehicleContext()` in `services/ai/chat.ts` (`loadClaimState` + Vehicle, VIN last 4 only, claim link/phone only from `providers.ts`).
+- The reply comes from the ADK agent (`runChatAgent`). Tools (`services/ai/agent-tools.ts`): read `list_vehicles`, `get_vehicle_status`, `list_photos`, `list_florida_plans`, `search_insurance_law`; write `update_incident_details`, `switch_vehicle`, `choose_florida_plan`, `set_insurer`; destructive `mark_claim_filed`, `close_incident`, `delete_photo`. Writes reuse the existing server actions, so their validation and state rules still apply. A write that needs the user's OK shows a Confirm/Cancel card under the reply (`resolveChatAction`).
 
 ## Summary tab and to-do list
 
@@ -304,18 +324,18 @@ Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS =
 
 ## UI and design
 
-**Style:** a polished RPG companion (modeled on the HouseToClaim design) under an 8-bit pixel sky: a pale meadow sidebar with pixel grass, white rounded cards, slate text, blue primary actions, restrained red brand mark, gold highlights. Pixel art frames the work (scenery, pixel scenes, Tuxemon sprites, pixel icons, stepped progress) but never sits behind body text. Playful but trustworthy enough for insurance documents.
+**Style:** a polished RPG companion (modeled on the HouseToClaim design) under an 8-bit pixel sky: an asphalt road sidebar (yellow center line, green highway-sign active item, crosswalk), white rounded cards, slate text, blue primary actions, restrained red brand mark, gold highlights. Pixel art frames the work (scenery, pixel scenes, Tuxemon sprites, pixel icons, stepped progress) but never sits behind body text. Playful but trustworthy enough for insurance documents.
 
-**Tokens and utilities** live only in `app/globals.css` (light `:root` + dark `[data-theme="dark"]`). Colors: `panel`, `panel-shade`, `ink`, `ink-soft`, `muted`, `border`, `input`, `accent` (+`-hover/-soft/-ink`), `brand`, `gold`, `danger/ok/warn` (+`-soft`, use `bg-warn-soft text-warn` for chips), `pixel-outline`, `pixel-panel`. Utilities: `surface-card`, `pixel-frame` (nameplates on scenes), `pixel-scene`, `eyebrow`, `page-title`, `page-description`, `section-title`, `field-label/-hint/-input/-select`, `task-card`, `fade-in`, `appear`, `face-a/face-b`, `pulse-ring`. No raw hex outside pixel art.
+**Tokens and utilities** live only in `app/globals.css` (light `:root` + dark `[data-theme="dark"]`). Road tokens (`--road`, `--road-ink(-soft)`, `--road-line`, `--road-paint`, `--road-sign(-ink)`) + `road-sign` utility for the sidebar. Colors: `panel`, `panel-shade`, `ink`, `ink-soft`, `muted`, `border`, `input`, `accent` (+`-hover/-soft/-ink`), `brand`, `gold`, `danger/ok/warn` (+`-soft`, use `bg-warn-soft text-warn` for chips), `pixel-outline`, `pixel-panel`. Utilities: `surface-card`, `pixel-frame` (nameplates on scenes), `pixel-scene`, `eyebrow`, `page-title`, `page-description`, `section-title`, `field-label/-hint/-input/-select`, `task-card`, `fade-in`, `appear`, `face-a/face-b`, `pulse-ring`. No raw hex outside pixel art.
 
-**Type:** Inter for everything readable; Pixelify Sans (`font-display`) only for page/card titles, nameplates and short display numbers, never below 14px or for policy/body text. Cards rounded-xl with a thin border, controls rounded-lg (44px min), chips rounded-full. No thick retro borders or hard offset shadows except `pixel-frame`.
+**Type:** Rubik for everything readable; Tektur (`font-display`) only for page/card titles, nameplates and short display numbers, never for policy/body text. Cards rounded-xl with a thin border, controls rounded-lg (44px min), chips rounded-full. No thick retro borders or hard offset shadows except `pixel-frame`.
 
 **Environments:**
-- Light: 8-bit day sky (`components/layout/SceneBackground.tsx`: blue gradient from `--sky-top/--sky-bottom`, blocky `.pixel-cloud`s, square sun), meadow sidebar with grass edge + ground strip. Text placed directly on the sky uses `text-ink` (and the darker light-theme `--brand` for eyebrows) to pass AA.
-- Dark: night sky with twinkling square stars and a square moon, dimmed grass, dark slate cards, night lighting on the 3D car. Not inverted colors.
-- `public/scenery/`: `ground.svg` + `grass-edge.svg` (original art reused from the team's HouseToClaim project, no credit needed) and `car.svg` (original pixel car). Tuxemon sprites keep their attribution.
+- Light: 8-bit day sky (`components/layout/SceneBackground.tsx`: blue gradient from `--sky-top/--sky-bottom`, blocky `.pixel-cloud`s, square sun) + asphalt road sidebar (white edge lines, dashed yellow center line along the content edge that shifts one dash per page change, crosswalk at the bottom). Text placed directly on the sky uses `text-ink` (and the darker light-theme `--brand` for eyebrows) to pass AA.
+- Dark: night sky with twinkling square stars and a square moon, the same road at night, dark slate cards, night lighting on the 3D car. Not inverted colors.
+- `public/scenery/`: `ground.svg` (original art reused from the team's HouseToClaim project, no credit needed; used by `.pixel-scene`) and `car.svg` (original pixel car). Tuxemon sprites keep their attribution.
 
-**Navigation:** only three destinations: **Home**, **Chat**, **Summary**. Phones: frosted bottom nav. `md`+: meadow sidebar (`components/layout/AppSidebar.tsx`) with Profile, day/night and log out in its footer. The frosted header always shows the vehicle switcher. Profile avatar top-right on phones.
+**Navigation:** only three destinations: **Home**, **Chat**, **Summary**. Phones: frosted bottom nav. `md`+: road sidebar (`components/layout/AppSidebar.tsx`) with Profile, day/night and log out in its footer. The frosted header always shows the vehicle switcher. Profile avatar top-right on phones.
 
 **Pages** start with `PageHeader` (`components/layout/PageHeader.tsx`: eyebrow, title, description, action) inside `space-y-6`; main is `max-w-5xl`, two columns at `lg` where it helps.
 
@@ -356,7 +376,7 @@ Switching between them must visibly change the 3D damage state, photos, insuranc
 
 ## Build order
 
-Status (2026-09-26): phases 1–6 built end-to-end (3D uses the zone-mapped sample GLB) except AI-reworded to-dos. UI restyled to the companion theme. Phase 7 not started.
+Status (2026-09-26): phases 1–6 built end-to-end (3D uses the zone-mapped sample GLB) except AI-reworded to-dos. UI restyled to the companion theme with a road sidebar. Google ADK agents added (tool-using chat with Jev write guard, coverage checklist with Tuxemon attackers, statute RAG, Florida plan catalog). Phase 7 not started.
 
 1. ✅ **Foundation:** Next.js, TS, Tailwind, MongoDB, auth, S3, retro design system, light/dark environments, vehicle-context architecture.
 2. ✅ **Home:** vehicle selector, garage, 3D car (sample GLB, zone-mapped), action buttons, gallery, full-screen viewer.

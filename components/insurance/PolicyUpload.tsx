@@ -6,7 +6,7 @@ import { PixelProgress, RetroButton, retroInputClass } from "@/components/retro"
 import { uploadToS3 } from "@/lib/upload-client";
 import type { ActionResult } from "@/types";
 
-const STEPS = ["Uploading policy…", "Reading pages…", "Finding your coverage…", "Writing your summary…"];
+const STEPS = ["Uploading policy…", "Reading pages…", "Finding your coverage…", "Checking the law…", "Spotting wild Tuxemon…"];
 const STEP_MS = 4000;
 const MIN_TEXT = 200;
 const MAX_TEXT = 60_000;

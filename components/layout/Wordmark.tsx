@@ -2,14 +2,21 @@ import Link from "next/link";
 
 const CAR = "M2 5h1V3h1V2h4v1h1v2h1v3H2z";
 
+/** Pixel car in currentColor; `windows` paints the window cut-outs in that fill class. */
+export function PixelCar({ className, windows }: { className: string; windows: string }) {
+  return (
+    <svg viewBox="0 0 12 10" className={className} shapeRendering="crispEdges" fill="currentColor" aria-hidden>
+      <path d={CAR} />
+      <path d="M3 8h2v1H3zM7 8h2v1H7z" />
+      <path d="M4 3h1v2H4zM6 3h2v2H6z" className={windows} />
+    </svg>
+  );
+}
+
 export function BrandMark({ className = "size-9" }: { className?: string }) {
   return (
     <span className={`grid shrink-0 place-items-center rounded-xl bg-brand-mark text-white ${className}`} aria-hidden>
-      <svg viewBox="0 0 12 10" className="w-3/5" shapeRendering="crispEdges" fill="currentColor">
-        <path d={CAR} />
-        <path d="M3 8h2v1H3zM7 8h2v1H7z" />
-        <path d="M4 3h1v2H4zM6 3h2v2H6z" className="fill-brand-mark" />
-      </svg>
+      <PixelCar className="w-3/5" windows="fill-brand-mark" />
     </span>
   );
 }

@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 import { isValidObjectId, type HydratedDocument } from "mongoose";
 import { z } from "zod";
 import { InsurancePolicy, type InsurancePolicyDoc } from "@/models/InsurancePolicy";
-import { PastedPolicyTextSchema } from "@/schemas/policy";
+import { PastedPolicyTextSchema, PolicyExtractionSchema, type PolicyExtraction } from "@/schemas/policy";
+import { checkCoverage } from "@/services/ai/coverage";
 import { analyzePolicy, NotAPolicyError, summarizePolicy } from "@/services/ai/policy-analysis";
-import { getOpenIncident, refreshIncidentStatus } from "@/services/claims/state";
+import { getActivePolicy, getOpenIncident, refreshIncidentStatus } from "@/services/claims/state";
+import { FLORIDA_PLANS_RETRIEVED, getFloridaPlan, type FloridaPlan } from "@/services/insurance/florida-plans";
 import { getProvider } from "@/services/insurance/providers";
 import {
   createUpload,
@@ -112,7 +114,71 @@ export async function updatePolicyProvider(vehicleId: string, policyId: string, 
   return { ok: true, data: undefined };
 }
 
-async function createAndAnalyze(owner: Owner, input: { providerId: string; s3Key: string; fileName: string }): Promise<PolicyResult> {
+/** No policy document: use an example Florida configuration. Its text is stored as the "original" like a pasted policy. */
+export async function chooseFloridaPlan(vehicleId: string, planId: string): Promise<PolicyResult> {
+  const owner = await requireVehicle(vehicleId);
+  const plan = getFloridaPlan(planId);
+  if (!plan) return fail("Pick a plan from the list.");
+  const insurer = getProvider(plan.providerId)?.name ?? plan.providerId;
+  const s3Key = makeKey("policies", String(owner.user._id), String(owner.vehicle._id), "text/plain");
+  try {
+    await putObject(s3Key, planText(plan, insurer), "text/plain; charset=utf-8");
+  } catch (err) {
+    console.error("chooseFloridaPlan upload", err);
+    return fail("We couldn't save that plan. Check your connection and try again.");
+  }
+  const extracted: PolicyExtraction = { provider: insurer, policyNumber: null, effectiveDates: null, premium: null, coveredVehicle: null, ...plan.coverage };
+  return createAndAnalyze(owner, { providerId: plan.providerId, s3Key, fileName: `${insurer} ${plan.name} (Florida example)`, planId: plan.id }, extracted);
+}
+
+/** Re-runs the coverage agent for the active policy (e.g. after it failed). */
+export async function recheckCoverage(vehicleId: string): Promise<ActionResult> {
+  const { user, vehicle } = await requireVehicle(vehicleId);
+  const policy = await getActivePolicy(user._id, vehicle._id);
+  const extracted = PolicyExtractionSchema.safeParse(policy?.extractedData);
+  if (!policy || policy.status !== "processed" || !extracted.success) return fail("Add your policy first.");
+  const checklist = await runCoverage({ user, vehicle }, policy.providerId, extracted.data);
+  if (!checklist) return fail("We couldn't check your coverage just now. Try again in a moment.");
+  policy.set({ coverageChecklist: checklist });
+  await policy.save();
+  revalidatePath("/", "layout");
+  return { ok: true, data: undefined };
+}
+
+function planText(plan: FloridaPlan, insurer: string) {
+  const c = plan.coverage;
+  const line = (label: string, v: string | null) => `${label}: ${v ?? "Not included"}`;
+  return [
+    `${insurer}: ${plan.name}. Example Florida configuration, not a quote and not your actual policy.`,
+    plan.summary,
+    line("Policy type", c.policyType),
+    line("Liability", c.liability),
+    line("Collision", c.collision),
+    line("Comprehensive", c.comprehensive),
+    line("Deductibles", c.deductibles),
+    line("Rental reimbursement", c.rentalReimbursement),
+    line("Roadside assistance", c.roadsideAssistance),
+    `Other coverage:\n${c.otherCoverage.map((o) => `- ${o}`).join("\n") || "- None"}`,
+    `Limitations:\n${c.exclusions.map((e) => `- ${e}`).join("\n") || "- None listed"}`,
+    `Sources (retrieved ${FLORIDA_PLANS_RETRIEVED}):\n${plan.sources.map((src) => `- ${src.title}: ${src.url}`).join("\n")}`,
+  ].join("\n\n");
+}
+
+async function runCoverage({ user, vehicle }: Pick<Owner, "user" | "vehicle">, providerId: string, extraction: PolicyExtraction) {
+  try {
+    const items = await checkCoverage({ userId: String(user._id), vehicleState: vehicle.state, insurer: getProvider(providerId)?.name ?? null, extraction });
+    return { items, generatedAt: new Date() };
+  } catch (err) {
+    console.error("checkCoverage", err);
+    return null;
+  }
+}
+
+async function createAndAnalyze(
+  owner: Owner,
+  input: { providerId: string; s3Key: string; fileName: string; planId?: string },
+  known?: PolicyExtraction,
+): Promise<PolicyResult> {
   const { user, vehicle } = owner;
   const policy = await InsurancePolicy.create({ ...input, userId: user._id, vehicleId: vehicle._id, status: "processing" });
   const incident = await getOpenIncident(user._id, vehicle._id);
@@ -121,18 +187,28 @@ async function createAndAnalyze(owner: Owner, input: { providerId: string; s3Key
     await incident.save();
   }
   await refreshIncidentStatus(user._id, vehicle._id);
-  return analyzeAndSave(owner, policy);
+  return analyzeAndSave(owner, policy, known);
 }
 
-async function analyzeAndSave({ user, vehicle }: Owner, policy: HydratedDocument<InsurancePolicyDoc>): Promise<PolicyResult> {
+async function analyzeAndSave(
+  { user, vehicle }: Owner,
+  policy: HydratedDocument<InsurancePolicyDoc>,
+  known?: PolicyExtraction,
+): Promise<PolicyResult> {
   try {
-    const bytes = await getObjectBytes(policy.s3Key);
-    const extracted = await analyzePolicy(policy.s3Key.endsWith(".txt") ? { text: bytes.toString("utf8") } : { pdf: bytes });
-    const summary = await summarizePolicy(extracted).catch((err) => {
-      console.error("Policy summary failed", policy._id, err);
-      return null;
-    });
-    policy.set({ extractedData: extracted, aiSummary: summary, status: "processed", error: undefined });
+    let extracted = known;
+    if (!extracted) {
+      const bytes = await getObjectBytes(policy.s3Key);
+      extracted = await analyzePolicy(policy.s3Key.endsWith(".txt") ? { text: bytes.toString("utf8") } : { pdf: bytes });
+    }
+    const [summary, checklist] = await Promise.all([
+      summarizePolicy(extracted).catch((err) => {
+        console.error("Policy summary failed", policy._id, err);
+        return null;
+      }),
+      runCoverage({ user, vehicle }, policy.providerId, extracted),
+    ]);
+    policy.set({ extractedData: extracted, aiSummary: summary, coverageChecklist: checklist, status: "processed", error: undefined });
   } catch (err) {
     console.error("Policy extraction failed", policy._id, err);
     policy.set({ status: "failed", error: err instanceof NotAPolicyError ? NOT_A_POLICY : READ_FAILED });

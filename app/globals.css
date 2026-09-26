@@ -2,18 +2,23 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Companion theme: soft sky canvas, meadow sidebar, white cards, blue actions, restrained red brand, gold highlights.
+/* Companion theme: soft sky canvas, road sidebar, white cards, blue actions, restrained red brand, gold highlights.
    Pixel art frames the work (scenery, scenes, sprites); it never sits behind text. Tokens are the only place colors live. */
 :root {
   color-scheme: light;
   --canvas: #f7f5f2;
   --sky-top: #5fb4f5;
   --sky-bottom: #c4e8ff;
-  --meadow-top: #e5f3d7;
-  --meadow-bottom: #cfe8b6;
-  --meadow-shade: rgb(30 150 72 / 14%);
-  --meadow-ink: #1c2e19;
-  --meadow-line: #b3d497;
+  --road: #3b404b;
+  --road-speck: rgb(255 255 255 / 7%);
+  --road-seam: rgb(255 255 255 / 14%);
+  --road-hover: rgb(255 255 255 / 9%);
+  --road-ink: #f4f2ec;
+  --road-ink-soft: #c3c8d2;
+  --road-line: #f5c518;
+  --road-paint: #eef0f2;
+  --road-sign: #1d6b40;
+  --road-sign-ink: #ffffff;
 
   --panel: #ffffff;
   --panel-shade: #efede9;
@@ -51,11 +56,16 @@
   --canvas: #121823;
   --sky-top: #070b1f;
   --sky-bottom: #1d2a55;
-  --meadow-top: #182b1e;
-  --meadow-bottom: #112117;
-  --meadow-shade: rgb(28 216 94 / 6%);
-  --meadow-ink: #e3efdc;
-  --meadow-line: #2e4b34;
+  --road: #151a23;
+  --road-speck: rgb(255 255 255 / 4%);
+  --road-seam: rgb(255 255 255 / 9%);
+  --road-hover: rgb(255 255 255 / 7%);
+  --road-ink: #ece8dc;
+  --road-ink-soft: #a9b1c2;
+  --road-line: #d8a928;
+  --road-paint: #c9ccd2;
+  --road-sign: #17583a;
+  --road-sign-ink: #f1f5f2;
 
   --panel: #1b2433;
   --panel-shade: #1f2a44;
@@ -110,12 +120,10 @@
   --color-ok-soft: var(--ok-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
-  --color-meadow-ink: var(--meadow-ink);
-  --color-meadow-line: var(--meadow-line);
   --color-pixel-outline: var(--pixel-outline);
   --color-pixel-panel: var(--pixel-panel);
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-pixelify), var(--font-inter), ui-sans-serif, sans-serif;
+  --font-sans: var(--font-rubik), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-tektur), var(--font-rubik), ui-sans-serif, sans-serif;
   --font-pixel: var(--font-display);
 }
 
@@ -170,35 +178,64 @@ body {
   opacity: 0.9;
 }
 
-/* Meadow sidebar: gradient, pixel ground strip along the bottom, grass edge overhanging the content gutter. */
-.meadow {
-  background:
-    linear-gradient(to right, transparent 75%, var(--meadow-shade)),
-    linear-gradient(var(--meadow-top), var(--meadow-bottom));
-  color: var(--meadow-ink);
-  padding-bottom: 28px;
+/* Road sidebar: the nav is one lane, a yellow center line runs along its edge (it "drives" one dash
+   on every page change), and a sliver of the opposite lane with its white edge line overhangs the
+   content gutter. Crosswalk at the bottom. Inside, ink/border tokens are re-pointed to light-on-asphalt. */
+.road {
+  --ink: var(--road-ink);
+  --ink-soft: var(--road-ink-soft);
+  --border: var(--road-seam);
+  color: var(--road-ink);
+  background-color: var(--road);
+  background-image:
+    linear-gradient(to right, transparent 5px, var(--road-paint) 5px 8px, transparent 8px),
+    radial-gradient(var(--road-speck) 1px, transparent 1px);
+  background-size: 100% 100%, 7px 6px;
+  padding-bottom: 34px;
 }
-.meadow::before,
-.meadow::after {
+.road :focus-visible {
+  outline-color: var(--road-line);
+}
+.road::before {
   content: "";
   position: absolute;
-  pointer-events: none;
-}
-.meadow::after {
-  inset: auto 0 0;
-  height: 28px;
-  background: url(/scenery/ground.svg) 0 0 / 160px 28px repeat-x;
-}
-.meadow::before {
   top: 0;
   bottom: 0;
-  right: -18px;
-  width: 30px;
-  background: url(/scenery/grass-edge.svg) 0 0 / 30px 256px repeat-y;
+  left: 100%;
+  width: 18px;
+  pointer-events: none;
+  background-color: var(--road);
+  background-image:
+    linear-gradient(to left, transparent 3px, var(--road-paint) 3px 6px, transparent 6px),
+    radial-gradient(var(--road-speck) 1px, transparent 1px);
+  background-size: 100% 100%, 7px 6px;
 }
-[data-theme="dark"] .meadow::before,
-[data-theme="dark"] .meadow::after {
-  filter: brightness(0.55) saturate(0.8);
+.road::after {
+  content: "";
+  position: absolute;
+  inset: auto -18px 0 0;
+  height: 30px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--road-paint), var(--road-paint)) 0 0 / 100% 4px no-repeat,
+    repeating-linear-gradient(90deg, var(--road-paint) 0 12px, transparent 12px 22px) 0 10px / 100% 20px no-repeat;
+  opacity: 0.85;
+}
+@keyframes road-drive {
+  from {
+    background-position: 0 -34px;
+  }
+}
+.road-line {
+  position: absolute;
+  top: 0;
+  bottom: 34px;
+  right: -2px;
+  z-index: 1;
+  width: 4px;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, var(--road-line) 0 20px, transparent 20px 34px);
+  animation: road-drive 0.6s ease-out;
 }
 
 /* Pixel scene: dotted sky over a ground band. Scenes hold art, never body text. */
@@ -235,12 +272,21 @@ body {
   @apply border-2 border-pixel-outline bg-pixel-panel text-ink shadow-[2px_2px_0_var(--pixel-shadow)];
 }
 
+/* Active lane: a green highway guide sign with an inset white border. */
+@utility road-sign {
+  @apply bg-(--road-sign) font-semibold text-(--road-sign-ink);
+  box-shadow:
+    inset 0 0 0 3px var(--road-sign),
+    inset 0 0 0 5px var(--road-sign-ink),
+    0 2px 0 rgb(0 0 0 / 35%);
+}
+
 @utility eyebrow {
   @apply text-xs font-bold uppercase tracking-[0.08em] text-brand;
 }
 
 @utility page-title {
-  @apply font-display text-[1.75rem] leading-tight font-semibold tracking-tight text-ink md:text-[2rem];
+  @apply font-display text-[1.75rem] leading-tight font-bold tracking-tight text-ink md:text-[2rem];
 }
 
 @utility page-description {

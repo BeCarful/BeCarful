@@ -22,7 +22,7 @@ export async function createVehicle(_: VehicleFormState, fd: FormData): Promise<
   user.lastVehicleId = vehicle._id;
   await user.save();
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect("/insurance");
 }
 
 export async function selectVehicle(vehicleId: string) {

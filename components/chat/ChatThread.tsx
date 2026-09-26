@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { sendChatMessage } from "@/actions/chat";
+import { resolveChatAction, sendChatMessage } from "@/actions/chat";
 import { RetroBadge, RetroButton, retroInputClass } from "@/components/retro";
 import type { ChatMessageView } from "@/services/ai/chat";
 import { ChatBubble } from "./ChatBubble";
@@ -18,6 +18,49 @@ const SUGGESTIONS = [
 const MAX_LENGTH = 1000;
 
 type Outbox = { text: string; error: string | null };
+
+const ACTION_DONE = { done: "Done", failed: "Didn't work", cancelled: "Cancelled", running: "Working…", pending: "" } as const;
+
+/** A write the agent proposed. Nothing changes until the user taps Confirm. */
+function ActionCard({ vehicleId, message, onUpdate }: { vehicleId: string; message: ChatMessageView; onUpdate: (m: ChatMessageView) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const action = message.action!;
+
+  async function resolve(approve: boolean) {
+    setBusy(true);
+    setError(null);
+    const res = await resolveChatAction(vehicleId, message.id, approve).catch(() => null);
+    setBusy(false);
+    if (res?.ok) onUpdate(res.data);
+    else setError(res?.error ?? "Couldn't reach BeCarful. Check your connection and try again.");
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-border bg-panel p-3">
+      <p className="text-sm font-semibold text-ink">{action.label}</p>
+      {action.status === "pending" ? (
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <RetroButton type="button" disabled={busy} onClick={() => resolve(true)}>
+            {busy ? "Working…" : "Confirm"}
+          </RetroButton>
+          <RetroButton type="button" variant="secondary" disabled={busy} onClick={() => resolve(false)}>
+            Cancel
+          </RetroButton>
+        </div>
+      ) : (
+        <p className={`mt-1 text-sm ${action.status === "failed" ? "text-danger" : "text-ink-soft"}`} role="status">
+          {action.status === "failed" ? (action.result ?? ACTION_DONE.failed) : ACTION_DONE[action.status]}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /** Mount with key={vehicleId}: all state here belongs to one vehicle's thread. */
 export function ChatThread({ vehicleId, vehicleName, initialMessages }: { vehicleId: string; vehicleName: string; initialMessages: ChatMessageView[] }) {
@@ -44,7 +87,8 @@ export function ChatThread({ vehicleId, vehicleName, initialMessages }: { vehicl
     setDraft((d) => (d.trim() === text ? "" : d));
     const res = await sendChatMessage(vehicleId, text).catch(() => null);
     if (res?.ok) {
-      setMessages((m) => [...m, res.data.user, res.data.reply]);
+      const stale = (x: ChatMessageView): ChatMessageView => (x.action?.status === "pending" ? { ...x, action: { ...x.action, status: "cancelled" } } : x);
+      setMessages((m) => [...m.map(stale), res.data.user, res.data.reply]);
       setOutbox(null);
     } else {
       setOutbox({ text, error: res?.error ?? "Couldn't reach BeCarful. Check your connection, then tap Retry." });
@@ -90,7 +134,11 @@ export function ChatThread({ vehicleId, vehicleName, initialMessages }: { vehicl
           </div>
         )}
         {messages.map((m) => (
-          <ChatBubble key={m.id} role={m.role} text={m.content} />
+          <ChatBubble key={m.id} role={m.role} text={m.content}>
+            {m.action && (
+              <ActionCard vehicleId={vehicleId} message={m} onUpdate={(next) => setMessages((all) => all.map((x) => (x.id === next.id ? next : x)))} />
+            )}
+          </ChatBubble>
         ))}
         {outbox && (
           <ChatBubble role="user" text={outbox.text}>

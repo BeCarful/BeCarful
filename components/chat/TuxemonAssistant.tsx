@@ -12,23 +12,27 @@ export function TuxemonAvatar({
   scale = 2,
   decorative = false,
   className = "",
+  sheet = SHEET,
+  label = ASSISTANT_NAME,
 }: {
   frame?: keyof typeof FRAMES;
   scale?: 1 | 2 | 3;
   decorative?: boolean;
   className?: string;
+  sheet?: string;
+  label?: string;
 }) {
   const { size, x, y } = FRAMES[frame];
   return (
     <span
       role={decorative ? undefined : "img"}
-      aria-label={decorative ? undefined : ASSISTANT_NAME}
+      aria-label={decorative ? undefined : label}
       aria-hidden={decorative || undefined}
       className={`pixelated inline-block shrink-0 bg-no-repeat ${className}`}
       style={{
         width: size * scale,
         height: size * scale,
-        backgroundImage: `url(${SHEET})`,
+        backgroundImage: `url(${sheet})`,
         backgroundSize: `${128 * scale}px ${88 * scale}px`,
         backgroundPosition: `-${x * scale}px -${y * scale}px`,
       }}

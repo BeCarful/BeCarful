@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Pixelify_Sans } from "next/font/google";
+import { Rubik, Tektur } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
-const pixelify = Pixelify_Sans({ variable: "--font-pixelify", subsets: ["latin"] });
+const rubik = Rubik({ variable: "--font-rubik", subsets: ["latin"] });
+const tektur = Tektur({ variable: "--font-tektur", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "BeCarful",
@@ -25,7 +25,7 @@ const themeScript = `try{var t=localStorage.getItem("theme");if(t!=="light"&&t!=
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" data-theme="light" suppressHydrationWarning className={`${inter.variable} ${pixelify.variable} h-full antialiased`}>
+    <html lang="en" data-theme="light" suppressHydrationWarning className={`${rubik.variable} ${tektur.variable} h-full antialiased`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

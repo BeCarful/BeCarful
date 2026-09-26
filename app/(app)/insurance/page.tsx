@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { HydratedDocument } from "mongoose";
 import { ChangeProvider } from "@/components/insurance/ChangeProvider";
+import { CoverageChecklist } from "@/components/insurance/CoverageChecklist";
 import { InsuranceSetup } from "@/components/insurance/InsuranceSetup";
 import { COVERAGE_FIELDS, DETAIL_FIELDS, PolicyFields } from "@/components/insurance/PolicyFields";
 import { PolicyUpload } from "@/components/insurance/PolicyUpload";
@@ -9,12 +10,13 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { RetroBadge, RetroCard, RetroDialog, retroButtonClass } from "@/components/retro";
 import type { InsurancePolicyDoc } from "@/models/InsurancePolicy";
 import { PolicyExtractionSchema } from "@/schemas/policy";
+import type { CoverageItem } from "@/services/ai/coverage-rules";
 import { getActivePolicy } from "@/services/claims/state";
 import { getProvider, isOfficialUrl } from "@/services/insurance/providers";
 import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
 
 // Policy extraction runs inside this page's server actions.
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const STATUS = {
   processed: { tone: "ok", label: "Ready" },
@@ -59,6 +61,7 @@ function PolicyScreen({ vehicleId, policy }: { vehicleId: string; policy: Hydrat
   const parsed = PolicyExtractionSchema.safeParse(policy.extractedData);
   const data = policy.status === "processed" && parsed.success ? parsed.data : null;
   const isText = policy.s3Key.endsWith(".txt");
+  const checklist = (policy.coverageChecklist as { items?: CoverageItem[] } | null)?.items ?? null;
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[1fr_1.25fr]">
@@ -113,6 +116,11 @@ function PolicyScreen({ vehicleId, policy }: { vehicleId: string; policy: Hydrat
               )}
             </div>
           </div>
+          {policy.planId && (
+            <p className="mt-4 rounded-lg bg-gold-soft px-3 py-2 text-sm text-ink">
+              Example Florida plan, not your actual policy. Upload your policy for your exact coverage.
+            </p>
+          )}
           {policy.status !== "processed" && (
             <p role="status" className={`mt-4 rounded-lg px-3 py-2 text-sm text-ink ${policy.status === "failed" ? "bg-danger-soft" : "bg-warn-soft"}`}>
               {policy.status === "failed"
@@ -134,6 +142,7 @@ function PolicyScreen({ vehicleId, policy }: { vehicleId: string; policy: Hydrat
 
       {data && (
         <div className="space-y-6">
+          <CoverageChecklist vehicleId={vehicleId} items={checklist} />
           {policy.aiSummary && (
             <RetroDialog speaker="In plain words" avatar={<TuxemonAvatar frame="front" scale={1} />}>
               <p>{policy.aiSummary}</p>
