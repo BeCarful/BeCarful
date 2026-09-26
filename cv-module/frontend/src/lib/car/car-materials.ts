@@ -67,12 +67,55 @@ export function getCarMaterials(): CarMaterials {
       emissive: "#e8f1ff",
       emissiveIntensity: 1.2,
     }),
+    // Why: a smoked grey lens instead of red, so an undamaged taillight is never
+    // mistaken for the red end of the damage scale. Only damage uses color.
     taillight: new THREE.MeshStandardMaterial({
-      color: "#8a0c0c",
-      emissive: "#d01010",
-      emissiveIntensity: 0.8,
+      color: "#4a4f57",
+      roughness: 0.2,
+      metalness: 0.3,
     }),
   };
 
   return cachedMaterials;
+}
+
+export const SELECTION_COLOR = "#2563eb";
+const damageMaterials = new Map<string, THREE.MeshStandardMaterial>();
+const selectedBaseMaterials = new Map<string, THREE.MeshStandardMaterial>();
+
+/**
+ * Returns the flat, slightly glossy material used to paint a damaged part in
+ * its damage-level color.
+ */
+export function getDamageMaterial(color: string): THREE.MeshStandardMaterial {
+  let material = damageMaterials.get(color);
+  if (!material) {
+    material = new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.45,
+      metalness: 0.05,
+      emissive: color,
+      // Why: a touch of self-light keeps dark levels readable on the shadow side.
+      emissiveIntensity: 0.08,
+    });
+    damageMaterials.set(color, material);
+  }
+  return material;
+}
+
+/**
+ * Returns a copy of an undamaged part's normal material with a blue glow,
+ * shown while that part is selected.
+ */
+export function getSelectedMaterial(
+  baseMaterial: THREE.MeshStandardMaterial,
+): THREE.MeshStandardMaterial {
+  let material = selectedBaseMaterials.get(baseMaterial.uuid);
+  if (!material) {
+    material = baseMaterial.clone();
+    material.emissive = new THREE.Color(SELECTION_COLOR);
+    material.emissiveIntensity = 0.35;
+    selectedBaseMaterials.set(baseMaterial.uuid, material);
+  }
+  return material;
 }

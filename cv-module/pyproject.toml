@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "becarful-cv-module"
+version = "0.1.0"
+description = "Evidence-first vehicle damage assessment pipeline"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = { text = "Apache-2.0" }
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.34,<1",
+  "pydantic>=2.11,<3",
+  "pydantic-settings>=2.8,<3",
+  "firebase-admin>=6.7,<8",
+  "google-cloud-firestore>=2.20,<3",
+  "google-cloud-storage>=3.1,<4",
+  "google-cloud-tasks>=2.19,<3",
+  "google-genai>=1.11,<2",
+  "Pillow>=11.1,<13",
+  "pillow-heif>=0.22,<2",
+  "ImageHash>=4.3,<5",
+  "PyYAML>=6.0,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28,<1",
+  "mypy>=1.15,<2",
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.26,<1",
+  "pytest-cov>=6,<8",
+  "ruff>=0.11,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cv_module"]
+
+[tool.hatch.build]
+include = [
+  "src/cv_module/**/*.py",
+  "src/cv_module/prompts/*.txt",
+]
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-markers --strict-config --basetemp=tmp"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]

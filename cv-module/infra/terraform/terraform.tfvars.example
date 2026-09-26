@@ -1,0 +1,11 @@
+project_id                = "replace-with-project-id"
+region                    = "us-central1"
+auth_mode                 = "disabled"
+gemini_location           = "us"
+gemini_model              = "gemini-3.8-flash"
+gemini_input_cost_per_million_usd  = ""
+gemini_output_cost_per_million_usd = ""
+storage_bucket            = "replace-with-globally-unique-bucket"
+container_image           = "us-central1-docker.pkg.dev/replace-with-project-id/becarful-cv/app@sha256:replace"
+create_firestore_database = true
+git_revision              = "replace-with-git-sha"

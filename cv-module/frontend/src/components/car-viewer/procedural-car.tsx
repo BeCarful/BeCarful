@@ -4,24 +4,20 @@ import { useMemo } from "react";
 
 import { WHEEL_RADIUS } from "@/lib/car/car-config";
 import {
-  BODY_BEVEL,
-  CABIN_PROFILE,
-  CABIN_SIDE_Z,
   createCabinGeometry,
   createLowerBodyGeometry,
-  createSideWindowGeometry,
   FRONT_AXLE_X,
-  placeGlassAlongEdge,
   REAR_AXLE_X,
   TRACK_HALF_WIDTH,
 } from "@/lib/car/car-geometry";
 import { getCarMaterials } from "@/lib/car/car-materials";
+import { FRONT_DOOR, REAR_DOOR } from "@/lib/car/car-panel-geometry";
+import { CAR_SIDES, sideName } from "@/lib/car/car-parts";
 
+import { CarBodyPanels } from "./car-body-panels";
 import { CarDetails } from "./car-details";
 import { CarDoor } from "./car-door";
 import { CarWheel } from "./car-wheel";
-
-const SIDES = [1, -1] as const;
 
 type ProceduralCarProps = {
   areDoorsOpen: boolean;
@@ -29,63 +25,53 @@ type ProceduralCarProps = {
 
 /**
  * A white MPV shaped like a Suzuki XL7, built entirely from three.js geometry.
- * It is a placeholder until a real .glb model is set in CAR_MODEL_URL.
+ * Every reportable part (see car-parts.ts) is its own mesh that can be colored by
+ * damage level and clicked. It is a placeholder until a real .glb model is set.
  */
 export function ProceduralCar({ areDoorsOpen }: ProceduralCarProps) {
   const materials = getCarMaterials();
   const lowerBodyGeometry = useMemo(() => createLowerBodyGeometry(), []);
   const cabinGeometry = useMemo(() => createCabinGeometry(), []);
-  const sideWindowGeometry = useMemo(() => createSideWindowGeometry(), []);
-
-  const windshield = placeGlassAlongEdge(
-    CABIN_PROFILE.windshieldBase,
-    CABIN_PROFILE.windshieldTop,
-    0.1,
-  );
-  const rearGlass = placeGlassAlongEdge(
-    CABIN_PROFILE.roofRear,
-    CABIN_PROFILE.tailgateBase,
-    0.2,
-  );
 
   return (
     <group>
+      {/* The white shell underneath all the parts */}
       <mesh geometry={lowerBodyGeometry} material={materials.paint} />
       <mesh geometry={cabinGeometry} material={materials.paint} />
 
-      <mesh
-        position={windshield.position}
-        rotation-z={windshield.rotationZ}
-        material={materials.glass}
-      >
-        <boxGeometry args={[windshield.length, 0.015, 1.45]} />
-      </mesh>
-      <mesh
-        position={rearGlass.position}
-        rotation-z={rearGlass.rotationZ}
-        material={materials.glass}
-      >
-        <boxGeometry args={[rearGlass.length, 0.015, 1.35]} />
-      </mesh>
+      <CarBodyPanels />
 
-      {SIDES.map((side) => (
-        <group key={side}>
-          <mesh
-            geometry={sideWindowGeometry}
-            position-z={side * (CABIN_SIDE_Z + BODY_BEVEL + 0.004)}
-            material={materials.glass}
-          />
-          <CarDoor side={side} isOpen={areDoorsOpen} />
-          <CarWheel
-            position={[FRONT_AXLE_X, WHEEL_RADIUS, side * TRACK_HALF_WIDTH]}
-            side={side}
-          />
-          <CarWheel
-            position={[REAR_AXLE_X, WHEEL_RADIUS, side * TRACK_HALF_WIDTH]}
-            side={side}
-          />
-        </group>
-      ))}
+      {CAR_SIDES.map((side) => {
+        const name = sideName(side);
+        return (
+          <group key={side}>
+            <CarDoor
+              partId={`door_front_${name}`}
+              side={side}
+              hingeX={FRONT_DOOR.hingeX}
+              rearX={FRONT_DOOR.rearX}
+              isOpen={areDoorsOpen}
+            />
+            <CarDoor
+              partId={`door_rear_${name}`}
+              side={side}
+              hingeX={REAR_DOOR.hingeX}
+              rearX={REAR_DOOR.rearX}
+              isOpen={areDoorsOpen}
+            />
+            <CarWheel
+              partId={`wheel_front_${name}`}
+              position={[FRONT_AXLE_X, WHEEL_RADIUS, side * TRACK_HALF_WIDTH]}
+              side={side}
+            />
+            <CarWheel
+              partId={`wheel_rear_${name}`}
+              position={[REAR_AXLE_X, WHEEL_RADIUS, side * TRACK_HALF_WIDTH]}
+              side={side}
+            />
+          </group>
+        );
+      })}
 
       <CarDetails />
     </group>

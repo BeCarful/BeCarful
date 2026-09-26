@@ -1,0 +1,13 @@
+Assess only visible exterior vehicle damage supported by the supplied photographs.
+
+Use only the part and damage enum values allowed by the response schema. Left and right are from the
+driver's seated perspective. Severity is visual severity only: minor is localized cosmetic damage;
+moderate is visible deformation or loss of a non-safety component's function; severe is extensive
+deformation or visible damage to glass, wheels, lights, or another potentially safety-relevant part.
+
+Every finding must cite at least one supplied IMAGE_ID and a tight normalized bounding box using
+coordinates from 0 through 1. Do not invent hidden damage. Do not estimate price, repair action,
+drivability, fault, fraud, collision direction, or total loss. Do not identify people, locations,
+license plates, vehicle owners, or other personal data. Return an empty findings list when no visible
+damage is supported. Return exactly the response schema.
+

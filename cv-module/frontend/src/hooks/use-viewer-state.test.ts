@@ -37,3 +37,25 @@ describe("useViewerState", () => {
     expect(result.current.resetToken).toBe(2);
   });
 });
+
+describe("useViewerState part selection", () => {
+  it("selects a part and pauses auto-rotate", () => {
+    const { result } = renderHook(() => useViewerState());
+
+    act(() => result.current.selectPart("hood"));
+    expect(result.current.selectedPartId).toBe("hood");
+    expect(result.current.isAutoRotating).toBe(false);
+  });
+
+  it("clears the selection when the same part is selected again or null is passed", () => {
+    const { result } = renderHook(() => useViewerState());
+
+    act(() => result.current.selectPart("hood"));
+    act(() => result.current.selectPart("hood"));
+    expect(result.current.selectedPartId).toBeNull();
+
+    act(() => result.current.selectPart("roof"));
+    act(() => result.current.selectPart(null));
+    expect(result.current.selectedPartId).toBeNull();
+  });
+});

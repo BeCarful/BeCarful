@@ -7,27 +7,35 @@ import * as THREE from "three";
 import { DOOR_OPEN_ANGLE } from "@/lib/car/car-config";
 import { BODY_SIDE_Z } from "@/lib/car/car-geometry";
 import { getCarMaterials } from "@/lib/car/car-materials";
+import { DOOR_BOTTOM_Y, DOOR_TOP_Y } from "@/lib/car/car-panel-geometry";
+import type { CarSide, PartId } from "@/lib/car/car-parts";
 
-const DOOR_HINGE_X = 0.85;
-const DOOR_LENGTH = 1.05;
-const DOOR_BOTTOM_Y = 0.45;
-const DOOR_TOP_Y = 0.98;
+import { CarPart, PartOutline } from "./car-part";
+import { usePartMaterial } from "./damage-context";
+
 const DOOR_THICKNESS = 0.04;
 const DOOR_SWING_SPEED = 6;
 
 type CarDoorProps = {
-  /** +1 for the left side (+z), -1 for the right side. */
-  side: 1 | -1;
+  partId: PartId;
+  /** -1 for the car's left side (-z), +1 for its right side (+z). */
+  side: CarSide;
+  /** x position of the door's front edge, where it hinges. */
+  hingeX: number;
+  /** x position of the door's rear edge. */
+  rearX: number;
   isOpen: boolean;
 };
 
 /**
- * A front door that swings open around its front edge.
+ * A side door that swings open around its front edge.
  * A dark panel behind it shows the door opening when it swings out.
  */
-export function CarDoor({ side, isOpen }: CarDoorProps) {
+export function CarDoor({ partId, side, hingeX, rearX, isOpen }: CarDoorProps) {
   const hingeRef = useRef<THREE.Group>(null);
   const materials = getCarMaterials();
+  const panelMaterial = usePartMaterial(partId, materials.paint);
+  const doorLength = hingeX - rearX;
   const doorHeight = DOOR_TOP_Y - DOOR_BOTTOM_Y;
   const centerY = (DOOR_BOTTOM_Y + DOOR_TOP_Y) / 2;
   const hingeZ = side * (BODY_SIDE_Z + DOOR_THICKNESS / 2 + 0.003);
@@ -37,7 +45,7 @@ export function CarDoor({ side, isOpen }: CarDoorProps) {
     if (!hinge) {
       return;
     }
-    // Why: a positive y-rotation swings the rear edge toward +z, so the right door uses the negative angle.
+    // Why: a positive y-rotation swings the rear edge toward +z, so the left (-z) door uses the negative angle.
     const targetAngle = isOpen ? side * DOOR_OPEN_ANGLE : 0;
     hinge.rotation.y = THREE.MathUtils.damp(
       hinge.rotation.y,
@@ -51,22 +59,27 @@ export function CarDoor({ side, isOpen }: CarDoorProps) {
     <group>
       <mesh
         position={[
-          DOOR_HINGE_X - DOOR_LENGTH / 2,
+          hingeX - doorLength / 2,
           centerY,
           side * (BODY_SIDE_Z + 0.002),
         ]}
         material={materials.trim}
       >
-        <boxGeometry args={[DOOR_LENGTH - 0.04, doorHeight - 0.04, 0.002]} />
+        <boxGeometry args={[doorLength - 0.04, doorHeight - 0.04, 0.002]} />
       </mesh>
-      <group ref={hingeRef} position={[DOOR_HINGE_X, centerY, hingeZ]}>
-        <mesh position-x={-DOOR_LENGTH / 2} material={materials.paint}>
-          <boxGeometry args={[DOOR_LENGTH, doorHeight, DOOR_THICKNESS]} />
+      <CarPart
+        partId={partId}
+        ref={hingeRef}
+        position={[hingeX, centerY, hingeZ]}
+      >
+        <mesh position-x={-doorLength / 2} material={panelMaterial}>
+          <boxGeometry args={[doorLength, doorHeight, DOOR_THICKNESS]} />
+          <PartOutline partId={partId} hasSeams />
         </mesh>
         {/* Door handle */}
         <mesh
           position={[
-            -DOOR_LENGTH + 0.2,
+            -doorLength + 0.2,
             doorHeight / 2 - 0.12,
             side * (DOOR_THICKNESS / 2 + 0.01),
           ]}
@@ -74,7 +87,7 @@ export function CarDoor({ side, isOpen }: CarDoorProps) {
         >
           <boxGeometry args={[0.16, 0.03, 0.02]} />
         </mesh>
-      </group>
+      </CarPart>
     </group>
   );
 }

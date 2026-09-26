@@ -1,0 +1,80 @@
+schema_version: "1.0"
+policy:
+  download_requires_approval: true
+  committed_data_allowed: false
+  acceptance_benchmark: first_party_multiview
+
+datasets:
+  - id: cardd
+    name: CarDD
+    source: https://cardd-ustc.github.io/
+    version: unpinned
+    task: damage_detection_and_segmentation
+    annotations:
+      images: 4000
+      damage_classes: 6
+      multi_view_claim_groups: false
+      part_labels: false
+      severity_labels: false
+    license:
+      status: pending_written_permission
+      research_consent_required: true
+      commercial_authorization_required: true
+      redistribution_allowed: false
+      source: https://cardd-ustc.github.io/docs/CarDD_license.pdf
+    approved: false
+    downloaded: false
+    checksum: null
+
+  - id: dsmlr_car_parts_v2
+    name: DSMLR Car Parts Dataset v2
+    source: https://github.com/dsmlr/Car-Parts-Segmentation
+    version: "2.0"
+    task: part_instance_segmentation
+    annotations:
+      images: 500
+      part_classes: 18
+      damage_labels: false
+    license:
+      status: terms_require_verification
+      redistribution_allowed: null
+      derived_model_use_allowed: null
+    approved: false
+    downloaded: false
+    checksum: null
+
+  - id: crashcar101
+    name: CrashCar101
+    source: https://crashcar.compute.dtu.dk/
+    version: unpinned
+    task: synthetic_part_and_damage_segmentation
+    annotations:
+      synthetic: true
+      pixel_accurate_parts: true
+      pixel_accurate_damage: true
+    license:
+      status: terms_require_verification
+      redistribution_allowed: null
+      derived_model_use_allowed: null
+    approved: false
+    downloaded: false
+    checksum: null
+
+  - id: first_party_multiview
+    name: BeCarful Consented Multi-view Benchmark
+    source: first_party_collection
+    version: not_collected
+    task: claim_level_acceptance
+    target:
+      claims_minimum: 100
+      images_minimum: 600
+      images_maximum: 1000
+      no_damage_fraction_minimum: 0.20
+      double_labeled_fraction: 0.20
+    license:
+      status: consent_and_data_agreement_required
+      redistribution_allowed: false
+    approved: false
+    downloaded: false
+    checksum: null
+
