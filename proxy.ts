@@ -8,7 +8,6 @@ export async function proxy(req: NextRequest) {
   const signedIn = Boolean(await verifySession(req.cookies.get(SESSION_COOKIE)?.value));
   const isPublic = PUBLIC_PATHS.includes(req.nextUrl.pathname);
   if (!signedIn && !isPublic) return NextResponse.redirect(new URL("/login", req.url));
-  if (signedIn && isPublic) return NextResponse.redirect(new URL("/", req.url));
   return NextResponse.next();
 }
 

@@ -52,7 +52,7 @@ npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage m
 
 | Topic | Decision |
 |---|---|
-| Auth library | None: `jose` HS256 JWT in an httpOnly `session` cookie + `bcryptjs` (`lib/session.ts`, `lib/auth.ts`). `proxy.ts` does the optimistic redirect; every page/action still calls `requireUser()`/`requireVehicle()`. |
+| Auth library | None: `jose` HS256 JWT in an httpOnly `session` cookie + `bcryptjs` (`lib/session.ts`, `lib/auth.ts`). `proxy.ts` only sends signed-out visitors to /login (cookie signature check); the auth layout sends signed-in users home via the DB-backed `getCurrentUser()`, so a signed cookie for a deleted user (e.g. after `npm run seed`) can't loop /login ↔ /. Every page/action still calls `requireUser()`/`requireVehicle()`. |
 | Schema validation (Gemini output, API input) | Zod v4. Gemini uses `responseJsonSchema: z.toJSONSchema(schema)` and the same schema validates the reply (`services/ai/gemini.ts#generateJson`). |
 | Mutations / data loading | Server Actions in `actions/*.ts` (return `ActionResult<T>`), server components read via services. No REST API. |
 | Uploads | Browser → S3 presigned POST (S3 enforces type + size, avoids Vercel's 4.5 MB body limit) → action registers the key after `isOwnedKey` + `HeadObject`. |
@@ -63,7 +63,7 @@ npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage m
 | 3D car | R3F + drei GLB viewer (`Car3D.tsx`) behind `CarDamageView`; parts are position zones (`car-zones.ts`) because the sample GLB is split by material. 2D map (`CarDamageMap2D.tsx`) is the toggle + error fallback. |
 | Local S3 | Optional `S3_ENDPOINT` (e.g. MinIO) for dev without AWS. |
 | Design system | HouseToClaim-style tokens + Tailwind v4 `@utility` classes in `globals.css`; no component library. Fonts: Inter + Pixelify Sans via `next/font`. |
-| Dev origin | `allowedDevOrigins: ["127.0.0.1"]` in `next.config.ts` so the dev server hydrates when opened via 127.0.0.1. |
+| Dev origin | `allowedDevOrigins: ["127.0.0.1"]` in `next.config.ts` so the dev server also hydrates when opened via 127.0.0.1 (Next 16 blocks dev assets from other hostnames). |
 
 ---
 

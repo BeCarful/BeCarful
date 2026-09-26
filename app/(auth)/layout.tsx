@@ -1,10 +1,13 @@
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { TuxemonAttribution, TuxemonAvatar } from "@/components/chat/TuxemonAssistant";
 import { SceneBackground } from "@/components/layout/SceneBackground";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Wordmark } from "@/components/layout/Wordmark";
+import { getCurrentUser } from "@/lib/auth";
 
-export default function AuthLayout({ children }: { children: ReactNode }) {
+export default async function AuthLayout({ children }: { children: ReactNode }) {
+  if (await getCurrentUser()) redirect("/");
   return (
     <div className="app-sky min-h-dvh">
       <SceneBackground />
