@@ -1,8 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Storage } from "@google-cloud/storage";
 import { env } from "@/lib/env";
 
 export type UploadKind = "photos" | "policies";
@@ -14,16 +12,8 @@ export const UPLOAD_RULES: Record<UploadKind, { types: Record<string, string>; m
 
 export const VIEW_URL_TTL_SECONDS = 60 * 60;
 
-let client: S3Client | undefined;
-function s3() {
-  const e = env();
-  return (client ??= new S3Client({
-    region: e.AWS_REGION,
-    credentials: { accessKeyId: e.AWS_ACCESS_KEY_ID, secretAccessKey: e.AWS_SECRET_ACCESS_KEY },
-    ...(e.S3_ENDPOINT ? { endpoint: e.S3_ENDPOINT, forcePathStyle: true } : {}),
-  }));
-}
-const bucket = () => env().S3_BUCKET_NAME;
+let client: Storage | undefined;
+const file = (key: string) => (client ??= new Storage({ projectId: env().GOOGLE_CLOUD_PROJECT })).bucket(env().GCS_BUCKET_NAME).file(key);
 
 const keyPrefix = (kind: UploadKind, userId: string, vehicleId: string) => `users/${userId}/vehicles/${vehicleId}/${kind}/`;
 
@@ -58,50 +48,46 @@ export async function createUpload(
   contentType: string,
 ): Promise<PresignedUpload> {
   const key = makeKey(kind, userId, vehicleId, contentType);
-  const { url, fields } = await createPresignedPost(s3(), {
-    Bucket: bucket(),
-    Key: key,
-    Conditions: [
+  const [{ url, fields }] = await file(key).generateSignedPostPolicyV4({
+    expires: Date.now() + 300_000,
+    conditions: [
       ["content-length-range", 1, UPLOAD_RULES[kind].maxBytes],
       ["eq", "$Content-Type", contentType],
     ],
-    Fields: { "Content-Type": contentType },
-    Expires: 300,
+    fields: { "Content-Type": contentType },
   });
   return { url, fields, key };
 }
 
 export async function headObject(key: string): Promise<{ contentType?: string; size?: number } | null> {
   try {
-    const res = await s3().send(new HeadObjectCommand({ Bucket: bucket(), Key: key }));
-    return { contentType: res.ContentType, size: res.ContentLength };
+    const [meta] = await file(key).getMetadata();
+    return { contentType: meta.contentType, size: Number(meta.size) };
   } catch {
     return null;
   }
 }
 
 export async function getObjectBytes(key: string): Promise<Buffer> {
-  const res = await s3().send(new GetObjectCommand({ Bucket: bucket(), Key: key }));
-  return Buffer.from(await res.Body!.transformToByteArray());
+  const [bytes] = await file(key).download();
+  return bytes;
 }
 
 export async function putObject(key: string, body: Buffer | string, contentType: string) {
-  await s3().send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: body, ContentType: contentType }));
+  await file(key).save(body, { contentType, resumable: false });
 }
 
 export async function deleteObject(key: string) {
-  await s3().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
+  await file(key).delete({ ignoreNotFound: true });
 }
 
 /** Short-lived private read URL. Never store it; generate on read. */
-export function getViewUrl(key: string, opts?: { downloadName?: string }) {
-  return getSignedUrl(
-    s3(),
-    new GetObjectCommand({
-      Bucket: bucket(),
-      Key: key,
-      ...(opts?.downloadName ? { ResponseContentDisposition: `inline; filename="${opts.downloadName.replace(/"/g, "")}"` } : {}),
-    }),
-    { expiresIn: VIEW_URL_TTL_SECONDS },
-  );
+export async function getViewUrl(key: string, opts?: { downloadName?: string }) {
+  const [url] = await file(key).getSignedUrl({
+    version: "v4",
+    action: "read",
+    expires: Date.now() + VIEW_URL_TTL_SECONDS * 1000,
+    ...(opts?.downloadName ? { responseDisposition: `inline; filename="${opts.downloadName.replace(/"/g, "")}"` } : {}),
+  });
+  return url;
 }

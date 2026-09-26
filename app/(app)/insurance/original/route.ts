@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { NextResponse, type NextRequest } from "next/server";
 import { getActivePolicy } from "@/services/claims/state";
-import { getViewUrl } from "@/services/storage/s3";
+import { getViewUrl } from "@/services/storage/gcs";
 import { requireVehicle } from "@/services/vehicles/context";
 
 // Mints a fresh presigned URL per tap, so a long-open page never links to an expired one.

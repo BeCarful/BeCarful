@@ -19,7 +19,7 @@ import {
   putObject,
   validateUpload,
   type PresignedUpload,
-} from "@/services/storage/s3";
+} from "@/services/storage/gcs";
 import { requireVehicle } from "@/services/vehicles/context";
 import type { ActionResult } from "@/types";
 

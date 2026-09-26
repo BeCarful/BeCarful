@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createPhotoUpload, registerPhoto, type PhotoResult } from "@/actions/photos";
 import { PixelProgress, RetroButton, RetroLinkButton } from "@/components/retro";
-import { uploadToS3 } from "@/lib/upload-client";
+import { uploadToStorage } from "@/lib/upload-client";
 import type { PhotoSource } from "@/types";
 import { AnalysisSummary } from "./AnalysisSummary";
 import { CloseButton, FullScreenDialog, SHEET_CLASS } from "./FullScreenDialog";
@@ -98,7 +98,7 @@ export function PhotoActions({ vehicleId, hasPolicy }: { vehicleId: string; hasP
       if (!key) {
         const up = await createPhotoUpload(vehicleId, { contentType: file.type, size: file.size });
         if (!up.ok) return fail(up.error);
-        await uploadToS3(up.data, file);
+        await uploadToStorage(up.data, file);
         key = uploadedKey.current = up.data.key;
       }
       uploading = false;

@@ -1,7 +1,7 @@
-import type { PresignedUpload } from "@/services/storage/s3";
+import type { PresignedUpload } from "@/services/storage/gcs";
 
 /** Browser-side: send a file to S3 using a presigned POST from a server action. */
-export async function uploadToS3(upload: PresignedUpload, file: File): Promise<void> {
+export async function uploadToStorage(upload: PresignedUpload, file: File): Promise<void> {
   const body = new FormData();
   for (const [k, v] of Object.entries(upload.fields)) body.append(k, v);
   body.append("file", file);

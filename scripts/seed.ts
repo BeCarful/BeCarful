@@ -10,7 +10,7 @@ import { InsurancePolicy } from "@/models/InsurancePolicy";
 import { User } from "@/models/User";
 import { Vehicle } from "@/models/Vehicle";
 import { refreshIncidentStatus } from "@/services/claims/state";
-import { makeKey, putObject } from "@/services/storage/s3";
+import { makeKey, putObject } from "@/services/storage/gcs";
 import type { CoverageItem } from "@/services/ai/coverage-rules";
 import { NOT_FOUND_IN_POLICY, type DamagedComponent } from "@/types";
 

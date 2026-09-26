@@ -8,7 +8,7 @@ import { DamagePhoto, type DamagePhotoDoc } from "@/models/DamagePhoto";
 import { Incident } from "@/models/Incident";
 import type { DamageAnalysis } from "@/schemas/damage";
 import { analyzeDamage } from "@/services/ai/damage-analysis";
-import { geminiModel } from "@/services/ai/gemini";
+import { GEMINI_MODEL } from "@/services/ai/gemini";
 import { getOrCreateOpenIncident, refreshIncidentStatus } from "@/services/claims/state";
 import {
   createUpload,
@@ -19,7 +19,7 @@ import {
   isOwnedKey,
   validateUpload,
   type PresignedUpload,
-} from "@/services/storage/s3";
+} from "@/services/storage/gcs";
 import { toAnalysis } from "@/services/photos/view";
 import { requireVehicle } from "@/services/vehicles/context";
 import type { ActionResult } from "@/types";
@@ -165,7 +165,7 @@ async function analyze(photo: HydratedDocument<DamagePhotoDoc>): Promise<PhotoRe
     analysis = await analyzeDamage(await getObjectBytes(photo.s3Key), photo.contentType);
     await DamageAssessment.findOneAndUpdate(
       { photoId: photo._id, ...scope },
-      { ...analysis, incidentId: photo.incidentId, aiModel: geminiModel() },
+      { ...analysis, incidentId: photo.incidentId, aiModel: GEMINI_MODEL },
       { upsert: true },
     );
     photo.analysisStatus = "done";

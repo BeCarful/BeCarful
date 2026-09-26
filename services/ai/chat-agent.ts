@@ -27,7 +27,7 @@ export async function runChatAgent(userId: Types.ObjectId, vehicleId: Types.Obje
   if (last?.role !== "user") throw new Error("No user message to answer");
 
   const scope: ToolScope = { userId, vehicleId };
-  const { TYPESAFE_API_KEY, JEV_MODEL } = env();
+  const { TYPESAFE_API_KEY } = env();
   let action: ProposedAction | null = null;
 
   const tools = AGENT_TOOLS.map(
@@ -60,7 +60,7 @@ export async function runChatAgent(userId: Types.ObjectId, vehicleId: Types.Obje
       if (!parsed.success) return { status: "invalid_arguments", error: parsed.error.issues[0]?.message };
 
       const jev = await classifyWithJev(
-        { apiKey: TYPESAFE_API_KEY, model: JEV_MODEL },
+        { apiKey: TYPESAFE_API_KEY, model: "jev-latest" },
         { userMessage: last.content, tool: def.name, description: def.description, args: parsed.data, vehicle: String(vehicleId) },
       );
       const { outcome, reason } = decide(def.kind, jev);

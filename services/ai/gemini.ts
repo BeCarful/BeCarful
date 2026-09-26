@@ -3,17 +3,12 @@ import { GoogleGenAI, type ContentListUnion } from "@google/genai";
 import { z } from "zod";
 import { env } from "@/lib/env";
 
-/** API key (AI Studio) or Vertex AI with Application Default Credentials; shared by @google/genai and ADK. */
-export function genaiAuth() {
-  const e = env();
-  return e.GOOGLE_GENAI_USE_VERTEXAI
-    ? { vertexai: true, project: e.GOOGLE_CLOUD_PROJECT, location: e.GOOGLE_CLOUD_LOCATION }
-    : { apiKey: e.GEMINI_API_KEY };
-}
+export const GEMINI_MODEL = "gemini-2.5-flash";
+
+export const genaiAuth = () => ({ vertexai: true, project: env().GOOGLE_CLOUD_PROJECT, location: "global" });
 
 let client: GoogleGenAI | undefined;
 export const gemini = () => (client ??= new GoogleGenAI(genaiAuth()));
-export const geminiModel = () => env().GEMINI_MODEL;
 
 function jsonSchemaFor(schema: z.ZodType) {
   const json = z.toJSONSchema(schema) as Record<string, unknown>;
@@ -28,7 +23,7 @@ export async function generateJson<T extends z.ZodType>(opts: {
   system?: string;
 }): Promise<z.infer<T>> {
   const res = await gemini().models.generateContent({
-    model: geminiModel(),
+    model: GEMINI_MODEL,
     contents: opts.contents,
     config: {
       systemInstruction: opts.system,

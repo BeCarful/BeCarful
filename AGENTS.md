@@ -26,7 +26,7 @@ Keep edits short and factual. Update or delete outdated lines instead of piling 
 - Before writing code, read what already exists and don't replace working code without a reason.
 - Keep changes small and focused. Build the MVP end-to-end before adding complexity.
 - Don't fill the code with comments. Only add short comments where a non-obvious decision needs explaining. Don't delete other people's comments.
-- Use strict TypeScript. Keep UI, business logic, DB access, S3, AI services, insurer metadata and 3D visualization separate.
+- Use strict TypeScript. Keep UI, business logic, DB access, Cloud Storage, AI services, insurer metadata and 3D visualization separate.
 - Never commit secrets. Add every new env var to `.env.example`.
 
 ## Status and commands
@@ -37,7 +37,7 @@ Next.js **16** — it has breaking changes vs. most models' training data (e.g. 
 npm install
 cp .env.example .env.local        # fill in values
 docker run -d --name becarful-mongo -p 27017:27017 mongo:7   # or use Atlas
-npm run seed        # demo@becarful.app / demo1234 (needs Mongo + S3)
+npm run seed        # demo@becarful.app / demo1234 (needs Mongo + Cloud Storage)
 npm run dev         # http://localhost:3000
 npm run build
 npm run lint
@@ -45,10 +45,10 @@ npm run typecheck   # next typegen + tsc
 npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, 3D zones, statute search, Jev guard, coverage rules)
 ```
 
-**Gemini via Vertex AI** (instead of an API key): `brew install --cask gcloud-cli`, `gcloud auth application-default login`, enable the Vertex AI API, then set `GOOGLE_GENAI_USE_VERTEXAI=true` + `GOOGLE_CLOUD_PROJECT` in `.env.local`.
+**Google Cloud** (Vertex AI for Gemini + Cloud Storage for files): `brew install --cask gcloud-cli`, then `gcloud auth application-default login --impersonate-service-account=<app service account>`. Signed upload/view URLs need a service account, so plain user ADC is not enough; you need Service Account Token Creator on it. The app service account needs Vertex AI User on the project and Storage Object Admin on the bucket. Vercel: Workload Identity Federation (Vercel OIDC) to the same service account.
 
-**S3 bucket CORS** (browser uploads go straight to S3 with a presigned POST): allow `POST` from your app origins, e.g.
-`[{"AllowedOrigins":["http://localhost:3000","https://<your-app>.vercel.app"],"AllowedMethods":["POST"],"AllowedHeaders":["*"]}]`. Block all public access stays on.
+**Bucket** (private: uniform access + public access prevention). CORS for browser uploads (signed POST policy): `gcloud storage buckets update gs://<bucket> --cors-file=cors.json` with
+`[{"origin":["http://localhost:3000","https://<your-app>.vercel.app"],"method":["POST"],"responseHeader":["Content-Type"],"maxAgeSeconds":3600}]`.
 
 ### Decisions log
 
@@ -57,18 +57,18 @@ npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage m
 | Auth library | None: `jose` HS256 JWT in an httpOnly `session` cookie + `bcryptjs` (`lib/session.ts`, `lib/auth.ts`). `proxy.ts` only sends signed-out visitors to /login (cookie signature check); the auth layout sends signed-in users home via the DB-backed `getCurrentUser()`, so a signed cookie for a deleted user (e.g. after `npm run seed`) can't loop /login ↔ /. Every page/action still calls `requireUser()`/`requireVehicle()`. |
 | Schema validation (Gemini output, API input) | Zod v4. Gemini uses `responseJsonSchema: z.toJSONSchema(schema)` and the same schema validates the reply (`services/ai/gemini.ts#generateJson`). |
 | Mutations / data loading | Server Actions in `actions/*.ts` (return `ActionResult<T>`), server components read via services. No REST API. |
-| Uploads | Browser → S3 presigned POST (S3 enforces type + size, avoids Vercel's 4.5 MB body limit) → action registers the key after `isOwnedKey` + `HeadObject`. |
+| Uploads | Browser → Cloud Storage signed POST policy (V4; the bucket enforces type + size, avoids Vercel's 4.5 MB body limit) → action registers the key after `isOwnedKey` + `headObject`. |
 | Presigned URLs | Never stored; `getViewUrl(key)` on read (1 h). DB stores `s3Key` only (no `imageUrl`/`documentUrl` fields). |
 | Insurer metadata | Static `services/insurance/providers.ts` (not a DB collection); `InsurancePolicy.providerId` is its string id. |
 | To-dos | Computed on read by `computeTodos()` (pure, tested); no stored `TodoState`. Incident status synced by `refreshIncidentStatus()`. |
 | Selected vehicle | `User.lastVehicleId`, changed by `selectVehicle()`; pages read it via `getVehicleContext()`. |
 | 3D car | R3F + drei GLB viewer (`Car3D.tsx`) behind `CarDamageView`; parts are position zones (`car-zones.ts`) because the sample GLB is split by material. 2D map (`CarDamageMap2D.tsx`) is the toggle + error fallback. |
-| Local S3 | Optional `S3_ENDPOINT` (e.g. MinIO) for dev without AWS. |
 | Design system | HouseToClaim-style tokens + Tailwind v4 `@utility` classes in `globals.css`; no component library. Fonts: Rubik (body) + Tektur (display) via `next/font`. |
 | Agents | Google ADK for TypeScript (`@google/adk`): chat (`services/ai/chat-agent.ts`) and coverage checklist (`services/ai/coverage.ts`) are `LlmAgent`s with `FunctionTool`s. `runAgent()` (`services/ai/adk.ts`) rebuilds an in-memory ADK session per request from MongoDB history. `serverExternalPackages: ["@google/adk"]` (its optional peer deps break bundling). |
 | Agent write guard | Jev (TypeSafe AI, `POST /v1/systemone`) classifies each non-read tool call in `beforeToolCallback`; code decides via `decide()` (`services/ai/guard.ts`, tested): reads run, `destructive` tools always wait for a Confirm tap, writes run alone only when Jev says benign + requested, confident "suspicious" is blocked, no key/outage → Confirm. A waiting write is stored as `ChatMessage.action` and run once by `resolveChatAction`. |
 | Law RAG | In-memory BM25 over `data/florida` + `data/federal` (`services/law/statutes.ts`, tool `search_insurance_law`); files traced with `outputFileTracingIncludes`. Swap for embeddings if recall suffers. |
-| Gemini auth | `genaiAuth()` in `services/ai/gemini.ts`: `GEMINI_API_KEY`, or Vertex AI (ADC) when `GOOGLE_GENAI_USE_VERTEXAI=true`. Used by `@google/genai` and ADK. |
+| Storage | Google Cloud Storage (`@google-cloud/storage`, `services/storage/gcs.ts`), replacing AWS S3. Same functions as before; the `s3Key` field name stays (it's the object key). |
+| Gemini auth | Vertex AI only: `genaiAuth()` in `services/ai/gemini.ts` (`GOOGLE_CLOUD_PROJECT`, location `global`, model `GEMINI_MODEL` constant), Application Default Credentials. Used by `@google/genai` and ADK. |
 | Florida plans | Static, sourced `services/insurance/florida-plans.ts` (4 example configurations per insurer, retrieved 2026-09-26, no premiums). Picking one stores its text as the policy original, sets `planId` and skips Gemini extraction. |
 | Dev origin | `allowedDevOrigins: ["127.0.0.1"]` in `next.config.ts` so the dev server also hydrates when opened via 127.0.0.1 (Next 16 blocks dev assets from other hostnames). |
 
@@ -90,7 +90,7 @@ It should feel like a cohesive consumer product, not a generic AI dashboard.
 
 ## Tech stack
 
-Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS · MongoDB + Mongoose · AWS S3 · Gemini API · React Three Fiber / Three.js · Vercel
+Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS · MongoDB + Mongoose · Google Cloud Storage · Gemini on Vertex AI (Google ADK) · React Three Fiber / Three.js · Vercel
 
 ## Core principles (non-negotiable)
 
@@ -98,14 +98,14 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS · MongoDB 
 2. **Mobile first.** Assume the user is standing next to a damaged car: big controls, minimal typing, fast camera, one-handed use, short AI answers, clear progress, no dense dashboards, no unnecessary modals.
 3. **AI assists; app state controls workflow.** Critical workflow state is deterministic code, not LLM output.
 4. **AI does not paint the car.** Gemini returns standard component IDs; Three.js maps IDs to known meshes.
-5. **S3 stores files; MongoDB stores references + structured data.** Never put photos/PDFs in MongoDB.
-6. **S3 is private.** Use presigned URLs or server-side access, never public URLs.
+5. **Cloud Storage stores files; MongoDB stores references + structured data.** Never put photos/PDFs in MongoDB.
+6. **Cloud Storage is private.** Use presigned URLs or server-side access, never public URLs.
 7. **Never hallucinate policy coverage.** Unknown → "Not found in the uploaded policy".
 8. **Never blindly trust AI-generated insurer URLs.** Use maintained provider metadata; validate any AI-suggested URL against the insurer's official domain.
 9. **Preserve original evidence.** Never overwrite original photos when making thumbnails or AI-processing copies.
 10. **Summary is actionable.** It answers: What happened? What does my policy say? What am I missing? What should I do next?
 11. **Tuxemon, not Pokémon.** No Pokémon characters, sprites, logos, fonts, maps or sounds. Use only license-compatible Tuxemon assets and keep their attribution/license notices.
-12. **End-to-end first.** A working Photo → S3 → AI → component ID → 3D damage → Summary pipeline beats many half-done features.
+12. **End-to-end first.** A working Photo → Cloud Storage → AI → component ID → 3D damage → Summary pipeline beats many half-done features.
 
 ---
 
@@ -132,7 +132,7 @@ data/              RAG source texts, one .txt per statute section (citation + so
 
 Key service files:
 
-- `services/storage/s3.ts` — all S3 access (presigned POST uploads, `isOwnedKey`, presigned view URLs, key generation)
+- `services/storage/gcs.ts` — all Cloud Storage access (signed POST uploads, `isOwnedKey`, signed view URLs, key generation)
 - `services/ai/gemini.ts` — shared client + `generateJson()` (structured output validated by Zod)
 - `services/ai/damage-analysis.ts`, `policy-analysis.ts`, `chat.ts` — one Gemini service per responsibility, never one giant prompt
 - `services/ai/adk.ts` (ADK model + `runAgent`), `chat-agent.ts` (chat agent + guard), `agent-tools.ts` (every tool the agent can call, with `kind`: read / write / destructive), `coverage.ts` + `coverage-rules.ts` (coverage agent + deterministic evidence check), `guard.ts` (Jev + `decide`)
@@ -146,19 +146,10 @@ Server-side only. Keep `.env.example` current.
 
 ```
 MONGODB_URI=
-AWS_REGION=
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-S3_BUCKET_NAME=
-S3_ENDPOINT=        # optional, S3-compatible endpoint for local dev (MinIO)
-GEMINI_API_KEY=     # or Vertex AI below
-GOOGLE_GENAI_USE_VERTEXAI=  # true = Vertex AI with Application Default Credentials
-GOOGLE_CLOUD_PROJECT=       # required with Vertex AI
-GOOGLE_CLOUD_LOCATION=      # optional, default global
-GEMINI_MODEL=       # optional, default gemini-2.5-flash
-TYPESAFE_API_KEY=   # optional, Jev classifier; without it every agent write asks the user to confirm
-JEV_MODEL=          # optional, default jev-latest
-AUTH_SECRET=        # 32+ chars, signs the session cookie
+AUTH_SECRET=           # 32+ chars, signs the session cookie
+GOOGLE_CLOUD_PROJECT=  # Vertex AI (Gemini) + Cloud Storage
+GCS_BUCKET_NAME=
+TYPESAFE_API_KEY=      # optional, Jev classifier; without it every agent write asks the user to confirm
 ```
 
 ---
@@ -200,16 +191,16 @@ Statuses: `documenting` → `analyzing` → `action_required` → `ready_to_file
 
 **ChatMessage:** `{ userId, vehicleId, role: "user" | "assistant", content, action? }`, survives refreshes and new sessions. `action = { tool, args, label, status: pending | running | done | failed | cancelled, result? }` is a guarded write waiting for the user's tap; a new user message cancels pending ones.
 
-Store stable S3 keys, not just URLs.
+Store stable object keys, not just URLs.
 
 ---
 
-## S3 storage
+## Cloud Storage
 
 - Stores damage photos, uploaded vehicle photos and policy PDFs. All objects private.
 - Client displays/downloads via short-lived presigned URLs; handle expired URLs gracefully.
 - Validate MIME type and file size, generate safe keys (never raw user filenames).
-- AWS credentials stay server-side.
+- Google Cloud credentials stay server-side.
 
 ## Photos
 
@@ -223,7 +214,7 @@ Store stable S3 keys, not just URLs.
 
 **Gallery** (under the action buttons): horizontal scroll of small thumbnails with optional badges (camera / uploaded / damage detected / location available). Tap → full-screen viewer with swipe, zoom, close, capture/upload date, location status, AI result. Don't show raw GPS coordinates prominently.
 
-Built: `actions/photos.ts`: `createPhotoUpload` (presigned POST) → browser uploads to S3 → `registerPhoto` (idempotent per key) → `analyzeDamage()` in `services/ai/damage-analysis.ts` (keep its signature; a custom image pipeline can replace it). Take Photo uses the native `<input capture="environment">` (no in-app camera screen; a denied camera falls back to the file picker). Uploads never store capture time or location. If Gemini fails the photo is kept with `analysisStatus: "failed"` and can be retried (`retryPhotoAnalysis`); a photo stuck in `analyzing` for 3+ min shows as failed. Expired image URLs refresh once via `getPhotoViewUrl`.
+Built: `actions/photos.ts`: `createPhotoUpload` (presigned POST) → browser uploads to Cloud Storage → `registerPhoto` (idempotent per key) → `analyzeDamage()` in `services/ai/damage-analysis.ts` (keep its signature; a custom image pipeline can replace it). Take Photo uses the native `<input capture="environment">` (no in-app camera screen; a denied camera falls back to the file picker). Uploads never store capture time or location. If Gemini fails the photo is kept with `analysisStatus: "failed"` and can be retried (`retryPhotoAnalysis`); a photo stuck in `analyzing` for 3+ min shows as failed. Expired image URLs refresh once via `getPhotoViewUrl`.
 
 ## Damage analysis and 3D mapping
 
@@ -272,8 +263,8 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 
 - The **Insurance** button sits on Home next to the photo buttons (label **"Add Insurance"** when the vehicle has no policy).
 - Screen shows provider, policy info, uploaded PDF, upload/replace, AI summary, relevant coverage.
-- PDF → private S3 → reference in MongoDB → Gemini extraction → structured data → simple summary.
-- Users can also paste policy text instead of a PDF (`analyzePolicy({ text })` in `services/ai/policy-analysis.ts`, 200–60k chars). Store the pasted text in S3 as the original, same as a PDF.
+- PDF → private Cloud Storage → reference in MongoDB → Gemini extraction → structured data → simple summary.
+- Users can also paste policy text instead of a PDF (`analyzePolicy({ text })` in `services/ai/policy-analysis.ts`, 200–60k chars). Store the pasted text in Cloud Storage as the original, same as a PDF.
 - Extract when present: provider, policy type, premium, covered vehicle, collision, comprehensive, liability, deductibles, rental reimbursement, roadside assistance, other coverage, key exclusions/limitations.
 - Missing fields say **"Not found in the uploaded policy"**. Never guess.
 - Built: `/insurance` (no policy → pick insurer, then upload PDF or paste text; with policy → provider card, status, Retry/Replace, AI summary, coverage list). `actions/insurance.ts` runs `analyzePolicy()` then `summarizePolicy()` on the extraction only (never the raw doc). Unrelated documents throw `NotAPolicyError`.
@@ -358,11 +349,11 @@ Sign up, log in, log out, profile. Protect authenticated routes. After login, go
 
 Sensitive data: policies, GPS, VIN, plates, damage photos, incident details, chat history.
 
-Required: authentication, authorization with ownership checks on every resource, private S3 + presigned URLs, upload MIME/size validation, safe S3 keys, server-side secrets. Never expose AWS, Gemini or MongoDB credentials to the client.
+Required: authentication, authorization with ownership checks on every resource, private Cloud Storage + signed URLs, upload MIME/size validation, safe object keys, server-side secrets. Never expose Google Cloud or MongoDB credentials to the client.
 
 ## Error states
 
-Each state tells the user what to do next: camera denied, GPS denied, S3 upload failure, invalid photo, invalid PDF, Gemini failure, damage not confidently identified, policy extraction failure, missing policy, missing photos, network failure, expired presigned URL, unsupported vehicle model.
+Each state tells the user what to do next: camera denied, GPS denied, upload failure, invalid photo, invalid PDF, Gemini failure, damage not confidently identified, policy extraction failure, missing policy, missing photos, network failure, expired presigned URL, unsupported vehicle model.
 
 ## Demo data
 
@@ -378,18 +369,18 @@ Switching between them must visibly change the 3D damage state, photos, insuranc
 
 Status (2026-09-26): phases 1–6 built end-to-end (3D uses the zone-mapped sample GLB) except AI-reworded to-dos. UI restyled to the companion theme with a road sidebar. Google ADK agents added (tool-using chat with Jev write guard, coverage checklist with Tuxemon attackers, statute RAG, Florida plan catalog). Phase 7 not started.
 
-1. ✅ **Foundation:** Next.js, TS, Tailwind, MongoDB, auth, S3, retro design system, light/dark environments, vehicle-context architecture.
+1. ✅ **Foundation:** Next.js, TS, Tailwind, MongoDB, auth, file storage (now Cloud Storage), retro design system, light/dark environments, vehicle-context architecture.
 2. ✅ **Home:** vehicle selector, garage, 3D car (sample GLB, zone-mapped), action buttons, gallery, full-screen viewer.
-3. ✅ **Photo pipeline:** camera → GPS/time → review → S3 → MongoDB → Gemini → component IDs → MongoDB → red meshes.
-4. ✅ **Insurance:** provider selection → PDF → S3 → MongoDB → Gemini extraction → coverage summary.
+3. ✅ **Photo pipeline:** camera → GPS/time → review → Cloud Storage → MongoDB → Gemini → component IDs → MongoDB → red meshes.
+4. ✅ **Insurance:** provider selection → PDF → Cloud Storage → MongoDB → Gemini extraction → coverage summary.
 5. ✅ **Chat:** vehicle-scoped, Tuxemon avatar, persistent history, vehicle/policy/damage context.
 6. ✅ **Summary:** status cards, deterministic to-dos (AI wording skipped), auto refresh, claim readiness, verified claim link.
 7. **Polish:** loading/error/empty states, animation, mobile, accessibility, security review, performance.
 
 **First vertical slice (build this before anything else):**
-Login → select vehicle → Home → 3D car → Take/Upload Photo → S3 → metadata in MongoDB → Gemini damage analysis → validated component IDs → save assessment → meshes turn red → photo in gallery → Summary to-dos update.
+Login → select vehicle → Home → 3D car → Take/Upload Photo → Cloud Storage → metadata in MongoDB → Gemini damage analysis → validated component IDs → save assessment → meshes turn red → photo in gallery → Summary to-dos update.
 
-**Then:** Insurance PDF → S3 → MongoDB → Gemini extraction → Summary updates → Chat answers about that vehicle/policy → to-dos recalculate → verified claim link when ready.
+**Then:** Insurance PDF → Cloud Storage → MongoDB → Gemini extraction → Summary updates → Chat answers about that vehicle/policy → to-dos recalculate → verified claim link when ready.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

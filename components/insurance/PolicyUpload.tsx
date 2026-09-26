@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPolicyUpload, registerPolicy, registerPolicyText, retryPolicyExtraction } from "@/actions/insurance";
 import { PixelProgress, RetroButton, retroInputClass } from "@/components/retro";
-import { uploadToS3 } from "@/lib/upload-client";
+import { uploadToStorage } from "@/lib/upload-client";
 import type { ActionResult } from "@/types";
 
 const STEPS = ["Uploading policy…", "Reading pages…", "Finding your coverage…", "Checking the law…", "Spotting wild Tuxemon…"];
@@ -55,7 +55,7 @@ export function PolicyUpload({ vehicleId, providerId, policyId, canRetry = false
       const contentType = file.type || (/\.pdf$/i.test(file.name) ? "application/pdf" : "");
       const presigned = await createPolicyUpload(vehicleId, { contentType, size: file.size });
       if (!presigned.ok) return presigned;
-      await uploadToS3(presigned.data, file);
+      await uploadToStorage(presigned.data, file);
       setStep(1);
       return registerPolicy(vehicleId, { key: presigned.data.key, providerId, fileName: file.name });
     });

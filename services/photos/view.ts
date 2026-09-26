@@ -3,7 +3,7 @@ import type { Types } from "mongoose";
 import { DamageAssessment } from "@/models/DamageAssessment";
 import { DamagePhoto } from "@/models/DamagePhoto";
 import type { DamageAnalysis } from "@/schemas/damage";
-import { getViewUrl } from "@/services/storage/s3";
+import { getViewUrl } from "@/services/storage/gcs";
 import type { AnalysisStatus, DamagedComponent, PhotoSource } from "@/types";
 
 type Id = Types.ObjectId | string;

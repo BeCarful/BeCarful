@@ -1,9 +1,9 @@
 import "server-only";
 import { Gemini, InMemoryRunner, createEvent, isFinalResponse, type LlmAgent } from "@google/adk";
 import type { Content } from "@google/genai";
-import { genaiAuth, geminiModel } from "./gemini";
+import { GEMINI_MODEL, genaiAuth } from "./gemini";
 
-export const adkModel = () => new Gemini({ model: geminiModel(), ...genaiAuth() });
+export const adkModel = () => new Gemini({ model: GEMINI_MODEL, ...genaiAuth() });
 
 type Turn = { role: "user" | "assistant"; content: string };
 
