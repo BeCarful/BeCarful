@@ -5,20 +5,24 @@ import styles from "./car-viewer.module.css";
 type ViewerControlsProps = {
   isAutoRotating: boolean;
   areDoorsOpen: boolean;
+  isAssessmentOpen: boolean;
   onToggleAutoRotate: () => void;
   onToggleDoors: () => void;
   onResetView: () => void;
+  onToggleAssessment: () => void;
 };
 
 /**
- * The row of buttons under the car: auto-rotate, reset camera, open/close doors.
+ * The row of car controls and the development camera-upload trigger.
  */
 export function ViewerControls({
   isAutoRotating,
   areDoorsOpen,
+  isAssessmentOpen,
   onToggleAutoRotate,
   onToggleDoors,
   onResetView,
+  onToggleAssessment,
 }: ViewerControlsProps) {
   return (
     <div
@@ -44,6 +48,14 @@ export function ViewerControls({
         onClick={onToggleDoors}
       >
         {areDoorsOpen ? "Close doors" : "Open doors"}
+      </button>
+      <button
+        type="button"
+        className={styles.button}
+        aria-pressed={isAssessmentOpen}
+        onClick={onToggleAssessment}
+      >
+        {isAssessmentOpen ? "Hide assessment" : "Assess photos"}
       </button>
     </div>
   );

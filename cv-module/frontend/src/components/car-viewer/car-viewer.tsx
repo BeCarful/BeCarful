@@ -1,10 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { useViewerState } from "@/hooks/use-viewer-state";
+import type { ClaimExportV1 } from "@/lib/assessment/assessment-api";
 import {
+  findingsToDamageReport,
   parseDamageReport,
   resolveDamage,
   sortBySeverity,
@@ -16,6 +18,7 @@ import {
 import { SAMPLE_DAMAGE_REPORT } from "@/lib/damage/sample-damage-report";
 
 import styles from "./car-viewer.module.css";
+import { AssessmentPanel } from "./assessment-panel";
 import { DamageContext, type DamageContextValue } from "./damage-context";
 import { DamagePanel } from "./damage-panel";
 import { ViewerControls } from "./viewer-controls";
@@ -32,10 +35,23 @@ const CarScene = dynamic(() => import("./car-scene"), {
  */
 export function CarViewer() {
   const viewer = useViewerState();
+  const [isAssessmentOpen, setIsAssessmentOpen] = useState(false);
+  const [assessmentStarted, setAssessmentStarted] = useState(false);
+  const [assessmentBundle, setAssessmentBundle] =
+    useState<ClaimExportV1 | null>(null);
   const scale = useMemo(() => buildDamageScale(DAMAGE_LEVEL_COUNT), []);
+  const damageReport = useMemo(() => {
+    if (assessmentBundle) {
+      return findingsToDamageReport(assessmentBundle.assessment.findings);
+    }
+    if (assessmentStarted) {
+      return { parts: [] };
+    }
+    return parseDamageReport(SAMPLE_DAMAGE_REPORT);
+  }, [assessmentBundle, assessmentStarted]);
   const damageByPart = useMemo(
-    () => resolveDamage(parseDamageReport(SAMPLE_DAMAGE_REPORT), scale),
-    [scale],
+    () => resolveDamage(damageReport, scale),
+    [damageReport, scale],
   );
   const damagedParts = useMemo(
     () => sortBySeverity(damageByPart),
@@ -50,6 +66,21 @@ export function CarViewer() {
     }),
     [damageByPart, viewer.selectedPartId, viewer.selectPart],
   );
+
+  const assessmentStatus = assessmentBundle?.assessment.status;
+  const damageStatusLabel = assessmentBundle
+    ? assessmentStatus === "needs_more_photos"
+      ? "Coverage incomplete"
+      : "Gemini result"
+    : assessmentStarted
+      ? "Analyzing"
+      : "Sample data";
+  const emptyDamageMessage =
+    assessmentStatus === "needs_more_photos"
+      ? "Damage not assessed — add the missing vehicle views."
+      : assessmentStarted && !assessmentBundle
+        ? "Assessment in progress…"
+        : "No visible damage findings.";
 
   return (
     <DamageContext value={damageContext}>
@@ -70,14 +101,26 @@ export function CarViewer() {
           damagedParts={damagedParts}
           selectedPartId={viewer.selectedPartId}
           onSelectPart={viewer.selectPart}
-          isSampleData
+          statusLabel={damageStatusLabel}
+          emptyMessage={emptyDamageMessage}
         />
+        {isAssessmentOpen && (
+          <AssessmentPanel
+            onAssessmentStarted={() => {
+              setAssessmentStarted(true);
+              setAssessmentBundle(null);
+            }}
+            onAssessmentReady={setAssessmentBundle}
+          />
+        )}
         <ViewerControls
           isAutoRotating={viewer.isAutoRotating}
           areDoorsOpen={viewer.areDoorsOpen}
+          isAssessmentOpen={isAssessmentOpen}
           onToggleAutoRotate={viewer.toggleAutoRotate}
           onToggleDoors={viewer.toggleDoors}
           onResetView={viewer.resetView}
+          onToggleAssessment={() => setIsAssessmentOpen((open) => !open)}
         />
       </main>
     </DamageContext>

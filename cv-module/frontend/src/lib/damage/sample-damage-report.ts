@@ -7,11 +7,23 @@ import type { DamageReport } from "./damage-report";
 // TODO(codex): Replace with the assessment result from the backend API once it is exposed.
 export const SAMPLE_DAMAGE_REPORT: DamageReport = {
   parts: [
-    { partId: "front_bumper", score: 0.92 },
-    { partId: "fender_front_right", score: 0.78 },
-    { partId: "headlight_right", score: 0.66 },
-    { partId: "hood", score: 0.45 },
-    { partId: "door_front_right", score: 0.28 },
-    { partId: "mirror_right", score: 0.08 },
+    {
+      partId: "front_bumper",
+      severity: "severe",
+      damageTypes: ["deformation_other"],
+    },
+    {
+      partId: "fender_front_right",
+      severity: "moderate",
+      damageTypes: ["dent"],
+    },
+    {
+      partId: "headlight_right",
+      severity: "severe",
+      damageTypes: ["lamp_broken"],
+    },
+    { partId: "hood", severity: "moderate", damageTypes: ["dent"] },
+    { partId: "door_front_right", severity: "minor", damageTypes: ["scratch"] },
+    { partId: "mirror_right", severity: "minor", damageTypes: ["scratch"] },
   ],
 };

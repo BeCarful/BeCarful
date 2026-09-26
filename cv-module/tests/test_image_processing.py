@@ -10,12 +10,17 @@ from cv_module.domain.errors import ImageValidationError
 from cv_module.services.image_processing import ImageProcessor
 
 
-def processor(maximum_bytes: int = 2_000_000, maximum_pixels: int = 4_000_000) -> ImageProcessor:
+def processor(
+    maximum_bytes: int = 2_000_000,
+    maximum_pixels: int = 4_000_000,
+    maximum_normalized_bytes: int = 7_000_000,
+) -> ImageProcessor:
     return ImageProcessor(
         maximum_bytes=maximum_bytes,
         maximum_pixels=maximum_pixels,
         normalized_long_edge=1024,
         minimum_short_edge=64,
+        maximum_normalized_bytes=maximum_normalized_bytes,
     )
 
 
@@ -82,3 +87,31 @@ def test_heic_image_is_normalized_to_jpeg() -> None:
     assert result.jpeg_bytes.startswith(b"\xff\xd8")
     assert result.metrics.width == 800
     assert result.metrics.height == 600
+
+
+def test_normalized_image_is_recompressed_to_inline_limit() -> None:
+    image = Image.effect_noise((800, 800), 100).convert("RGB")
+    output = io.BytesIO()
+    image.save(output, "PNG")
+    data = output.getvalue()
+    baseline = processor(maximum_bytes=len(data) + 1).process(data, "image/png")
+
+    compressed = processor(
+        maximum_bytes=len(data) + 1,
+        maximum_normalized_bytes=len(baseline.jpeg_bytes) - 1,
+    ).process(data, "image/png")
+
+    assert len(compressed.jpeg_bytes) < len(baseline.jpeg_bytes)
+
+
+def test_normalized_image_that_cannot_fit_inline_limit_is_rejected() -> None:
+    image = Image.effect_noise((800, 800), 100).convert("RGB")
+    output = io.BytesIO()
+    image.save(output, "PNG")
+    data = output.getvalue()
+
+    with pytest.raises(ImageValidationError):
+        processor(
+            maximum_bytes=len(data) + 1,
+            maximum_normalized_bytes=1,
+        ).process(data, "image/png")

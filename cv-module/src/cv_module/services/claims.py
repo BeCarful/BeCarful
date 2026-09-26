@@ -1,13 +1,28 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import secrets
 from dataclasses import dataclass
 
 from cv_module.config import Settings
 from cv_module.domain.enums import ClaimStatus, ImageState, RunStatus
-from cv_module.domain.errors import ConflictError, ForbiddenError, InvalidInputError, NotFoundError
-from cv_module.domain.models import AnalysisRun, AssessmentV1, ClaimRecord, ImageRecord
+from cv_module.domain.errors import (
+    AssessmentNotReadyError,
+    ConflictError,
+    ForbiddenError,
+    InvalidInputError,
+    NotFoundError,
+)
+from cv_module.domain.models import (
+    AnalysisRun,
+    AssessmentV1,
+    ClaimExportV1,
+    ClaimRecord,
+    ImageRecord,
+    RawGeminiResponses,
+    SourceImageExport,
+)
 from cv_module.domain.transitions import ensure_transition
 from cv_module.ports.clock import Clock
 from cv_module.ports.repository import ClaimRepository
@@ -62,6 +77,7 @@ class ClaimService:
         *,
         content_type: str,
         size_bytes: int,
+        file_name: str | None = None,
     ) -> PreparedUpload:
         claim = await self.get_owned_claim(owner_uid, claim_id)
         if claim.status not in {
@@ -88,6 +104,7 @@ class ClaimService:
             object_name=object_name,
             content_type=content_type,
             declared_size_bytes=size_bytes,
+            file_name=self._sanitize_file_name(file_name),
             state=ImageState.PREPARED,
             created_at=now,
         )
@@ -204,6 +221,53 @@ class ClaimService:
             raise NotFoundError("assessment is not ready")
         return assessment
 
+    async def get_claim_export(self, owner_uid: str, claim_id: str) -> ClaimExportV1:
+        claim = await self.get_owned_claim(owner_uid, claim_id)
+        if not claim.active_run_id:
+            raise AssessmentNotReadyError("claim has no completed assessment")
+        assessment = await self._repository.get_assessment(claim_id, claim.active_run_id)
+        if assessment is None:
+            raise AssessmentNotReadyError("assessment is not ready")
+
+        run = await self._repository.get_run(claim_id, claim.active_run_id)
+        if run is None:
+            raise NotFoundError("analysis run not found")
+        submitted_ids = set(run.submitted_image_generations)
+        images = [
+            image
+            for image in await self._repository.list_images(claim_id)
+            if image.image_id in submitted_ids
+        ]
+        images.sort(key=lambda image: (image.created_at, image.image_id))
+
+        artifact_prefix = f"claims/{claim_id}/runs/{claim.active_run_id}/raw"
+        intake = await self._download_json_object(f"{artifact_prefix}/intake.json")
+        try:
+            raw_assessment = await self._download_json_object(
+                f"{artifact_prefix}/assessment.json"
+            )
+        except NotFoundError:
+            raw_assessment = None
+
+        return ClaimExportV1(
+            claim_id=claim_id,
+            analysis_run_id=claim.active_run_id,
+            source_images=[
+                SourceImageExport(
+                    image_id=image.image_id,
+                    file_name=image.file_name,
+                    content_type=image.content_type,
+                    size_bytes=image.declared_size_bytes,
+                )
+                for image in images
+            ],
+            assessment=assessment,
+            raw_gemini=RawGeminiResponses(
+                intake=intake,
+                assessment=raw_assessment,
+            ),
+        )
+
     async def delete_claim(self, owner_uid: str, claim_id: str) -> None:
         await self.get_owned_claim(owner_uid, claim_id)
         await self._repository.set_claim_status(claim_id, ClaimStatus.DELETED, self._clock.now())
@@ -219,3 +283,23 @@ class ClaimService:
             await self._storage.delete_prefix(f"claims/{claim.claim_id}/")
             await self._repository.delete_claim_tree(claim.claim_id, self._clock.now())
         return len(claims)
+
+    async def _download_json_object(self, object_name: str) -> dict[str, object]:
+        payload = await self._storage.download(object_name)
+        try:
+            decoded = json.loads(payload.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise InvalidInputError("stored Gemini artifact is not valid JSON") from exc
+        if not isinstance(decoded, dict):
+            raise InvalidInputError("stored Gemini artifact must be a JSON object")
+        return decoded
+
+    @staticmethod
+    def _sanitize_file_name(file_name: str | None) -> str | None:
+        if file_name is None:
+            return None
+        basename = file_name.replace("\\", "/").rsplit("/", maxsplit=1)[-1]
+        sanitized = "".join(character for character in basename if ord(character) >= 32).strip()
+        if not sanitized:
+            raise InvalidInputError("file name must contain visible characters")
+        return sanitized[:255]

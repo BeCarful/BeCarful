@@ -22,6 +22,7 @@ FORMAT_TO_CONTENT_TYPES: dict[str, frozenset[str]] = {
     "WEBP": frozenset({"image/webp"}),
     "HEIF": frozenset({"image/heic", "image/heif"}),
 }
+NORMALIZED_JPEG_QUALITIES = (90, 82, 74, 66, 58)
 
 
 @dataclass(frozen=True)
@@ -41,11 +42,13 @@ class ImageProcessor:
         maximum_pixels: int,
         normalized_long_edge: int,
         minimum_short_edge: int,
+        maximum_normalized_bytes: int = 7_000_000,
     ) -> None:
         self._maximum_bytes = maximum_bytes
         self._maximum_pixels = maximum_pixels
         self._normalized_long_edge = normalized_long_edge
         self._minimum_short_edge = minimum_short_edge
+        self._maximum_normalized_bytes = maximum_normalized_bytes
 
     def process(self, data: bytes, declared_content_type: str) -> ProcessedImage:
         if declared_content_type not in SUPPORTED_CONTENT_TYPES:
@@ -105,10 +108,18 @@ class ImageProcessor:
 
         normalized = image.copy()
         normalized.thumbnail((self._normalized_long_edge, self._normalized_long_edge))
-        output = io.BytesIO()
-        normalized.save(output, format="JPEG", quality=90, optimize=True)
+        normalized_bytes: bytes | None = None
+        for quality in NORMALIZED_JPEG_QUALITIES:
+            output = io.BytesIO()
+            normalized.save(output, format="JPEG", quality=quality, optimize=True)
+            candidate = output.getvalue()
+            if len(candidate) <= self._maximum_normalized_bytes:
+                normalized_bytes = candidate
+                break
+        if normalized_bytes is None:
+            raise ImageValidationError("normalized image exceeds the Gemini inline data limit")
         return ProcessedImage(
-            jpeg_bytes=output.getvalue(),
+            jpeg_bytes=normalized_bytes,
             metrics=metrics,
             capture_time=capture_time,
             deterministic_usable=deterministic_usable,

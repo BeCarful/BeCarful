@@ -218,6 +218,11 @@ npm run build      # production build
   2. `PartId` has no rear side windows (`window_rear_left/right`), so the frontend draws them as plain, non-clickable glass.
   3. Confirm that the backend also uses the driver's-view left/right convention.
 
+### ADR-004: Development-only local camera upload
+- **Date**: 2026-09-26
+- **Decision**: Test mobile camera capture through a Next.js `POST /api/upload` route that writes validated photos to `cv-module/frontend/public/uploads/` only outside production. The production Python backend remains responsible for Firebase Authentication and signed Google Cloud Storage uploads.
+- **Rationale**: This isolates verification of the browser camera and multipart upload flow from unfinished cloud infrastructure without creating an unauthenticated production upload endpoint.
+
 ---
 
 ## Change Log
@@ -227,3 +232,4 @@ npm run build      # production build
 | 2026-09-26 | Antigravity | Initial setup | Created multi-AI collaboration infrastructure |
 | 2026-09-26 | Claude Code | Frontend 3D car viewer | Added `cv-module/frontend/` (Next.js 16, three.js, Vitest) with a white procedural Suzuki XL7, orbit camera, auto-rotate, reset view and opening doors. See ADR-002 |
 | 2026-09-26 | Claude Code | Frontend damage visualization | Split the 3D car into the 30 backend `PartId` parts. Parts are colored by damage level (6-level green→dark red scale, configurable) and clickable, with a legend and damaged-parts list. Sample data only for now. See ADR-003 |
+| 2026-09-26 | Codex | Local camera upload test | Added a development-only Next.js camera upload flow that saves validated test photos under `frontend/public/uploads/`. See ADR-004 |

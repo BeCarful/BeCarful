@@ -12,8 +12,12 @@ const damagedParts = sortBySeverity(
   resolveDamage(
     {
       parts: [
-        { partId: "hood", score: 0.45 },
-        { partId: "front_bumper", score: 0.92 },
+        { partId: "hood", severity: "moderate", damageTypes: ["dent"] },
+        {
+          partId: "front_bumper",
+          severity: "severe",
+          damageTypes: ["crack", "detached_part"],
+        },
       ],
     },
     scale,
@@ -30,7 +34,8 @@ function renderPanel(
       damagedParts={damagedParts}
       selectedPartId={null}
       onSelectPart={onSelectPart}
-      isSampleData
+      statusLabel="Sample data"
+      emptyMessage="No visible damage findings."
       {...overrides}
     />,
   );
@@ -38,27 +43,29 @@ function renderPanel(
 }
 
 describe("DamagePanel", () => {
-  it("shows one legend swatch per level", () => {
+  it("shows one legend swatch per semantic severity", () => {
     renderPanel();
-    const legend = screen.getByRole("list", { name: /Damage levels/ });
-    expect(within(legend).getAllByRole("listitem")).toHaveLength(6);
+    const legend = screen.getByRole("list", { name: /Visual damage severity/ });
+    expect(within(legend).getAllByRole("listitem")).toHaveLength(3);
   });
 
-  it("follows the level count when the scale changes", () => {
+  it("keeps semantic severity labels when the scale changes", () => {
     renderPanel({ scale: buildDamageScale(4) });
     const legend = screen.getByRole("list", {
-      name: /1 \(low\) to 4 \(high\)/,
+      name: /Visual damage severity/,
     });
-    expect(within(legend).getAllByRole("listitem")).toHaveLength(4);
+    expect(within(legend).getByText("Minor")).toBeInTheDocument();
+    expect(within(legend).getByText("Moderate")).toBeInTheDocument();
+    expect(within(legend).getByText("Severe")).toBeInTheDocument();
   });
 
-  it("lists damaged parts most severe first with level and score", () => {
+  it("lists damaged parts most severe first with damage types", () => {
     renderPanel();
     const rows = screen.getAllByRole("button");
     expect(rows[0]).toHaveTextContent("Front bumper");
-    expect(rows[0]).toHaveTextContent("L6 · 92%");
+    expect(rows[0]).toHaveTextContent("Severe · Crack, Detached part");
     expect(rows[1]).toHaveTextContent("Hood");
-    expect(rows[1]).toHaveTextContent("L3 · 45%");
+    expect(rows[1]).toHaveTextContent("Moderate · Dent");
   });
 
   it("selects a part when its row is clicked", async () => {
@@ -89,8 +96,9 @@ describe("DamagePanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the sample data badge only for sample data", () => {
-    renderPanel({ isSampleData: false });
+  it("shows the supplied result status", () => {
+    renderPanel({ statusLabel: "Gemini result" });
+    expect(screen.getByText("Gemini result")).toBeInTheDocument();
     expect(screen.queryByText("Sample data")).not.toBeInTheDocument();
   });
 });

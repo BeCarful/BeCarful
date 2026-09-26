@@ -64,6 +64,7 @@ class AppContainer:
                 maximum_pixels=self.settings.maximum_image_pixels,
                 normalized_long_edge=self.settings.normalized_long_edge,
                 minimum_short_edge=self.settings.minimum_short_edge,
+                maximum_normalized_bytes=self.settings.gemini_inline_image_max_bytes,
             ),
             clock=self.clock,
             settings=self.settings,
@@ -102,6 +103,13 @@ def build_container(settings: Settings) -> AppContainer:
                 project=settings.gcp_project,
                 location=settings.gemini_location,
                 model_id=settings.gemini_model,
+                auth_mode=settings.gemini_auth_mode,
+                api_key=(
+                    settings.google_api_key.get_secret_value()
+                    if settings.google_api_key is not None
+                    else None
+                ),
+                inline_image_max_bytes=settings.gemini_inline_image_max_bytes,
             )
         else:
             inference = LocalNoDamageInference()
@@ -146,6 +154,13 @@ def build_container(settings: Settings) -> AppContainer:
             project=settings.gcp_project,
             location=settings.gemini_location,
             model_id=settings.gemini_model,
+            auth_mode=settings.gemini_auth_mode,
+            api_key=(
+                settings.google_api_key.get_secret_value()
+                if settings.google_api_key is not None
+                else None
+            ),
+            inline_image_max_bytes=settings.gemini_inline_image_max_bytes,
         ),
         clock=clock,
     )

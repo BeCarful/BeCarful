@@ -10,9 +10,11 @@ function renderControls(
   const props = {
     isAutoRotating: true,
     areDoorsOpen: false,
+    isAssessmentOpen: false,
     onToggleAutoRotate: vi.fn(),
     onToggleDoors: vi.fn(),
     onResetView: vi.fn(),
+    onToggleAssessment: vi.fn(),
     ...overrides,
   };
   render(<ViewerControls {...props} />);
@@ -50,9 +52,19 @@ describe("ViewerControls", () => {
     await user.click(screen.getByRole("button", { name: "Auto-rotate: On" }));
     await user.click(screen.getByRole("button", { name: "Reset view" }));
     await user.click(screen.getByRole("button", { name: "Open doors" }));
+    await user.click(screen.getByRole("button", { name: "Assess photos" }));
 
     expect(props.onToggleAutoRotate).toHaveBeenCalledOnce();
     expect(props.onResetView).toHaveBeenCalledOnce();
     expect(props.onToggleDoors).toHaveBeenCalledOnce();
+    expect(props.onToggleAssessment).toHaveBeenCalledOnce();
+  });
+
+  it("shows when the assessment panel is open", () => {
+    renderControls({ isAssessmentOpen: true });
+
+    expect(
+      screen.getByRole("button", { name: "Hide assessment" }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  findingsToDamageReport,
   parseDamageReport,
   resolveDamage,
   sortBySeverity,
@@ -11,9 +12,11 @@ import { SAMPLE_DAMAGE_REPORT } from "./sample-damage-report";
 describe("parseDamageReport", () => {
   it("accepts a valid report", () => {
     const report = parseDamageReport({
-      parts: [{ partId: "hood", score: 0.4 }],
+      parts: [{ partId: "hood", severity: "minor", damageTypes: ["scratch"] }],
     });
-    expect(report.parts).toEqual([{ partId: "hood", score: 0.4 }]);
+    expect(report.parts).toEqual([
+      { partId: "hood", severity: "minor", damageTypes: ["scratch"] },
+    ]);
   });
 
   it("rejects a missing parts array", () => {
@@ -21,18 +24,31 @@ describe("parseDamageReport", () => {
     expect(() => parseDamageReport(null)).toThrow();
   });
 
-  it("rejects unknown parts, bad scores and duplicates", () => {
-    expect(() =>
-      parseDamageReport({ parts: [{ partId: "spoiler", score: 0.5 }] }),
-    ).toThrow("unknown partId");
-    expect(() =>
-      parseDamageReport({ parts: [{ partId: "hood", score: 1.5 }] }),
-    ).toThrow("score must be");
+  it("rejects unknown parts, severities, damage types and duplicates", () => {
     expect(() =>
       parseDamageReport({
         parts: [
-          { partId: "hood", score: 0.1 },
-          { partId: "hood", score: 0.2 },
+          { partId: "spoiler", severity: "minor", damageTypes: ["scratch"] },
+        ],
+      }),
+    ).toThrow("unknown partId");
+    expect(() =>
+      parseDamageReport({
+        parts: [
+          { partId: "hood", severity: "catastrophic", damageTypes: ["dent"] },
+        ],
+      }),
+    ).toThrow("unknown severity");
+    expect(() =>
+      parseDamageReport({
+        parts: [{ partId: "hood", severity: "minor", damageTypes: [4] }],
+      }),
+    ).toThrow("damageTypes must be strings");
+    expect(() =>
+      parseDamageReport({
+        parts: [
+          { partId: "hood", severity: "minor", damageTypes: ["scratch"] },
+          { partId: "hood", severity: "severe", damageTypes: ["dent"] },
         ],
       }),
     ).toThrow("more than once");
@@ -47,13 +63,18 @@ describe("resolveDamage", () => {
   it("adds the level and color for each part", () => {
     const scale = buildDamageScale(6);
     const damage = resolveDamage(
-      { parts: [{ partId: "grille", score: 0.95 }] },
+      {
+        parts: [
+          { partId: "grille", severity: "severe", damageTypes: ["crack"] },
+        ],
+      },
       scale,
     );
 
     expect(damage.get("grille")).toEqual({
       partId: "grille",
-      score: 0.95,
+      severity: "severe",
+      damageTypes: ["crack"],
       level: 6,
       color: scale[5].color,
     });
@@ -62,13 +83,38 @@ describe("resolveDamage", () => {
   it("sorts the most severe part first", () => {
     const damage = resolveDamage({
       parts: [
-        { partId: "hood", score: 0.2 },
-        { partId: "roof", score: 0.9 },
+        { partId: "hood", severity: "minor", damageTypes: ["scratch"] },
+        { partId: "roof", severity: "severe", damageTypes: ["dent"] },
       ],
     });
     expect(sortBySeverity(damage).map((part) => part.partId)).toEqual([
       "roof",
       "hood",
     ]);
+  });
+
+  it("groups findings by part and keeps the maximum severity", () => {
+    expect(
+      findingsToDamageReport([
+        {
+          part_id: "hood",
+          damage_type: "scratch",
+          visual_severity: "minor",
+        },
+        {
+          part_id: "hood",
+          damage_type: "dent",
+          visual_severity: "severe",
+        },
+      ]),
+    ).toEqual({
+      parts: [
+        {
+          partId: "hood",
+          severity: "severe",
+          damageTypes: ["scratch", "dent"],
+        },
+      ],
+    });
   });
 });

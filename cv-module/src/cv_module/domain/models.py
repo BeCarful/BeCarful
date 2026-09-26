@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -48,6 +48,7 @@ class ImageRecord(DomainModel):
     object_name: str
     content_type: str
     declared_size_bytes: int
+    file_name: str | None = None
     state: ImageState
     created_at: datetime
     uploaded_at: datetime | None = None
@@ -243,3 +244,24 @@ class AssessmentInferenceResult(DomainModel):
     output: GeminiAssessmentOutput
     raw_response: str
     usage: InferenceUsage = Field(default_factory=InferenceUsage)
+
+
+class SourceImageExport(DomainModel):
+    image_id: str
+    file_name: str | None = None
+    content_type: str
+    size_bytes: int = Field(ge=1)
+
+
+class RawGeminiResponses(DomainModel):
+    intake: dict[str, Any]
+    assessment: dict[str, Any] | None = None
+
+
+class ClaimExportV1(DomainModel):
+    export_schema_version: Literal["1.0"] = "1.0"
+    claim_id: str
+    analysis_run_id: str
+    source_images: list[SourceImageExport]
+    assessment: AssessmentV1
+    raw_gemini: RawGeminiResponses

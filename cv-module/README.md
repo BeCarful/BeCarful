@@ -18,7 +18,7 @@ configuration, datasets, models, or module documentation in the repository root.
 - Safe decoding, EXIF orientation, capture-time extraction, JPEG normalization, quality metrics, and
   perceptual duplicate detection.
 - Gemini intake and damage calls with versioned prompts and Pydantic-derived response schemas.
-- Required front/rear/left/right coverage, stable part taxonomy, normalized evidence boxes,
+- Suggested front/rear/left/right coverage, stable part taxonomy, normalized evidence boxes,
   deterministic finding aggregation, and mandatory review while confidence is uncalibrated.
 - Claim and account-data deletion across Storage and Firestore.
 - Terraform for the Google Cloud services and IAM boundary.
@@ -67,11 +67,21 @@ individual claim deletion remains available. Production startup refuses disabled
 
 Set `AUTH_MODE=development` locally to exercise `Authorization: Bearer dev:<uid>` owner isolation.
 The default `BACKEND_MODE=local` stores state and images beneath the ignored `var/local` directory,
-serves real write-once upload URLs, and runs queued analysis in the API process. The default
-`INFERENCE_MODE=stub` exercises the complete workflow without making a Gemini call and never reports
-damage. Set `INFERENCE_MODE=gemini` only after configuring Google Application Default Credentials;
-local normalized images are then sent inline to Gemini. The in-memory backend remains available for
-tests. Staging and production refuse local and memory backends.
+serves real write-once upload URLs, and runs queued analysis in the API process. `INFERENCE_MODE=stub`
+exercises the complete workflow without making a Gemini call and never reports damage. For local
+Gemini evaluation, use these values in the ignored `.env` file:
+
+```dotenv
+INFERENCE_MODE=gemini
+GEMINI_AUTH_MODE=api_key
+GOOGLE_API_KEY=replace-with-your-restricted-project-key
+```
+
+Never commit or expose the key to frontend code. `/readyz` returns `503` while the required key is
+missing. After setting the key, restart the API and run `.\scripts\smoke-gemini.ps1` for one minimal
+model request. Local normalized images are sent inline and capped at Gemini's 7 MB limit. The
+in-memory backend remains available for tests. Cloud deployments use `GEMINI_AUTH_MODE=adc`; API-key
+authentication is rejected in production.
 
 ## Public endpoints
 
@@ -80,11 +90,31 @@ tests. Staging and production refuse local and memory backends.
 - `POST /v1/claims/{claim_id}:submit`
 - `GET /v1/claims/{claim_id}`
 - `GET /v1/claims/{claim_id}/assessment`
+- `GET /v1/claims/{claim_id}/export`
 - `DELETE /v1/claims/{claim_id}`
 - `DELETE /v1/users/me/data`
 
 No bearer token is required while `AUTH_MODE=disabled`. The prepare-upload response identifies the
 exact headers the client must include in its PUT request. A claim may contain at most 12 images.
+The export endpoint combines source-image metadata, validated `AssessmentV1`, and the raw Gemini
+intake and assessment JSON. The raw assessment is `null` when damage inference was skipped.
+
+## Local browser workflow
+
+Start the API from `cv-module`, then start the frontend in a second terminal:
+
+```powershell
+.\scripts\dev.ps1
+cd frontend
+npm run dev
+```
+
+Open `http://localhost:3000`, select **Assess photos**, and choose 1–12 laptop images. One usable
+photo is enough to run Gemini; front, rear, left, and right photos are suggested for more complete
+coverage. Local CORS is
+limited to `http://localhost:3000` and `http://127.0.0.1:3000`. The frontend defaults to the API at
+`http://127.0.0.1:8000`; override it with `NEXT_PUBLIC_CV_API_BASE_URL` when necessary. The Gemini
+API key remains only in the backend `.env` and is never sent to the browser.
 
 ## Google Cloud deployment
 

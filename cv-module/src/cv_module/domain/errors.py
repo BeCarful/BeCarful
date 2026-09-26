@@ -9,6 +9,10 @@ class NotFoundError(DomainError):
     code = "not_found"
 
 
+class AssessmentNotReadyError(NotFoundError):
+    code = "assessment_not_ready"
+
+
 class ForbiddenError(DomainError):
     code = "forbidden"
 
@@ -27,6 +31,10 @@ class ImageValidationError(DomainError):
 
 class InferenceContractError(DomainError):
     code = "inference_contract_failed"
+
+
+class InferenceConfigurationError(DomainError):
+    code = "inference_configuration_failed"
 
 
 class RetryablePipelineError(DomainError):

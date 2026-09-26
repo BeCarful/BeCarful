@@ -6,6 +6,8 @@ A simple full-screen viewer showing a white Suzuki XL7 in 3D, with damaged parts
 - Damaged parts are colored on a green → dark red scale; undamaged parts stay white
 - Click a part on the car, or in the **Damage** list, to highlight it with a blue outline
 - **Auto-rotate** on/off, **Reset view**, **Open / close doors** (all four doors)
+- **Assess photos** uploads 1–12 laptop images to the local FastAPI/Gemini pipeline
+- Validated and raw Gemini JSON can be inspected and downloaded after each run
 
 Built with Next.js 16 (App Router, Turbopack), three.js through React Three Fiber, and Vitest.
 
@@ -21,6 +23,14 @@ npm run lint
 npm run format
 npm run build
 ```
+
+## Local Gemini assessment
+
+Start the Python API from `cv-module` with `\.\scripts\dev.ps1`. In a second terminal, run `npm run dev` from `cv-module/frontend` and open `http://localhost:3000`.
+
+Open **Assess photos** and select 1–12 JPEG, PNG, WebP, HEIC, or HEIF files (up to 20 MiB each). One usable photo is sufficient for an assessment. Distinct front, rear, left, and right views are suggested for more complete coverage but are not required. The browser uploads directly to FastAPI; Gemini credentials remain in the backend-only `cv-module/.env`. When processing finishes, the panel shows the validated assessment and raw Gemini responses and can download one combined claim JSON file.
+
+`NEXT_PUBLIC_CV_API_BASE_URL` may override the default backend URL of `http://127.0.0.1:8000`. It is an ordinary public URL setting and must never contain a Gemini API key.
 
 ## Car parts
 
@@ -82,7 +92,8 @@ src/
 │   ├── car-part.tsx              # makes a mesh clickable; seam + selection outline
 │   ├── damage-context.tsx        # shares damage + selection with the 3D parts
 │   ├── damage-panel.tsx          # legend + list of damaged parts
-│   └── viewer-controls.tsx       # the three buttons
+│   ├── viewer-controls.tsx       # viewer and assessment-panel controls
+│   └── assessment-panel.tsx      # laptop upload, status, JSON, and export workflow
 ├── hooks/use-viewer-state.ts     # shared UI state (camera, doors, selected part)
 └── lib/
     ├── car/                      # part IDs, dimensions, materials, geometry

@@ -14,6 +14,7 @@ class ApiModel(BaseModel):
 class PrepareUploadRequest(ApiModel):
     content_type: str
     size_bytes: int = Field(gt=0)
+    file_name: str | None = Field(default=None, min_length=1, max_length=255)
 
 
 class UploadTicketResponse(ApiModel):

@@ -2,7 +2,8 @@
 
 ## Required configuration
 
-Production and staging require `BACKEND_MODE=gcp` and all variables shown in `.env.example`.
+Production and staging require `BACKEND_MODE=gcp` and the cloud variables documented in the module
+README.
 `GEMINI_MODEL`, `GIT_REVISION`, prompt version, and schema version are persisted on every result.
 Set both configurable per-million-token price variables to report an estimated per-claim model cost;
 leave both empty rather than publishing a stale or invented price.
@@ -20,8 +21,10 @@ submission schedules analysis in that process. This mode is for one local proces
 provide distributed locking or crash-resilient task delivery.
 
 `INFERENCE_MODE=stub` is the safe default and produces no damage findings. To exercise Gemini while
-keeping storage local, authenticate Google Application Default Credentials, retain the configured
-`GCP_PROJECT`, and set `INFERENCE_MODE=gemini`. Normalized images are supplied inline to the model.
+keeping storage local, set `GEMINI_AUTH_MODE=api_key` and place `GOOGLE_API_KEY` only in the ignored
+`.env` file. `/readyz` reports missing configuration without exposing the key. Run
+`scripts/smoke-gemini.ps1` before submitting vehicle photos. Normalized images are supplied inline to
+the model and limited to 7 MB. Cloud and production deployments use `GEMINI_AUTH_MODE=adc`.
 
 ## Monitoring
 
@@ -57,6 +60,6 @@ request cannot complete; the operational deadline is 24 hours.
 ## Manual setup outside this directory
 
 The repository-boundary rule prevents adding repository-root CI configuration. Configure the external
-CI system manually to use `cv-module` as its checkout working directory and run the Docker test target.
+CI system manually to use `cv-module` as its checkout working directory and run `scripts/test.ps1`.
 Firebase Authentication provider activation remains a future console or organization-level setup
 step; it is not needed for the current evaluation deployment.

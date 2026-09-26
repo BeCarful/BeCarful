@@ -12,7 +12,7 @@ from cv_module.api.schemas import (
     UploadTicketResponse,
 )
 from cv_module.domain.errors import ConflictError, InvalidInputError, NotFoundError
-from cv_module.domain.models import AssessmentV1, ClaimRecord
+from cv_module.domain.models import AssessmentV1, ClaimExportV1, ClaimRecord
 
 router = APIRouter(prefix="/v1", tags=["claims"])
 
@@ -79,6 +79,7 @@ async def prepare_upload(
         claim_id,
         content_type=request.content_type,
         size_bytes=request.size_bytes,
+        file_name=request.file_name,
     )
     return UploadTicketResponse(
         image_id=prepared.image.image_id,
@@ -125,6 +126,15 @@ async def get_assessment(
     user: UserDependency,
 ) -> AssessmentV1:
     return await container.claims.get_assessment(user.uid, claim_id)
+
+
+@router.get("/claims/{claim_id}/export", response_model=ClaimExportV1)
+async def get_claim_export(
+    claim_id: str,
+    container: ContainerDependency,
+    user: UserDependency,
+) -> ClaimExportV1:
+    return await container.claims.get_claim_export(user.uid, claim_id)
 
 
 @router.delete("/claims/{claim_id}", status_code=status.HTTP_204_NO_CONTENT)

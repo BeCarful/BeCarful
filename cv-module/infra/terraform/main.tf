@@ -129,6 +129,7 @@ resource "google_cloud_run_v2_service" "worker" {
           GCP_REGION                     = var.region
           GEMINI_LOCATION                = var.gemini_location
           GEMINI_MODEL                   = var.gemini_model
+          GEMINI_AUTH_MODE               = "adc"
           GEMINI_INPUT_COST_PER_MILLION_USD  = var.gemini_input_cost_per_million_usd
           GEMINI_OUTPUT_COST_PER_MILLION_USD = var.gemini_output_cost_per_million_usd
           STORAGE_BUCKET                 = google_storage_bucket.images.name
@@ -188,6 +189,7 @@ resource "google_cloud_run_v2_service" "api" {
           GCP_REGION                     = var.region
           GEMINI_LOCATION                = var.gemini_location
           GEMINI_MODEL                   = var.gemini_model
+          GEMINI_AUTH_MODE               = "adc"
           GEMINI_INPUT_COST_PER_MILLION_USD  = var.gemini_input_cost_per_million_usd
           GEMINI_OUTPUT_COST_PER_MILLION_USD = var.gemini_output_cost_per_million_usd
           STORAGE_BUCKET                 = google_storage_bucket.images.name

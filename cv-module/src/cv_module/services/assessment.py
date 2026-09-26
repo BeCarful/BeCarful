@@ -24,6 +24,7 @@ from cv_module.domain.enums import (
 )
 from cv_module.domain.errors import (
     ImageValidationError,
+    InferenceConfigurationError,
     InferenceContractError,
     NotFoundError,
     RetryablePipelineError,
@@ -110,6 +111,9 @@ class AssessmentPipeline:
                 started_timer,
                 task_retry_count,
             )
+        except InferenceConfigurationError:
+            await self._fail_run(claim_id, run_id, "inference_configuration_failure")
+            return RunStatus.FAILED
         except InferenceContractError:
             await self._fail_run(claim_id, run_id, "model_contract_failure")
             return RunStatus.FAILED
@@ -191,7 +195,7 @@ class AssessmentPipeline:
             intake.raw_response,
         )
 
-        if not intake.output.same_vehicle:
+        if len(usable_inference_images) > 1 and not intake.output.same_vehicle:
             return await self._finish_without_findings(
                 claim_id=claim_id,
                 run_id=run_id,
@@ -211,7 +215,7 @@ class AssessmentPipeline:
                 ],
             )
 
-        if not coverage.complete:
+        if not usable_inference_images:
             return await self._finish_without_findings(
                 claim_id=claim_id,
                 run_id=run_id,
@@ -244,6 +248,8 @@ class AssessmentPipeline:
         )
         findings = self._aggregate_findings(assessment_result.output.findings)
         review_reasons = [ReviewReason.CONFIDENCE_UNVALIDATED]
+        if not coverage.complete:
+            review_reasons.append(ReviewReason.INCOMPLETE_COVERAGE)
         if any(f.visual_severity == VisualSeverity.SEVERE for f in findings):
             review_reasons.append(ReviewReason.SEVERE_DAMAGE)
         if any(image.quality_reasons for image in image_results):
@@ -283,7 +289,14 @@ class AssessmentPipeline:
             summary=self._summary(findings),
             needs_human_review=True,
             review_reasons=list(dict.fromkeys(review_reasons)),
-            limitations=LIMITATIONS,
+            limitations=[
+                *LIMITATIONS,
+                *(
+                    ["Coverage is incomplete; unphotographed areas were not assessed."]
+                    if not coverage.complete
+                    else []
+                ),
+            ],
         )
         await self._repository.save_assessment(assessment)
         await self._repository.set_run_status(

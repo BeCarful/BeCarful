@@ -10,11 +10,12 @@ from cv_module.domain.enums import (
     ClaimStatus,
     DamageType,
     PartId,
+    ReviewReason,
     RunStatus,
     VehicleView,
     VisualSeverity,
 )
-from cv_module.domain.errors import ConflictError, RetryablePipelineError
+from cv_module.domain.errors import ConflictError, ForbiddenError, RetryablePipelineError
 from cv_module.domain.models import BoundingBox, Evidence, RawFinding
 from tests.fakes import FakeInference
 
@@ -36,6 +37,7 @@ async def prepare_claim(
             claim.claim_id,
             content_type="image/jpeg",
             size_bytes=len(content),
+            file_name=f"folder/{view.value}.jpg",
         )
         await storage.put_for_test(prepared.image.object_name, content, "image/jpeg")
         inference.views[prepared.image.image_id] = view
@@ -86,9 +88,24 @@ async def test_complete_coverage_produces_reviewable_assessment(
         "assessment",
     }
 
+    exported = await container.claims.get_claim_export("alice", claim_id)
+    assert exported.assessment == assessment
+    assert {image.file_name for image in exported.source_images} == {
+        "front.jpg",
+        "rear.jpg",
+        "left.jpg",
+        "right.jpg",
+    }
+    assert exported.raw_gemini.intake["same_vehicle"] is True
+    assert exported.raw_gemini.assessment is not None
+    assert exported.raw_gemini.assessment["findings"][0]["part_id"] == "front_bumper"
+
+    with pytest.raises(ForbiddenError):
+        await container.claims.get_claim_export("bob", claim_id)
+
 
 @pytest.mark.asyncio
-async def test_missing_view_stops_before_damage_inference(
+async def test_single_view_runs_damage_inference_and_flags_incomplete_coverage(
     container: AppContainer,
     inference: FakeInference,
     jpeg_factory: Callable[[int], bytes],
@@ -97,15 +114,22 @@ async def test_missing_view_stops_before_damage_inference(
         container,
         inference,
         jpeg_factory,
-        [VehicleView.FRONT, VehicleView.REAR, VehicleView.LEFT],
+        [VehicleView.FRONT],
     )
 
     status = await container.assessment_pipeline.process(claim_id, run_id)
     assessment = await container.claims.get_assessment("alice", claim_id)
 
-    assert status == RunStatus.NEEDS_MORE_PHOTOS
-    assert assessment.coverage.missing == [VehicleView.RIGHT]
-    assert inference.assessment_calls == 0
+    assert status == RunStatus.NEEDS_HUMAN_REVIEW
+    assert set(assessment.coverage.missing) == {
+        VehicleView.REAR,
+        VehicleView.LEFT,
+        VehicleView.RIGHT,
+    }
+    assert ReviewReason.INCOMPLETE_COVERAGE in assessment.review_reasons
+    assert inference.assessment_calls == 1
+    exported = await container.claims.get_claim_export("alice", claim_id)
+    assert exported.raw_gemini.assessment is not None
 
 
 @pytest.mark.asyncio
@@ -235,8 +259,10 @@ async def test_duplicate_photo_does_not_satisfy_a_second_view(
     )
     assessment = await container.claims.get_assessment("alice", claim.claim_id)
 
-    assert status == RunStatus.NEEDS_MORE_PHOTOS
+    assert status == RunStatus.NEEDS_HUMAN_REVIEW
     assert set(assessment.coverage.missing) & {VehicleView.FRONT, VehicleView.RIGHT}
+    assert ReviewReason.INCOMPLETE_COVERAGE in assessment.review_reasons
+    assert inference.assessment_calls == 1
     assert any(image.duplicate_of for image in assessment.images)
 
 
@@ -254,7 +280,7 @@ async def test_resubmission_after_missing_view_creates_new_run(
     )
     assert (
         await container.assessment_pipeline.process(claim_id, first_run_id)
-        == RunStatus.NEEDS_MORE_PHOTOS
+        == RunStatus.NEEDS_HUMAN_REVIEW
     )
 
     content = jpeg_factory(99)

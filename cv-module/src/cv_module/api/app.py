@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from cv_module.api.routes.claims import router as claims_router
@@ -31,11 +32,34 @@ def create_app(
         ),
     )
     application.state.container = container or build_container(active_settings)
+    allowed_origins = active_settings.effective_cors_allowed_origins()
+    if allowed_origins:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origins=list(allowed_origins),
+            allow_credentials=False,
+            allow_methods=["GET", "POST", "PUT", "DELETE"],
+            allow_headers=["Content-Type", "Authorization"],
+        )
     application.include_router(claims_router)
 
     @application.get("/healthz", include_in_schema=False)
     async def healthz() -> dict[str, str]:
         return {"status": "ok"}
+
+    @application.get("/readyz", include_in_schema=False)
+    async def readyz() -> Response:
+        errors = active_settings.readiness_errors()
+        payload: dict[str, object] = {
+            "status": "not_ready" if errors else "ready",
+            "inference_mode": active_settings.inference_mode,
+        }
+        if active_settings.inference_mode == "gemini":
+            payload["gemini_auth_mode"] = active_settings.gemini_auth_mode
+            payload["gemini_model"] = active_settings.gemini_model
+        if errors:
+            payload["reasons"] = errors
+        return JSONResponse(status_code=503 if errors else 200, content=payload)
 
     @application.exception_handler(DomainError)
     async def domain_error_handler(_request: Request, exc: DomainError) -> JSONResponse:
