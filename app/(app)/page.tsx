@@ -60,6 +60,7 @@ export default async function HomePage() {
       <DamageExplorer
         key={vehicleId}
         vehicleId={vehicleId}
+        modelId={vehicle.modelId}
         damage={claim.damage}
         photos={photos}
         incidentPhotoCount={claim.state.photoCount}

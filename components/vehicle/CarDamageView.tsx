@@ -5,7 +5,7 @@ import { Component, useState, type ReactNode } from "react";
 import type { AggregatedDamage, ComponentId } from "@/types";
 import { CarDamageMap2D } from "./CarDamageMap2D";
 
-type Props = { damage: AggregatedDamage[]; focused?: ComponentId | null; onSelect?: (id: ComponentId) => void };
+type Props = { damage: AggregatedDamage[]; focused?: ComponentId | null; onSelect?: (id: ComponentId) => void; modelId?: string | null };
 
 const Car3D = dynamic(() => import("./Car3D"), {
   ssr: false,

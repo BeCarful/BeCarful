@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const CAR = "M2 5h1V3h1V2h4v1h1v2h1v3H2z";
@@ -14,11 +15,7 @@ export function PixelCar({ className, windows }: { className: string; windows: s
 }
 
 export function BrandMark({ className = "size-9" }: { className?: string }) {
-  return (
-    <span className={`grid shrink-0 place-items-center rounded-xl bg-brand-mark text-white ${className}`} aria-hidden>
-      <PixelCar className="w-3/5" windows="fill-brand-mark" />
-    </span>
-  );
+  return <Image src="/logo.png" alt="" width={72} height={72} loading="eager" className={`shrink-0 rounded-xl ${className}`} />;
 }
 
 export function Wordmark({ tagline = false, className = "" }: { tagline?: boolean; className?: string }) {

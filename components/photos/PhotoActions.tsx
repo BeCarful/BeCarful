@@ -5,7 +5,6 @@ import { flushSync } from "react-dom";
 import { createPhotoUpload, registerPhoto, type PhotoResult } from "@/actions/photos";
 import { PixelProgress, RetroButton, RetroLinkButton } from "@/components/retro";
 import { uploadToStorage } from "@/lib/upload-client";
-import type { PhotoSource } from "@/types";
 import { AnalysisSummary } from "./AnalysisSummary";
 import { CloseButton, FullScreenDialog, SHEET_CLASS } from "./FullScreenDialog";
 import { PixelIcon, type PixelIconName } from "./PixelIcon";
@@ -13,6 +12,11 @@ import { PixelIcon, type PixelIconName } from "./PixelIcon";
 const STEPS = ["Uploading evidence…", "Inspecting vehicle…", "Identifying visible damage…", "Mapping vehicle components…", "Updating your car…"];
 const STEP_MS = 1800;
 const ACTION_CLASS = "w-full min-h-24 flex-col px-2! py-3! text-sm";
+export const CAMERA_INPUT_ID = "take-photo-input";
+
+export function openCamera() {
+  document.getElementById(CAMERA_INPUT_ID)?.click();
+}
 
 function TileIcon({ name, primary = false }: { name: PixelIconName; primary?: boolean }) {
   return (
@@ -23,7 +27,7 @@ function TileIcon({ name, primary = false }: { name: PixelIconName; primary?: bo
 }
 
 type Location = { latitude: number; longitude: number; accuracy: number } | null;
-type Picked = { file: File; preview: string; source: PhotoSource; capturedAt?: string };
+type Picked = { file: File; preview: string; capturedAt: string };
 type Phase = { name: "review" } | { name: "processing"; step: number; error?: string } | { name: "done"; result: PhotoResult };
 
 function requestLocation(): Promise<Location> {
@@ -47,29 +51,27 @@ function requestLocation(): Promise<Location> {
 
 export function PhotoActions({ vehicleId, hasPolicy }: { vehicleId: string; hasPolicy: boolean }) {
   const cameraInput = useRef<HTMLInputElement>(null);
-  const uploadInput = useRef<HTMLInputElement>(null);
   const location = useRef<Promise<Location>>(Promise.resolve(null));
   const uploadedKey = useRef<string | null>(null);
   const [picked, setPicked] = useState<Picked | null>(null);
   const [phase, setPhase] = useState<Phase>({ name: "review" });
   const [locationStatus, setLocationStatus] = useState<"pending" | "recorded" | "unavailable">("pending");
 
-  function takePhoto() {
+  function startLocation() {
     setLocationStatus("pending");
     location.current = requestLocation().then((loc) => {
       setLocationStatus(loc ? "recorded" : "unavailable");
       return loc;
     });
-    cameraInput.current?.click();
   }
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>, source: PhotoSource) {
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     if (picked) URL.revokeObjectURL(picked.preview);
     uploadedKey.current = null;
-    setPicked({ file, preview: URL.createObjectURL(file), source, capturedAt: source === "camera" ? new Date().toISOString() : undefined });
+    setPicked({ file, preview: URL.createObjectURL(file), capturedAt: new Date().toISOString() });
     setPhase({ name: "review" });
   }
 
@@ -78,18 +80,17 @@ export function PhotoActions({ vehicleId, hasPolicy }: { vehicleId: string; hasP
     setPicked(null);
   }
 
-  function pickAgain(source: PhotoSource) {
+  function pickAgain() {
     // The modal makes the file inputs inert; leave it synchronously so the picker can open.
     flushSync(close);
-    if (source === "camera") takePhoto();
-    else uploadInput.current?.click();
+    cameraInput.current?.click();
   }
 
   const fail = (error: string) => setPhase((p) => ({ name: "processing", step: p.name === "processing" ? p.step : 0, error }));
 
   async function submit() {
     if (!picked) return;
-    const { file, source, capturedAt } = picked;
+    const { file, capturedAt } = picked;
     setPhase({ name: "processing", step: 0 });
     let uploading = true;
     let timer: ReturnType<typeof setInterval> | undefined;
@@ -107,13 +108,13 @@ export function PhotoActions({ vehicleId, hasPolicy }: { vehicleId: string; hasP
         () => setPhase((p) => (p.name === "processing" && !p.error && p.step < STEPS.length - 2 ? { ...p, step: p.step + 1 } : p)),
         STEP_MS,
       );
-      const loc = source === "camera" ? await location.current : null;
-      const res = await registerPhoto(
-        vehicleId,
-        source === "camera"
-          ? { key, source, capturedAt, ...(loc && { latitude: loc.latitude, longitude: loc.longitude, locationAccuracy: loc.accuracy }) }
-          : { key, source },
-      );
+      const loc = await location.current;
+      const res = await registerPhoto(vehicleId, {
+        key,
+        source: "camera",
+        capturedAt,
+        ...(loc && { latitude: loc.latitude, longitude: loc.longitude, locationAccuracy: loc.accuracy }),
+      });
       if (!res.ok) return fail(res.error);
       setPhase({ name: "processing", step: STEPS.length - 1 });
       await new Promise((r) => setTimeout(r, 700));
@@ -134,30 +135,24 @@ export function PhotoActions({ vehicleId, hasPolicy }: { vehicleId: string; hasP
 
   return (
     <>
-      <div id="photo-actions" className="grid scroll-mt-24 grid-cols-2 gap-3 sm:grid-cols-3">
-        <RetroButton type="button" onClick={takePhoto} className={ACTION_CLASS} icon={<TileIcon name="camera" primary />}>
+      <div id="photo-actions" className="grid scroll-mt-24 grid-cols-2 gap-3">
+        <RetroButton type="button" onClick={() => cameraInput.current?.click()} className={ACTION_CLASS} icon={<TileIcon name="camera" primary />}>
           Take Photo
         </RetroButton>
-        <RetroButton
-          type="button"
-          variant="secondary"
-          onClick={() => uploadInput.current?.click()}
-          className={ACTION_CLASS}
-          icon={<TileIcon name="upload" />}
-        >
-          Upload Photo
-        </RetroButton>
-        <RetroLinkButton
-          href="/insurance"
-          variant="secondary"
-          className={`col-span-2 min-h-16! flex-row! sm:col-span-1 sm:min-h-24! sm:flex-col! ${ACTION_CLASS}`}
-          icon={<TileIcon name="policy" />}
-        >
+        <RetroLinkButton href="/insurance" variant="secondary" className={ACTION_CLASS} icon={<TileIcon name="policy" />}>
           {hasPolicy ? "Insurance" : "Add Insurance"}
         </RetroLinkButton>
       </div>
-      <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => onFile(e, "camera")} />
-      <input ref={uploadInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => onFile(e, "upload")} />
+      <input
+        ref={cameraInput}
+        id={CAMERA_INPUT_ID}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onClick={startLocation}
+        onChange={onFile}
+      />
 
       {picked && (
         <FullScreenDialog label={title} onClose={close} canClose={!busy}>
@@ -177,21 +172,17 @@ export function PhotoActions({ vehicleId, hasPolicy }: { vehicleId: string; hasP
           <div className={`${SHEET_CLASS} mt-3 max-h-[55dvh] space-y-4`}>
             {phase.name === "review" && (
               <>
-                {picked.source === "camera" ? (
-                  <p className={`flex items-center gap-2 text-sm ${locationStatus === "pending" ? "animate-pulse" : ""}`}>
-                    <PixelIcon name="pin" className={`size-4 shrink-0 ${locationStatus === "recorded" ? "text-ok" : "text-muted"}`} />
-                    {locationStatus === "pending"
-                      ? "Getting location…"
-                      : locationStatus === "recorded"
-                        ? "Location recorded"
-                        : "Location unavailable. You can still use this photo."}
-                  </p>
-                ) : (
-                  <p className="text-sm text-ink-soft">Uploaded photo. We won&apos;t record a capture time or location for it.</p>
-                )}
+                <p className={`flex items-center gap-2 text-sm ${locationStatus === "pending" ? "animate-pulse" : ""}`}>
+                  <PixelIcon name="pin" className={`size-4 shrink-0 ${locationStatus === "recorded" ? "text-ok" : "text-muted"}`} />
+                  {locationStatus === "pending"
+                    ? "Getting location…"
+                    : locationStatus === "recorded"
+                      ? "Location recorded"
+                      : "Location unavailable. You can still use this photo."}
+                </p>
                 <div className="grid grid-cols-2 gap-3">
-                  <RetroButton type="button" variant="secondary" onClick={() => pickAgain(picked.source)}>
-                    {picked.source === "camera" ? "Retake" : "Choose another"}
+                  <RetroButton type="button" variant="secondary" onClick={pickAgain}>
+                    Retake
                   </RetroButton>
                   <RetroButton type="button" onClick={submit}>
                     Use photo
@@ -209,7 +200,7 @@ export function PhotoActions({ vehicleId, hasPolicy }: { vehicleId: string; hasP
                       {phase.error}
                     </p>
                     <div className="grid grid-cols-2 gap-3">
-                      <RetroButton type="button" variant="secondary" onClick={() => pickAgain(picked.source)}>
+                      <RetroButton type="button" variant="secondary" onClick={pickAgain}>
                         New photo
                       </RetroButton>
                       <RetroButton type="button" onClick={submit}>
@@ -225,7 +216,7 @@ export function PhotoActions({ vehicleId, hasPolicy }: { vehicleId: string; hasP
               <>
                 <AnalysisSummary analysis={phase.result.analysis} failed={!phase.result.analysis} onRetry={submit} />
                 <div className="grid grid-cols-2 gap-3">
-                  <RetroButton type="button" variant="secondary" onClick={() => pickAgain(picked.source)}>
+                  <RetroButton type="button" variant="secondary" onClick={pickAgain}>
                     Add another
                   </RetroButton>
                   <RetroButton

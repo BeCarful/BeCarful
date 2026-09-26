@@ -5,6 +5,7 @@ import { CoverageChecklist } from "@/components/insurance/CoverageChecklist";
 import { InsuranceSetup } from "@/components/insurance/InsuranceSetup";
 import { COVERAGE_FIELDS, DETAIL_FIELDS, PolicyFields } from "@/components/insurance/PolicyFields";
 import { PolicyUpload } from "@/components/insurance/PolicyUpload";
+import { ProviderMark } from "@/components/insurance/ProviderPicker";
 import { TuxemonAttribution, TuxemonAvatar } from "@/components/chat/TuxemonAssistant";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RetroBadge, RetroCard, RetroDialog, retroButtonClass } from "@/components/retro";
@@ -70,13 +71,7 @@ function PolicyScreen({ vehicleId, policy }: { vehicleId: string; policy: Hydrat
           {provider ? (
             <>
               <div className="flex items-center gap-3">
-                <span
-                  aria-hidden
-                  className="grid size-12 shrink-0 place-items-center rounded-lg font-display text-base font-semibold text-white"
-                  style={{ backgroundColor: provider.color }}
-                >
-                  {provider.shortName}
-                </span>
+                <ProviderMark provider={provider} className="size-12 text-base" />
                 <div className="min-w-0">
                   <p className="text-lg leading-tight font-semibold">{provider.name}</p>
                   <p className="text-sm text-ink-soft tabular-nums">Claims line {provider.phone}</p>
@@ -144,7 +139,7 @@ function PolicyScreen({ vehicleId, policy }: { vehicleId: string; policy: Hydrat
         <div className="space-y-6">
           <CoverageChecklist vehicleId={vehicleId} items={checklist} />
           {policy.aiSummary && (
-            <RetroDialog speaker="In plain words" avatar={<TuxemonAvatar frame="front" scale={1} />}>
+            <RetroDialog speaker="In plain words" avatar={<TuxemonAvatar frame="front" scale={1} className="tux-idle" />}>
               <p>{policy.aiSummary}</p>
               <p className="mt-2 text-xs text-ink-soft">AI summary of what we found in your policy.</p>
               <TuxemonAttribution />

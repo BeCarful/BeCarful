@@ -22,6 +22,7 @@ function Note({ tone = "warn", children }: { tone?: "warn" | "muted"; children: 
 /** Home: car + damage details, with vehicle info and actions slotted under the car. */
 export function DamageExplorer({
   vehicleId,
+  modelId,
   damage,
   photos,
   incidentPhotoCount,
@@ -30,6 +31,7 @@ export function DamageExplorer({
   children,
 }: {
   vehicleId: string;
+  modelId?: string | null;
   damage: AggregatedDamage[];
   photos: PhotoView[];
   incidentPhotoCount: number;
@@ -71,7 +73,7 @@ export function DamageExplorer({
             </p>
           }
         >
-          <CarDamageView damage={damage} focused={selected} onSelect={setSelected} />
+          <CarDamageView modelId={modelId} damage={damage} focused={selected} onSelect={setSelected} />
         </Garage>
 
         {selected && (

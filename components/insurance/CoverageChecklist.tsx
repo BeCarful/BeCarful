@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type CSSProperties } from "react";
 import { TuxemonAvatar } from "@/components/chat/TuxemonAssistant";
 import { RetroBadge, RetroCard } from "@/components/retro";
 import type { CoverageItem } from "@/services/ai/coverage-rules";
@@ -70,12 +70,12 @@ export function CoverageChecklist({ vehicleId, items }: { vehicleId: string; ite
         >
           <p className="mb-3 text-sm text-ink-soft">Risks your policy doesn&apos;t cover, or doesn&apos;t mention.</p>
           <ul className="space-y-2">
-            {threats.map((t) => {
+            {threats.map((t, i) => {
               const m = PERIL_MONSTERS[t.peril];
               return (
-                <li key={t.peril} className="flex items-center gap-3 rounded-xl border border-border bg-panel p-3">
-                  <span className="grid size-[72px] shrink-0 place-items-center rounded-lg bg-panel-shade">
-                    <TuxemonAvatar frame="front" scale={1} sheet={m.sheet} label={m.name} />
+                <li key={t.peril} className="flex items-center gap-3 rounded-xl border border-border bg-panel p-3" style={{ "--tux-delay": `${i * 90}ms` } as CSSProperties}>
+                  <span className="grid size-[72px] shrink-0 place-items-center overflow-hidden rounded-lg bg-panel-shade">
+                    <TuxemonAvatar frame="front" scale={1} sheet={m.sheet} label={m.name} className="tux-wild" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">

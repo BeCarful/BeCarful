@@ -145,6 +145,11 @@ export function PhotoViewer({
         <p className="text-sm text-ink-soft">
           {camera ? `Captured ${formatDate(photo.date)} · device time` : `Uploaded ${formatDate(photo.date)}`}
         </p>
+        {photo.seal && (
+          <p className="text-xs text-ink-soft">
+            Sealed by BeCarful {formatDate(photo.receivedAt)} with its time and location: <span className="break-all font-mono">{photo.seal}</span>
+          </p>
+        )}
         <AnalysisSummary
           analysis={photo.analysis}
           failed={photo.analysisStatus === "failed"}

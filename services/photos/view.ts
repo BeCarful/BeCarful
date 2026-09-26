@@ -35,6 +35,8 @@ export type PhotoView = {
   /** capturedAt for camera photos (client clock), serverReceivedAt for uploads. ISO string. */
   date: string;
   hasLocation: boolean;
+  receivedAt: string;
+  seal: string | null;
   analysisStatus: AnalysisStatus;
   analysis: DamageAnalysis | null;
 };
@@ -55,6 +57,8 @@ export async function listPhotoViews(userId: Id, vehicleId: Id): Promise<PhotoVi
         source: p.source,
         date: ((p.source === "camera" && p.capturedAt) || p.serverReceivedAt || p.createdAt).toISOString(),
         hasLocation: p.latitude != null && p.longitude != null,
+        receivedAt: (p.serverReceivedAt ?? p.createdAt).toISOString(),
+        seal: p.seal ?? null,
         analysisStatus:
           (p.analysisStatus === "analyzing" || p.analysisStatus === "pending") && Date.now() - p.updatedAt.getTime() > STALE_ANALYSIS_MS
             ? "failed"

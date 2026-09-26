@@ -10,6 +10,14 @@ test("partKind reads node and material names", () => {
   assert.equal(partKind(["Lambo:Window_Geo_lodA_light_glass_0"], "PaletteMaterial003"), "glass");
   assert.equal(partKind(["Lambo:Light_Geo_lodA_LightA_Material"], "LightA"), "light");
   assert.equal(partKind(["Lambo:Paint_Geo_lodA_Paint_0"], "PaletteMaterial006"), "body");
+  assert.equal(partKind(["Wheel_-_Front_Left_|_Tire_and_Rim"], "Wheel1A_Material1"), "wheel");
+  assert.equal(partKind(["Body_Shell_and_Trim_|_Black_Trim", "Body_Shell_and_Trim"], "Base_Material1"), "body");
+  assert.equal(partKind(["Left_Door_|_Interior_Highlights", "Left_Door"], "int_color_2"), "body");
+  assert.equal(partKind(["Headlight_-_Left_|_Clear_Lens", "Headlight_-_Left"], "light_glass"), "glass");
+  assert.equal(partKind(["Taillight_-_Right_|_Red_Lens"], "red_glass"), "taillight");
+  assert.equal(partKind(["skel_mesh_043_001_vehicle_detail2_002_0", "SUSP_LF"], "vehicle_detail2_002"), "body");
+  assert.equal(partKind(["_mesh_001_001_vehicle_tire_002_0", "WHEEL_LF"], "vehicle_tire"), "wheel");
+  assert.equal(partKind(["lowbeam_vehicle_lightsemissive_001_0", "lowbeam"], "vehicle_lightsemissive_001"), "light");
 });
 
 test("classifyPoint maps positions to component IDs", () => {

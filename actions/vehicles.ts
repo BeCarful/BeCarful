@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { Vehicle } from "@/models/Vehicle";
 import { VehicleInputSchema } from "@/schemas/vehicle";
+import { carModel } from "@/services/vehicles/car-models";
 import { requireVehicle } from "@/services/vehicles/context";
 
 export type VehicleFormState = { error?: string; fieldErrors?: Record<string, string>; values?: Record<string, string> } | undefined;
@@ -18,7 +19,8 @@ export async function createVehicle(_: VehicleFormState, fd: FormData): Promise<
     for (const issue of parsed.error.issues) fieldErrors[String(issue.path[0])] ??= issue.message;
     return { error: "Check the highlighted fields.", fieldErrors, values };
   }
-  const vehicle = await Vehicle.create({ ...parsed.data, userId: user._id });
+  const { year, make, model } = carModel(parsed.data.modelId);
+  const vehicle = await Vehicle.create({ ...parsed.data, year, make, model, userId: user._id });
   user.lastVehicleId = vehicle._id;
   await user.save();
   revalidatePath("/", "layout");

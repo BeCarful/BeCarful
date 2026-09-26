@@ -9,7 +9,10 @@ import { Incident } from "@/models/Incident";
 import { InsurancePolicy } from "@/models/InsurancePolicy";
 import { User } from "@/models/User";
 import { Vehicle } from "@/models/Vehicle";
+import { env } from "@/lib/env";
 import { refreshIncidentStatus } from "@/services/claims/state";
+import { sealPhoto, sha256Hex } from "@/services/photos/seal";
+import { carModel } from "@/services/vehicles/car-models";
 import { makeKey, putObject } from "@/services/storage/gcs";
 import type { CoverageItem } from "@/services/ai/coverage-rules";
 import { NOT_FOUND_IN_POLICY, type DamagedComponent } from "@/types";
@@ -63,6 +66,14 @@ async function uploadPhoto(userId: Types.ObjectId, vehicleId: Types.ObjectId, sv
   return key;
 }
 
+const catalogCar = (id: string) => {
+  const m = carModel(id);
+  return { modelId: m.id, year: m.year, make: m.make, model: m.model };
+};
+const PEUGEOT = catalogCar("peugeot-308");
+const LAMBO = catalogCar("lamborghini-sc18");
+const title = (c: typeof PEUGEOT) => `${c.year} ${c.make} ${c.model}`;
+
 async function main() {
   await connectDB();
 
@@ -81,30 +92,25 @@ async function main() {
   }
 
   const user = await User.create({ email: DEMO_EMAIL, name: "Alex Rivera", passwordHash: await hashPassword(DEMO_PASSWORD) });
-  const camry = await Vehicle.create({
+  const peugeot = await Vehicle.create({
     userId: user._id,
-    year: 2025,
-    make: "Toyota",
-    model: "Camry",
-    trim: "XSE",
-    color: "Celestial Silver",
-    vin: "4T1DAACK0SU000001",
-    licensePlate: "BCF2025",
+    ...PEUGEOT,
+    color: "Artense Grey",
+    vin: "VF3LBYHZPMS000001",
+    licensePlate: "BCF2021",
     state: "TX",
   });
-  const civic = await Vehicle.create({
+  const lambo = await Vehicle.create({
     userId: user._id,
-    year: 2023,
-    make: "Honda",
-    model: "Civic",
-    color: "Rallye Red",
-    licensePlate: "HND2023",
+    ...LAMBO,
+    color: "Rosso Mars",
+    licensePlate: "SC18ALS",
     state: "CA",
   });
-  user.lastVehicleId = camry._id;
+  user.lastVehicleId = peugeot._id;
   await user.save();
 
-  const sfKey = makeKey("policies", user._id.toString(), camry._id.toString(), "application/pdf");
+  const sfKey = makeKey("policies", user._id.toString(), peugeot._id.toString(), "application/pdf");
   await putObject(
     sfKey,
     minimalPdf([
@@ -112,7 +118,7 @@ async function main() {
       "State Farm Personal Auto Policy (sample)",
       "Policy number: SF-DEMO-000123",
       "Named insured: Alex Rivera",
-      "Vehicle: 2025 Toyota Camry XSE",
+      `Vehicle: ${title(PEUGEOT)}`,
       "Policy period: 2026-03-01 to 2026-09-01",
       "Total premium: $642.18 per 6 months",
       "Liability: $100,000 / $300,000 bodily injury; $100,000 property damage",
@@ -124,9 +130,9 @@ async function main() {
     ]),
     "application/pdf",
   );
-  const camryPolicy = await InsurancePolicy.create({
+  const peugeotPolicy = await InsurancePolicy.create({
     userId: user._id,
-    vehicleId: camry._id,
+    vehicleId: peugeot._id,
     providerId: "state-farm",
     s3Key: sfKey,
     fileName: "state-farm-policy-demo.pdf",
@@ -138,7 +144,7 @@ async function main() {
       policyType: "Personal auto",
       effectiveDates: "2026-03-01 to 2026-09-01",
       premium: "$642.18 per 6 months",
-      coveredVehicle: "2025 Toyota Camry XSE",
+      coveredVehicle: title(PEUGEOT),
       collision: "Covered, $500 deductible",
       comprehensive: "Covered, $250 deductible",
       liability: "$100,000 / $300,000 bodily injury; $100,000 property damage",
@@ -166,17 +172,17 @@ async function main() {
       ],
     },
     aiSummary:
-      "Your Camry has collision coverage with a $500 deductible, so a crash repair like this is likely covered after you pay the first $500. Rental cars are covered up to $40/day. Racing and ride-share use are excluded.",
+      "Your Peugeot has collision coverage with a $500 deductible, so a crash repair like this is likely covered after you pay the first $500. Rental cars are covered up to $40/day. Racing and ride-share use are excluded.",
   });
 
-  const civicKey = makeKey("policies", user._id.toString(), civic._id.toString(), "application/pdf");
+  const lamboKey = makeKey("policies", user._id.toString(), lambo._id.toString(), "application/pdf");
   await putObject(
-    civicKey,
+    lamboKey,
     minimalPdf([
       "DEMO DOCUMENT - FICTIONAL POLICY FOR BECARFUL",
       "GEICO Auto Policy (sample)",
       "Policy number: GC-DEMO-778899",
-      "Vehicle: 2023 Honda Civic",
+      `Vehicle: ${title(LAMBO)}`,
       "Liability: $50,000 / $100,000 bodily injury; $50,000 property damage",
       "Collision: covered, $1,000 deductible",
     ]),
@@ -184,9 +190,9 @@ async function main() {
   );
   await InsurancePolicy.create({
     userId: user._id,
-    vehicleId: civic._id,
+    vehicleId: lambo._id,
     providerId: "geico",
-    s3Key: civicKey,
+    s3Key: lamboKey,
     fileName: "geico-policy-demo.pdf",
     status: "processed",
     extractedData: {
@@ -195,7 +201,7 @@ async function main() {
       policyType: "Personal auto",
       effectiveDates: null,
       premium: null,
-      coveredVehicle: "2023 Honda Civic",
+      coveredVehicle: title(LAMBO),
       collision: "Covered, $1,000 deductible",
       comprehensive: null,
       liability: "$50,000 / $100,000 bodily injury; $50,000 property damage",
@@ -223,14 +229,14 @@ async function main() {
       ],
     },
     aiSummary:
-      "Your Civic has liability and collision coverage with a $1,000 collision deductible. Comprehensive, rental and roadside coverage were not found in the uploaded policy.",
+      "Your Lamborghini has liability and collision coverage with a $1,000 collision deductible. Comprehensive, rental and roadside coverage were not found in the uploaded policy.",
   });
 
   const occurredAt = new Date(Date.now() - 26 * HOUR);
   const incident = await Incident.create({
     userId: user._id,
-    vehicleId: camry._id,
-    insurancePolicyId: camryPolicy._id,
+    vehicleId: peugeot._id,
+    insurancePolicyId: peugeotPolicy._id,
     type: "collision",
     occurredAt,
     location: "Lamar Blvd & W 5th St, Austin, TX",
@@ -238,11 +244,10 @@ async function main() {
     status: "documenting",
   });
 
-  const photos: { label: string; dent: { x: number; y: number }; source: "camera" | "upload"; located: boolean; damage: DamagedComponent[]; summary: string }[] = [
+  const photos: { label: string; dent: { x: number; y: number }; located: boolean; damage: DamagedComponent[]; summary: string }[] = [
     {
       label: "front-left close-up",
       dent: { x: 44, y: 110 },
-      source: "camera",
       located: true,
       damage: [
         { component: "front_left_fender", damageTypes: ["dent", "scratch"], severity: "moderate", confidence: 0.88, description: "Visible dent and paint damage above the wheel arch" },
@@ -253,7 +258,6 @@ async function main() {
     {
       label: "front-left headlight",
       dent: { x: 44, y: 128 },
-      source: "camera",
       located: true,
       damage: [
         { component: "left_headlight", damageTypes: ["crack"], severity: "minor", confidence: 0.66, description: "Hairline crack in the headlight lens" },
@@ -264,7 +268,6 @@ async function main() {
     {
       label: "wide shot, driver side",
       dent: { x: 60, y: 120 },
-      source: "upload",
       located: false,
       damage: [
         { component: "front_left_door", damageTypes: ["scratch"], severity: "minor", confidence: 0.61, description: "Light scratch on the leading edge of the door" },
@@ -275,21 +278,27 @@ async function main() {
 
   for (const [i, p] of photos.entries()) {
     const at = new Date(occurredAt.getTime() + (i + 1) * 5 * 60 * 1000);
-    const photo = await DamagePhoto.create({
-      userId: user._id,
-      vehicleId: camry._id,
-      incidentId: incident._id,
-      s3Key: await uploadPhoto(user._id, camry._id, placeholderPhoto(p.label, p.dent)),
-      contentType: "image/svg+xml",
-      source: p.source,
-      capturedAt: p.source === "camera" ? at : undefined,
+    const svg = placeholderPhoto(p.label, p.dent);
+    const evidence = {
+      sha256: sha256Hex(svg),
+      capturedAt: at,
       serverReceivedAt: new Date(at.getTime() + 4000),
       ...(p.located ? { latitude: 30.2686, longitude: -97.7555, locationAccuracy: 12 } : {}),
+    };
+    const photo = await DamagePhoto.create({
+      userId: user._id,
+      vehicleId: peugeot._id,
+      incidentId: incident._id,
+      s3Key: await uploadPhoto(user._id, peugeot._id, svg),
+      contentType: "image/svg+xml",
+      source: "camera",
+      ...evidence,
+      seal: sealPhoto({ vehicleId: peugeot.id, ...evidence }, env().AUTH_SECRET),
       analysisStatus: "done",
     });
     await DamageAssessment.create({
       userId: user._id,
-      vehicleId: camry._id,
+      vehicleId: peugeot._id,
       incidentId: incident._id,
       photoId: photo._id,
       damagedComponents: p.damage,
@@ -306,13 +315,13 @@ async function main() {
     ["assistant", "You have 3 photos of the front-left area, which covers the basics. A close-up of the headlight crack in daylight would help too."],
   ];
   for (const [i, [role, content]] of chat.entries()) {
-    await ChatMessage.create({ userId: user._id, vehicleId: camry._id, role, content, createdAt: new Date(Date.now() - (chat.length - i) * 60_000) });
+    await ChatMessage.create({ userId: user._id, vehicleId: peugeot._id, role, content, createdAt: new Date(Date.now() - (chat.length - i) * 60_000) });
   }
 
-  await refreshIncidentStatus(user._id, camry._id);
-  await refreshIncidentStatus(user._id, civic._id);
+  await refreshIncidentStatus(user._id, peugeot._id);
+  await refreshIncidentStatus(user._id, lambo._id);
 
-  console.log(`Seeded ${DEMO_EMAIL} / ${DEMO_PASSWORD} with a 2025 Toyota Camry XSE and a 2023 Honda Civic.`);
+  console.log(`Seeded ${DEMO_EMAIL} / ${DEMO_PASSWORD} with a ${title(PEUGEOT)} and a ${title(LAMBO)}.`);
 }
 
 main()

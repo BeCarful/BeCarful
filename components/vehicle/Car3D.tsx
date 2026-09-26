@@ -5,9 +5,10 @@ import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber"
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentRef, type RefObject } from "react";
 import * as THREE from "three";
 import { COMPONENT_IDS, type AggregatedDamage, type ComponentId, type Severity } from "@/types";
-import { CAR_MODEL, classifyPoint, partKind } from "./car-zones";
+import { carModel, type Axis } from "@/services/vehicles/car-models";
+import { classifyPoint, partKind } from "./car-zones";
 
-type Props = { damage: AggregatedDamage[]; focused?: ComponentId | null; onSelect?: (id: ComponentId) => void };
+type Props = { damage: AggregatedDamage[]; focused?: ComponentId | null; onSelect?: (id: ComponentId) => void; modelId?: string | null };
 type Controls = ComponentRef<typeof OrbitControls>;
 type Goal = { theta: number; phi: number; radius: number; snap: boolean };
 type Prepared = {
@@ -22,10 +23,7 @@ const TARGET = new THREE.Vector3(0, 0.4, 0);
 const INDEX = new Map(COMPONENT_IDS.map((id, i) => [id, i]));
 const TOP_VIEW = new Set<ComponentId>(["hood", "roof", "trunk", "windshield", "rear_window"]);
 
-const axis = (a: string) => new THREE.Vector3().setComponent(a[1] === "x" ? 0 : 2, a[0] === "-" ? -1 : 1);
-const FORWARD = axis(CAR_MODEL.forward);
-const LEFT = axis(CAR_MODEL.left);
-const START = FORWARD.clone().add(LEFT.clone().multiplyScalar(0.9)).setLength(5).setY(2.2);
+const axis = (a: Axis) => new THREE.Vector3().setComponent(a[1] === "x" ? 0 : 2, a[0] === "-" ? -1 : 1);
 
 type Tint = [number, number, number, number];
 const rgba = (hex: string, a: number): Tint => {
@@ -59,20 +57,20 @@ function tintable(source: THREE.Material) {
   return m;
 }
 
-function prepare(source: THREE.Object3D): Prepared {
+function prepare(source: THREE.Object3D, forward: THREE.Vector3, left: THREE.Vector3): Prepared {
   const root = new THREE.Group();
   const model = source.clone(true);
   root.add(model);
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
-  const scale = LENGTH / Math.abs(size.dot(FORWARD));
+  const scale = LENGTH / Math.abs(size.dot(forward));
   model.scale.multiplyScalar(scale);
   model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
   root.updateMatrixWorld(true);
 
   const halfLength = LENGTH / 2;
-  const halfWidth = (Math.abs(size.dot(LEFT)) * scale) / 2;
+  const halfWidth = (Math.abs(size.dot(left)) * scale) / 2;
   const height = size.y * scale;
   const sums = COMPONENT_IDS.map(() => new THREE.Vector3());
   const counts = COMPONENT_IDS.map(() => 0);
@@ -91,7 +89,7 @@ function prepare(source: THREE.Object3D): Prepared {
     const zones = new Uint8Array(pos.count);
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-      const z = INDEX.get(classifyPoint({ f: v.dot(FORWARD) / halfLength, l: v.dot(LEFT) / halfWidth, h: v.y / height }, kind))!;
+      const z = INDEX.get(classifyPoint({ f: v.dot(forward) / halfLength, l: v.dot(left) / halfWidth, h: v.y / height }, kind))!;
       zones[i] = z;
       sums[z].add(v);
       counts[z]++;
@@ -114,6 +112,7 @@ function prepare(source: THREE.Object3D): Prepared {
 }
 
 function CarModel({
+  modelId,
   damage,
   focused,
   onSelect,
@@ -122,8 +121,9 @@ function CarModel({
   fitRef,
   onReady,
 }: Props & { controlsRef: RefObject<Controls | null>; goalRef: RefObject<Goal | null>; fitRef: RefObject<number>; onReady: () => void }) {
-  const { scene } = useGLTF(CAR_MODEL.url, false);
-  const car = useMemo(() => prepare(scene), [scene]);
+  const model = carModel(modelId);
+  const { scene } = useGLTF(model.url, false);
+  const car = useMemo(() => prepare(scene, axis(model.forward), axis(model.left)), [scene, model]);
   const invalidate = useThree((s) => s.invalidate);
 
   useEffect(() => {
@@ -229,12 +229,14 @@ export default function Car3D(props: Props) {
     ctl.domElement?.style.setProperty("touch-action", "pan-y");
   }, []);
   const dark = useDark();
-  const { credit } = CAR_MODEL;
+  const model = carModel(props.modelId);
+  const { credit } = model;
+  const start = axis(model.forward).add(axis(model.left).multiplyScalar(0.9)).setLength(5).setY(2.2);
   const link = "underline decoration-dotted underline-offset-2";
 
   return (
     <div className="absolute inset-0">
-      <Canvas frameloop="demand" dpr={[1, 2]} gl={{ alpha: true, antialias: true }} camera={{ fov: 35, position: START.toArray() }}>
+      <Canvas frameloop="demand" dpr={[1, 2]} gl={{ alpha: true, antialias: true }} camera={{ fov: 35, position: start.toArray() }}>
         <hemisphereLight args={["#ffffff", "#6b7a8f", dark ? 0.5 : 1.1]} />
         <directionalLight position={[4, 8, 5]} intensity={dark ? 0.7 : 2.2} color={dark ? "#b8c6ff" : "#ffffff"} />
         <Environment resolution={256} frames={1} environmentIntensity={dark ? 0.5 : 1}>

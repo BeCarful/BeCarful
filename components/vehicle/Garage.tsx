@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export function Garage({ badge, footer, children }: { badge?: ReactNode; footer?: ReactNode; children: ReactNode }) {
   return (
     <section aria-label="Your car" className="surface-card overflow-hidden">
-      <div className="pixel-scene [--horizon:60%]">
+      <div className="relative bg-panel-shade">
         {badge && <div className="absolute left-3 top-3 z-10">{badge}</div>}
         {children}
       </div>

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { isValidObjectId, type HydratedDocument } from "mongoose";
 import { z } from "zod";
+import { env } from "@/lib/env";
 import { DamageAssessment } from "@/models/DamageAssessment";
 import { DamagePhoto, type DamagePhotoDoc } from "@/models/DamagePhoto";
 import { Incident } from "@/models/Incident";
@@ -20,6 +21,7 @@ import {
   validateUpload,
   type PresignedUpload,
 } from "@/services/storage/gcs";
+import { sealPhoto, sha256Hex } from "@/services/photos/seal";
 import { toAnalysis } from "@/services/photos/view";
 import { requireVehicle } from "@/services/vehicles/context";
 import type { ActionResult } from "@/types";
@@ -30,18 +32,15 @@ export type PhotoResult = { photoId: string; analysis: DamageAnalysis | null };
 const UploadInput = z.object({ contentType: z.string().max(100), size: z.number() });
 
 const key = z.string().min(1).max(512);
-const RegisterInput = z.discriminatedUnion("source", [
-  z.object({
-    key,
-    source: z.literal("camera"),
-    capturedAt: z.iso.datetime().optional(),
-    latitude: z.number().min(-90).max(90).optional(),
-    longitude: z.number().min(-180).max(180).optional(),
-    locationAccuracy: z.number().nonnegative().optional(),
-  }),
-  // Uploads never carry capture time or location: we don't know them.
-  z.object({ key, source: z.literal("upload") }),
-]);
+// Uploads never carry capture time or location: we don't know them.
+const RegisterInput = z.object({
+  key,
+  source: z.literal("camera"),
+  capturedAt: z.iso.datetime().optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  locationAccuracy: z.number().nonnegative().optional(),
+});
 export type RegisterPhotoInput = z.input<typeof RegisterInput>;
 
 const TRY_AGAIN = "Something went wrong on our side. Please try again.";
@@ -85,7 +84,16 @@ export async function registerPhoto(vehicleId: string, input: RegisterPhotoInput
       return { ok: false, error: "That file isn't a supported photo. Use a JPEG, PNG or WebP under 15 MB." };
     }
 
+    const bytes = await getObjectBytes(data.key);
     const incident = await getOrCreateOpenIncident(user._id, vehicle._id);
+    const evidence = {
+      sha256: sha256Hex(bytes),
+      serverReceivedAt: new Date(),
+      capturedAt: data.capturedAt ? new Date(data.capturedAt) : undefined,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      locationAccuracy: data.locationAccuracy,
+    };
     const photo = await DamagePhoto.create({
       userId: user._id,
       vehicleId: vehicle._id,
@@ -93,17 +101,10 @@ export async function registerPhoto(vehicleId: string, input: RegisterPhotoInput
       s3Key: data.key,
       contentType: head.contentType,
       source: data.source,
-      serverReceivedAt: new Date(),
-      ...(data.source === "camera"
-        ? {
-            capturedAt: data.capturedAt ? new Date(data.capturedAt) : undefined,
-            latitude: data.latitude,
-            longitude: data.longitude,
-            locationAccuracy: data.locationAccuracy,
-          }
-        : {}),
+      ...evidence,
+      seal: sealPhoto({ vehicleId: vehicle.id, ...evidence }, env().AUTH_SECRET),
     });
-    return { ok: true, data: await analyze(photo) };
+    return { ok: true, data: await analyze(photo, bytes) };
   } catch (err) {
     console.error("registerPhoto", err);
     return { ok: false, error: TRY_AGAIN };
@@ -154,7 +155,7 @@ export async function deletePhoto(vehicleId: string, photoId: string): Promise<A
   return { ok: true, data: undefined };
 }
 
-async function analyze(photo: HydratedDocument<DamagePhotoDoc>): Promise<PhotoResult> {
+async function analyze(photo: HydratedDocument<DamagePhotoDoc>, bytes?: Buffer): Promise<PhotoResult> {
   const scope = { userId: photo.userId, vehicleId: photo.vehicleId };
   photo.analysisStatus = "analyzing";
   await photo.save();
@@ -162,7 +163,7 @@ async function analyze(photo: HydratedDocument<DamagePhotoDoc>): Promise<PhotoRe
 
   let analysis: DamageAnalysis | null = null;
   try {
-    analysis = await analyzeDamage(await getObjectBytes(photo.s3Key), photo.contentType);
+    analysis = await analyzeDamage(bytes ?? (await getObjectBytes(photo.s3Key)), photo.contentType);
     await DamageAssessment.findOneAndUpdate(
       { photoId: photo._id, ...scope },
       { ...analysis, incidentId: photo.incidentId, aiModel: GEMINI_MODEL },

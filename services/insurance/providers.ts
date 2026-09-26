@@ -5,6 +5,7 @@ export type InsuranceProvider = {
   name: string;
   shortName: string;
   color: string;
+  logo?: string;
   claimsUrl: string;
   phone: string;
   officialDomains: string[];
@@ -17,6 +18,7 @@ export const PROVIDERS: InsuranceProvider[] = [
     name: "State Farm",
     shortName: "SF",
     color: "#e01a22",
+    logo: "/insurers/state-farm.png",
     claimsUrl: "https://www.statefarm.com/claims",
     phone: "1-800-732-5246",
     officialDomains: ["statefarm.com"],

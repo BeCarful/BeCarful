@@ -34,7 +34,6 @@
   --accent-ink: #ffffff;
   --accent-soft: #e8effa;
   --brand: #7a2228;
-  --brand-mark: #ac343b;
   --gold: #946000;
   --gold-soft: #fff0c4;
   --danger: #d32f2f;
@@ -111,7 +110,6 @@
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
   --color-brand: var(--brand);
-  --color-brand-mark: var(--brand-mark);
   --color-gold: var(--gold);
   --color-gold-soft: var(--gold-soft);
   --color-danger: var(--danger);
@@ -369,6 +367,26 @@ body {
   animation: appear 0.6s ease-out both;
 }
 
+/* Tuxemon idle: a stepped 2px hop on `translate`, so it stacks with `appear` (which moves `transform`). */
+@keyframes tux-hop {
+  0%,
+  59.9% {
+    translate: 0 0;
+  }
+  60%,
+  100% {
+    translate: 0 -2px;
+  }
+}
+@utility tux-idle {
+  animation: tux-hop 1.2s infinite;
+}
+@utility tux-wild {
+  animation:
+    appear 0.6s ease-out var(--tux-delay, 0s) backwards,
+    tux-hop 1.2s var(--tux-delay, 0s) infinite;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -407,6 +425,10 @@ body {
   }
   .face-b {
     opacity: 0;
+  }
+  .tux-idle,
+  .tux-wild {
+    animation: none !important;
   }
 }
 

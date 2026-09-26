@@ -127,7 +127,7 @@ export function ChatThread({ vehicleId, vehicleName, initialMessages }: { vehicl
       <div ref={logRef} role="log" aria-label={`Chat about ${vehicleName}`} className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4">
         {empty && (
           <div className="mx-auto max-w-lg py-4 text-center">
-            <TuxemonAvatar frame="front" scale={2} className="appear mx-auto" />
+            <TuxemonAvatar frame="front" scale={2} className="tux-wild mx-auto" />
             <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-ink">
               Hi! I&apos;m {ASSISTANT_NAME}. Ask me anything about your {vehicleName}: your policy, the damage, or how to file a claim.
             </p>

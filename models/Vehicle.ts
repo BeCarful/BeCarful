@@ -3,6 +3,7 @@ import { Schema, model, models, type InferSchemaType, type Model } from "mongoos
 const VehicleSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    modelId: { type: String },
     year: { type: Number, required: true },
     make: { type: String, required: true, trim: true },
     model: { type: String, required: true, trim: true },

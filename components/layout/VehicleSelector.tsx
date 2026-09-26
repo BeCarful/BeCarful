@@ -1,39 +1,79 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRef, useTransition } from "react";
 import { selectVehicle } from "@/actions/vehicles";
+import { CAR_ICON, NavIcon, VEHICLE_MENU_ID } from "./BottomNav";
 
-const ADD = "__add__";
+export type VehicleOption = { id: string; title: string };
 
-export function VehicleSelector({ vehicles, selectedId }: { vehicles: { id: string; title: string }[]; selectedId: string | null }) {
-  const router = useRouter();
+export function VehicleSelector({
+  vehicles,
+  selectedId,
+  item,
+  current,
+  idle,
+  onDone,
+}: {
+  vehicles: VehicleOption[];
+  selectedId: string | null;
+  item: string;
+  current: string;
+  idle: string;
+  onDone?: () => void;
+}) {
   const [pending, startTransition] = useTransition();
 
-  function onChange(value: string) {
-    if (value === ADD) return router.push("/vehicles/new");
-    startTransition(() => selectVehicle(value));
-  }
-
-  if (!vehicles.length) return <span className="truncate text-sm text-ink-soft">No vehicle yet</span>;
-
   return (
-    <label className="block min-w-0 flex-1 md:max-w-xs">
-      <span className="sr-only">Selected vehicle</span>
-      <select
-        value={selectedId ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={pending}
-        aria-busy={pending || undefined}
-        className={`field-select truncate py-2 font-medium ${pending ? "animate-pulse" : ""}`}
-      >
-        {vehicles.map((v) => (
-          <option key={v.id} value={v.id}>
-            {v.title}
-          </option>
-        ))}
-        <option value={ADD}>+ Add vehicle…</option>
-      </select>
-    </label>
+    <ul className={`space-y-1 ${pending ? "animate-pulse" : ""}`} aria-busy={pending || undefined}>
+      {vehicles.map((v) => {
+        const active = v.id === selectedId;
+        return (
+          <li key={v.id}>
+            <button
+              type="button"
+              aria-current={active || undefined}
+              disabled={pending}
+              onClick={() => {
+                onDone?.();
+                if (!active) startTransition(() => selectVehicle(v.id));
+              }}
+              className={`${item} text-left ${active ? current : idle}`}
+            >
+              <NavIcon paths={CAR_ICON} active={active} />
+              <span className="min-w-0 truncate">{v.title}</span>
+            </button>
+          </li>
+        );
+      })}
+      <li>
+        <Link href="/vehicles/new" onClick={onDone} className={`${item} ${idle}`}>
+          <NavIcon paths={["M12 5v14M5 12h14"]} active={false} />
+          Add vehicle
+        </Link>
+      </li>
+    </ul>
+  );
+}
+
+export function VehicleMenu({ vehicles, selectedId }: { vehicles: VehicleOption[]; selectedId: string | null }) {
+  const menu = useRef<HTMLDivElement>(null);
+  return (
+    <div
+      ref={menu}
+      id={VEHICLE_MENU_ID}
+      popover="auto"
+      className="inset-x-3 top-auto bottom-[calc(4.75rem+env(safe-area-inset-bottom))] m-0 max-h-[60dvh] w-auto overflow-y-auto rounded-xl border border-border bg-panel p-2 text-ink shadow-[0_8px_24px_var(--shadow)] backdrop:bg-black/25"
+    >
+      <p className="px-3 pt-2 pb-1 text-xs font-semibold text-ink-soft">Vehicles</p>
+      <VehicleSelector
+        vehicles={vehicles}
+        selectedId={selectedId}
+        item="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-base font-medium transition"
+        current="bg-accent-soft text-accent"
+        idle="hover:bg-panel-shade"
+        onDone={() => menu.current?.hidePopover()}
+      />
+    </div>
   );
 }

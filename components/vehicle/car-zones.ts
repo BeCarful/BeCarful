@@ -1,21 +1,6 @@
 import type { ComponentId } from "@/types";
 
 export type PartKind = "body" | "glass" | "light" | "taillight" | "wheel";
-type Axis = "+x" | "-x" | "+z" | "-z";
-
-export const CAR_MODEL = {
-  url: "/models/car.glb",
-  forward: "+z" as Axis,
-  left: "+x" as Axis,
-  credit: {
-    title: "2019 Lamborghini SC18 Alston",
-    author: "Ddiaz Design",
-    authorUrl: "https://sketchfab.com/ddiaz-design",
-    sourceUrl: "https://sketchfab.com/3d-models/2019-lamborghini-sc18-alston-f64ddc9ca05a4730ab7b84a0420c1a2c",
-    license: "CC BY-NC-SA 4.0",
-    licenseUrl: "https://creativecommons.org/licenses/by-nc-sa/4.0/",
-  },
-};
 
 // ponytail: the model is split by material, so parts are position zones. A model with meshes named by component ID should replace this.
 export const ZONE = {
@@ -34,10 +19,10 @@ export const ZONE = {
 
 export function partKind(nodeNames: string[], materialName: string): PartKind {
   const names = [...nodeNames, materialName].join(" ");
-  if (/wheel|tire|tyre|rim|calliper|caliper/i.test(names)) return "wheel";
-  if (/red_glass|tail/i.test(names)) return "taillight";
+  if (/wheel|tire|tyre|(?<![a-z])rim|calliper|caliper/i.test(names)) return "wheel";
+  if (/red_glass|(?<!de)tail/i.test(names)) return "taillight";
   if (/glass|window/i.test(names)) return "glass";
-  if (/light|lamp/i.test(names)) return "light";
+  if (/(?<!high)light|lamp/i.test(names)) return "light";
   return "body";
 }
 

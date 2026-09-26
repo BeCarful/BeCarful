@@ -43,7 +43,7 @@ export function computeTodos(s: ClaimState): TodoList {
   }
   items.push({
     code: "ADD_PHOTOS",
-    title: s.photoCount > 0 ? "Photos added" : "Take or upload photos of your vehicle",
+    title: s.photoCount > 0 ? "Photos added" : "Take photos of your vehicle",
     done: s.photoCount > 0,
     href: "/",
   });

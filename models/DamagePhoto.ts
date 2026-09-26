@@ -15,6 +15,8 @@ const DamagePhotoSchema = new Schema(
     latitude: { type: Number },
     longitude: { type: Number },
     locationAccuracy: { type: Number },
+    sha256: { type: String },
+    seal: { type: String },
     analysisStatus: { type: String, enum: ANALYSIS_STATUSES, default: "pending" },
   },
   { timestamps: true },
