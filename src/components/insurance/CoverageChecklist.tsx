@@ -8,7 +8,7 @@ import { RecheckCoverage } from "./RecheckCoverage";
 
 const link = "underline decoration-dotted underline-offset-2 hover:text-accent";
 
-function Law({ law }: { law: CoverageItem["law"] }) {
+export function Law({ law }: { law: CoverageItem["law"] }) {
   if (!law) return null;
   return (
     <a href={law.url} target="_blank" rel="noopener noreferrer" className={`mt-1 inline-block text-xs text-ink-soft ${link}`}>
@@ -17,7 +17,7 @@ function Law({ law }: { law: CoverageItem["law"] }) {
   );
 }
 
-function MonsterCredits({ items }: { items: CoverageItem[] }) {
+export function MonsterCredits({ items }: { items: CoverageItem[] }) {
   const monsters = [...new Set(items.map((i) => PERIL_MONSTERS[i.peril]))];
   return (
     <p className="mt-4 text-[11px] leading-snug text-ink-soft">
