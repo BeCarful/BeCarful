@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { RetroCard, RetroLinkButton, retroButtonClass } from "@/components/retro";
 import { CallButton, ClaimActions } from "@/components/summary/ClaimActions";
 import { DamageCard } from "@/components/summary/DamageCard";
+import { Deadlines } from "@/components/summary/Deadlines";
 import { IncidentForm } from "@/components/summary/IncidentForm";
 import { ShareEvidence } from "@/components/summary/ShareEvidence";
 import { CarSwitcher } from "@/components/summary/CarSwitcher";
@@ -12,6 +13,7 @@ import { StatusPanel } from "@/components/summary/StatusPanel";
 import { TodoCard } from "@/components/summary/TodoCard";
 import { PolicyExtractionSchema, type PolicyExtraction } from "@/schemas/policy";
 import { damagePhotoCount } from "@/services/claims/damage";
+import { claimDeadlines } from "@/services/claims/deadlines";
 import { checklistOf, combinedCoverage } from "@/services/claims/policies";
 import { loadClaimState } from "@/services/claims/state";
 import { getProvider, isOfficialUrl, type InsuranceProvider } from "@/services/insurance/providers";
@@ -40,6 +42,14 @@ export default async function SummaryPage() {
   const cardPhotos = damage.length ? photos.filter((p) => damageIds.has(p._id.toString())) : photos;
   const recentPhotos = await Promise.all(cardPhotos.slice(0, 4).map(async (p) => ({ id: p._id.toString(), url: await getViewUrl(p.s3Key) })));
   const shareLinks = incident && photos.length > 0 ? await listShareLinks(user._id, selected._id, incident._id) : null;
+  const deadlines =
+    incident && (damage.length > 0 || incident.type || incident.occurredAt)
+      ? {
+          deadlines: claimDeadlines({ type: incident.type, providerId: provider?.id, providerName: provider?.name, filed: incident.status === "filed" }),
+          from: (incident.occurredAt ?? incident.createdAt).toISOString(),
+          estimated: !incident.occurredAt,
+        }
+      : null;
 
   return (
     <div className="space-y-6">
@@ -99,6 +109,7 @@ export default async function SummaryPage() {
             photoCount={damagePhotoCount(damage)}
             incident={incident}
           />
+          {deadlines && <Deadlines {...deadlines} now={new Date().toISOString()} detailsHref="#incident" />}
         </TodoCard>
 
         {incident && (
