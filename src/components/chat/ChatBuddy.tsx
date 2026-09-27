@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type PointerEvent } from "react";
 import { loadChat, transcribeSpeech } from "@/actions/chat";
 import { NavIcon, isActive } from "@/components/layout/BottomNav";
@@ -51,6 +51,7 @@ function MiniChat({ vehicleId, assistant, style, onClose }: { vehicleId: string;
   const [draft, setDraft] = useState("");
   const [outbox, setOutbox] = useState<{ text: string; error: string | null } | null>(null);
   const [streamed, setStreamed] = useState("");
+  const router = useRouter();
   const log = useRef<HTMLDivElement>(null);
   const sending = outbox !== null && outbox.error === null;
 
@@ -80,6 +81,7 @@ function MiniChat({ vehicleId, assistant, style, onClose }: { vehicleId: string;
     if (res.ok) {
       setMessages((m) => [...(m ?? []), res.data.user, res.data.reply]);
       setOutbox(null);
+      if (res.data.navigate) router.push(res.data.navigate);
     } else {
       setOutbox({ text, error: res.error });
     }
@@ -157,6 +159,7 @@ function MiniChat({ vehicleId, assistant, style, onClose }: { vehicleId: string;
 
 export function ChatBuddy({ vehicleId, assistant, voice }: { vehicleId: string | null; assistant: Assistant; voice: boolean }) {
   const path = usePathname();
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("closed");
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const [talk, setTalk] = useState<Talk | null>(null);
@@ -239,6 +242,7 @@ export function ChatBuddy({ vehicleId, assistant, voice }: { vehicleId: string |
       if (!res.ok) return setTalk({ status: "error", heard: heard.data, error: res.error });
       setTalk({ status: "done", heard: heard.data, reply: res.data.reply });
       speech.play(res.data.reply.id);
+      if (res.data.navigate) router.push(res.data.navigate);
     });
     if (error && !stale()) setTalk({ status: "error", error });
   }

@@ -24,11 +24,19 @@ test("streamChat accumulates deltas, restarts on a fresh segment and returns the
     { type: "delta", text: "check.", fresh: false },
     { type: "delta", text: "Your deductible ", fresh: true },
     { type: "delta", text: "is $500.", fresh: false },
-    { type: "done", user: msg("u1", "user", "deductible?"), reply: msg("a1", "assistant", "Your deductible is $500.") },
+    { type: "done", user: msg("u1", "user", "deductible?"), reply: msg("a1", "assistant", "Your deductible is $500."), navigate: "/insurance" },
   ]);
   const res = await streamChat("v1", "deductible?", (t) => seen.push(t));
   assert.deepEqual(seen, ["Let me ", "Let me check.", "Your deductible ", "Your deductible is $500."]);
-  assert.ok(res.ok && res.data.reply.id === "a1");
+  assert.ok(res.ok && res.data.reply.id === "a1" && res.data.navigate === "/insurance");
+});
+
+test("streamChat only lets the chat open paths inside the app", async () => {
+  for (const [href, expected] of [["//evil.test", null], ["https://evil.test", null], ["/\\evil.test", null], ["/garage", "/garage"]]) {
+    serve([{ type: "done", user: msg("u", "user", "open"), reply: msg("a", "assistant", "Opening."), navigate: href }]);
+    const res = await streamChat("v1", "open", () => {});
+    assert.equal(res.ok && res.data.navigate, expected, String(href));
+  }
 });
 
 test("streamChat surfaces server errors and cut-off streams", async () => {

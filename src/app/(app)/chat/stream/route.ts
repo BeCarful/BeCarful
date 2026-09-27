@@ -37,11 +37,11 @@ export async function POST(req: NextRequest) {
             : await ChatMessage.create({ ...scope, role: "user", content: parsed.data.text });
         // A new message makes older proposals stale: they must be asked for again.
         await ChatMessage.updateMany({ ...scope, "action.status": "pending" }, { "action.status": "cancelled" });
-        const { text: content, action } = await runChatAgent(user._id, vehicle._id, assistantById(user.assistantId).name, (text, fresh) =>
+        const { text: content, action, navigate } = await runChatAgent(user._id, vehicle._id, assistantById(user.assistantId).name, (text, fresh) =>
           send({ type: "delta", text, fresh }),
         );
         const reply = await ChatMessage.create({ ...scope, role: "assistant", content, ...(action ? { action } : {}) });
-        send({ type: "done", user: toChatView(userMsg), reply: toChatView(reply) });
+        send({ type: "done", user: toChatView(userMsg), reply: toChatView(reply), navigate });
       } catch (err) {
         console.error("chat stream", err);
         send({ type: "error", error: "I couldn't answer just now. Check your connection, then tap Retry." });

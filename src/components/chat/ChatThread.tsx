@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { resolveChatAction, transcribeSpeech } from "@/actions/chat";
 import { selectVehicle } from "@/actions/vehicles";
@@ -153,6 +154,7 @@ function ChatThread({
   const [hearing, setHearing] = useState(false);
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
   const speech = useVoice();
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const scrolled = useRef(false);
@@ -186,6 +188,7 @@ function ChatThread({
       setMessages((m) => [...m.map(stale), res.data.user, res.data.reply]);
       setOutbox(null);
       if (spoken) speech.play(res.data.reply.id);
+      if (res.data.navigate) router.push(res.data.navigate);
     } else {
       setOutbox({ text, error: res.error });
     }

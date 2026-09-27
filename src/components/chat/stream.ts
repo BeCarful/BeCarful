@@ -1,12 +1,14 @@
 import type { ChatMessageView } from "@/services/ai/chat";
 import type { ActionResult } from "@/types";
 
-export type ChatExchange = { user: ChatMessageView; reply: ChatMessageView };
+export type ChatExchange = { user: ChatMessageView; reply: ChatMessageView; navigate: string | null };
 
 export type ChatStreamEvent =
   | { type: "delta"; text: string; fresh: boolean }
   | ({ type: "done" } & ChatExchange)
   | { type: "error"; error: string };
+
+const appPath = (href: unknown) => (typeof href === "string" && href.startsWith("/") && !href.startsWith("//") && !href.includes("\\") ? href : null);
 
 const OFFLINE = "Couldn't reach BeCarful. Check your connection, then tap Retry.";
 
@@ -32,7 +34,7 @@ export async function streamChat(vehicleId: string, text: string, onText: (soFar
         const ev = JSON.parse(buffer.slice(0, nl)) as ChatStreamEvent;
         buffer = buffer.slice(nl + 1);
         if (ev.type === "error") return { ok: false, error: ev.error };
-        if (ev.type === "done") return { ok: true, data: { user: ev.user, reply: ev.reply } };
+        if (ev.type === "done") return { ok: true, data: { user: ev.user, reply: ev.reply, navigate: appPath(ev.navigate) } };
         soFar = ev.fresh ? ev.text : soFar + ev.text;
         onText(soFar);
       }
