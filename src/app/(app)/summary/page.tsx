@@ -5,6 +5,7 @@ import { RetroCard, RetroLinkButton, retroButtonClass } from "@/components/retro
 import { CallButton, ClaimActions } from "@/components/summary/ClaimActions";
 import { DamageCard } from "@/components/summary/DamageCard";
 import { IncidentForm } from "@/components/summary/IncidentForm";
+import { ShareEvidence } from "@/components/summary/ShareEvidence";
 import { CarSwitcher } from "@/components/summary/CarSwitcher";
 import { InsuranceCard, type PolicyView } from "@/components/summary/InsuranceCard";
 import { StatusPanel } from "@/components/summary/StatusPanel";
@@ -14,6 +15,7 @@ import { damagePhotoCount } from "@/services/claims/damage";
 import { checklistOf, combinedCoverage } from "@/services/claims/policies";
 import { loadClaimState } from "@/services/claims/state";
 import { getProvider, isOfficialUrl, type InsuranceProvider } from "@/services/insurance/providers";
+import { listShareLinks } from "@/services/share/evidence";
 import { getViewUrl } from "@/services/storage/gcs";
 import { getVehicleContext, vehicleModel, vehicleTitle } from "@/services/vehicles/context";
 
@@ -37,6 +39,7 @@ export default async function SummaryPage() {
   const damageIds = new Set(damage.flatMap((d) => d.photoIds));
   const cardPhotos = damage.length ? photos.filter((p) => damageIds.has(p._id.toString())) : photos;
   const recentPhotos = await Promise.all(cardPhotos.slice(0, 4).map(async (p) => ({ id: p._id.toString(), url: await getViewUrl(p.s3Key) })));
+  const shareLinks = incident && photos.length > 0 ? await listShareLinks(user._id, selected._id, incident._id) : null;
 
   return (
     <div className="space-y-6">
@@ -111,6 +114,15 @@ export default async function SummaryPage() {
                 notes: incident.notes ?? "",
               }}
             />
+          </RetroCard>
+        )}
+
+        {shareLinks && (
+          <RetroCard id="share" title="Share evidence" className="scroll-mt-24">
+            <p className="-mt-1 mb-4 text-sm text-ink-soft">
+              Send your photos and incident details to an adjuster or the police. Anyone with the link can view them until it expires.
+            </p>
+            <ShareEvidence vehicleId={vehicleId} vehicleTitle={vehicleTitle(selected)} links={shareLinks} />
           </RetroCard>
         )}
       </div>

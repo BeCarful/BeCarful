@@ -6,7 +6,7 @@ const PUBLIC_PATHS = ["/login", "/signup"];
 // Optimistic check only; pages and actions still call requireUser().
 export async function proxy(req: NextRequest) {
   const signedIn = Boolean(await verifySession(req.cookies.get(SESSION_COOKIE)?.value));
-  const isPublic = PUBLIC_PATHS.includes(req.nextUrl.pathname);
+  const isPublic = PUBLIC_PATHS.includes(req.nextUrl.pathname) || req.nextUrl.pathname.startsWith("/share/");
   if (!signedIn && !isPublic) return NextResponse.redirect(new URL("/login", req.url));
   return NextResponse.next();
 }
