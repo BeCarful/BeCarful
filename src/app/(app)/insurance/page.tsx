@@ -8,6 +8,7 @@ import { InsuranceSetup } from "@/components/insurance/InsuranceSetup";
 import { COVERAGE_FIELDS, DETAIL_FIELDS, PolicyFields } from "@/components/insurance/PolicyFields";
 import { PolicyUpload } from "@/components/insurance/PolicyUpload";
 import { ProviderMark, ProviderName } from "@/components/insurance/ProviderPicker";
+import { assistantById, type Assistant } from "@/components/chat/assistants";
 import { TuxemonAttribution, TuxemonAvatar } from "@/components/chat/TuxemonAssistant";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RemoveButton, RetroBadge, RetroCard, RetroDialog, retroButtonClass } from "@/components/retro";
@@ -58,7 +59,11 @@ export default async function InsurancePage({ searchParams }: { searchParams: Pr
         }
       />
       {policies.length > 0 && <PolicyTabs policies={policies} currentId={policy ? String(policy._id) : null} />}
-      {policy ? <PolicyScreen key={String(policy._id)} vehicleId={vehicleId} policy={policy} /> : <InsuranceSetup vehicleId={vehicleId} />}
+      {policy ? (
+        <PolicyScreen key={String(policy._id)} vehicleId={vehicleId} policy={policy} assistant={assistantById(user.assistantId)} />
+      ) : (
+        <InsuranceSetup vehicleId={vehicleId} />
+      )}
     </div>
   );
 }
@@ -96,7 +101,7 @@ function PolicyTabs({ policies, currentId }: { policies: Policy[]; currentId: st
   );
 }
 
-function PolicyScreen({ vehicleId, policy }: { vehicleId: string; policy: Policy }) {
+function PolicyScreen({ vehicleId, policy, assistant }: { vehicleId: string; policy: Policy; assistant: Assistant }) {
   const policyId = String(policy._id);
   const provider = getProvider(policy.providerId);
   const status = STATUS[policy.status] ?? STATUS.processing;
@@ -186,10 +191,10 @@ function PolicyScreen({ vehicleId, policy }: { vehicleId: string; policy: Policy
         {data && (
           <div className="space-y-6">
             {policy.aiSummary && (
-              <RetroDialog speaker="In plain words" avatar={<TuxemonAvatar frame="front" scale={1} />}>
+              <RetroDialog speaker="In plain words" avatar={<TuxemonAvatar frame="front" scale={1} sheet={assistant.sheet} label={assistant.name} />}>
                 <p>{policy.aiSummary}</p>
                 <p className="mt-2 text-xs text-ink-soft">AI summary of what we found in your policy.</p>
-                <TuxemonAttribution />
+                <TuxemonAttribution monsters={[assistant]} />
               </RetroDialog>
             )}
             <RetroCard title="Policy details">

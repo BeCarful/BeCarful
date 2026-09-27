@@ -423,6 +423,19 @@ body {
   animation: pulse-ring 1.8s ease-out infinite;
 }
 
+@keyframes buddy-bob {
+  0%,
+  100% {
+    transform: none;
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@utility buddy-bob {
+  animation: buddy-bob 2.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -436,7 +449,8 @@ body {
   .wheel-b {
     opacity: 0;
   }
-  .tux-wild {
+  .tux-wild,
+  .buddy-bob {
     animation: none !important;
   }
   .tux-front {

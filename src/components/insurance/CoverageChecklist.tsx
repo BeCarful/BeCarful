@@ -1,5 +1,5 @@
-import { Fragment, type CSSProperties } from "react";
-import { TuxemonAvatar } from "@/components/chat/TuxemonAssistant";
+import type { CSSProperties } from "react";
+import { TuxemonAttribution, TuxemonAvatar } from "@/components/chat/TuxemonAssistant";
 import { RetroBadge, RetroCard } from "@/components/retro";
 import type { CoverageItem } from "@/services/ai/coverage-rules";
 import { PERIL_LABELS } from "@/types";
@@ -18,30 +18,7 @@ export function Law({ law }: { law: CoverageItem["law"] }) {
 }
 
 export function MonsterCredits({ items }: { items: CoverageItem[] }) {
-  const monsters = [...new Set(items.map((i) => PERIL_MONSTERS[i.peril]))];
-  return (
-    <p className="mt-4 text-[11px] leading-snug text-ink-soft">
-      Sprites from Tuxemon, animated by BeCarful:{" "}
-      {monsters.map((m, i) => (
-        <Fragment key={m.name}>
-          {i > 0 && ", "}
-          {m.name} by{" "}
-          <a className={link} href={m.authorUrl} target="_blank" rel="noopener noreferrer">
-            {m.author}
-          </a>{" "}
-          (
-          <a className={link} href={m.licenseUrl} target="_blank" rel="noopener noreferrer">
-            {m.license}
-          </a>
-          )
-        </Fragment>
-      ))}
-      .{" "}
-      <a className={link} href="/tuxemon/ATTRIBUTION.md" target="_blank" rel="noopener">
-        Full credits
-      </a>
-    </p>
-  );
+  return <TuxemonAttribution monsters={[...new Set(items.map((i) => PERIL_MONSTERS[i.peril]))]} className="mt-4" />;
 }
 
 /** Uncovered risks as Tuxemon that "may attack", covered ones as a short checklist. */
