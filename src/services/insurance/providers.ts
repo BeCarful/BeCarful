@@ -50,6 +50,7 @@ export const PROVIDERS: InsuranceProvider[] = [
     name: "Allstate",
     shortName: "AS",
     color: "#0033a0",
+    logo: "/insurers/allstate.png",
     claimsUrl: "https://www.allstate.com/claims",
     phone: "1-800-255-7828",
     officialDomains: ["allstate.com"],
