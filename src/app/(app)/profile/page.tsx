@@ -2,6 +2,7 @@ import { logout } from "@/actions/auth";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { RetroBadge, RetroButton, RetroCard, RetroLinkButton } from "@/components/retro";
+import { DeleteVehicleButton } from "@/components/vehicle/DeleteVehicleButton";
 import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
 
 export default async function ProfilePage() {
@@ -24,7 +25,7 @@ export default async function ProfilePage() {
         {vehicles.length ? (
           <ul className="divide-y divide-border">
             {vehicles.map((v) => (
-              <li key={v._id.toString()} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <li key={v._id.toString()} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
                 {/* eslint-disable-next-line @next/next/no-img-element -- pixel art scaled with nearest-neighbour */}
                 <img src="/scenery/car.svg" alt="" width={48} height={22} className="pixelated shrink-0" />
                 <span className="min-w-0 flex-1">
@@ -34,6 +35,7 @@ export default async function ProfilePage() {
                   </span>
                 </span>
                 {selected?._id.equals(v._id) && <RetroBadge tone="ok">Selected</RetroBadge>}
+                <DeleteVehicleButton vehicleId={v._id.toString()} title={vehicleTitle(v)} />
               </li>
             ))}
           </ul>

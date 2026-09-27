@@ -14,9 +14,11 @@ export const UPLOAD_RULES: Record<UploadKind, { types: Record<string, string>; m
 export const VIEW_URL_TTL_SECONDS = 60 * 60;
 
 let client: Storage | undefined;
-const file = (key: string) => (client ??= new Storage({ projectId: env().GOOGLE_CLOUD_PROJECT, ...googleAuthOptions() })).bucket(env().GCS_BUCKET_NAME).file(key);
+const bucket = () => (client ??= new Storage({ projectId: env().GOOGLE_CLOUD_PROJECT, ...googleAuthOptions() })).bucket(env().GCS_BUCKET_NAME);
+const file = (key: string) => bucket().file(key);
 
-const keyPrefix = (kind: UploadKind, userId: string, vehicleId: string) => `users/${userId}/vehicles/${vehicleId}/${kind}/`;
+const vehiclePrefix = (userId: string, vehicleId: string) => `users/${userId}/vehicles/${vehicleId}/`;
+const keyPrefix = (kind: UploadKind, userId: string, vehicleId: string) => `${vehiclePrefix(userId, vehicleId)}${kind}/`;
 
 /** Returns an error message, or null when the file is acceptable. */
 export function validateUpload(kind: UploadKind, contentType: string, size: number): string | null {
@@ -80,6 +82,11 @@ export async function putObject(key: string, body: Buffer | string, contentType:
 
 export async function deleteObject(key: string) {
   await file(key).delete({ ignoreNotFound: true });
+}
+
+/** Every photo and policy stored for one vehicle. */
+export async function deleteVehicleObjects(userId: string, vehicleId: string) {
+  await bucket().deleteFiles({ prefix: vehiclePrefix(userId, vehicleId) });
 }
 
 /** Short-lived private read URL. Never store it; generate on read. */

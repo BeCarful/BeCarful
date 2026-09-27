@@ -1,8 +1,8 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { retryPhotoAnalysis } from "@/actions/photos";
-import { RetroBadge } from "@/components/retro";
+import { deletePhoto, retryPhotoAnalysis } from "@/actions/photos";
+import { RetroBadge, RetroButton } from "@/components/retro";
 import type { PhotoView } from "@/services/photos/view";
 import { componentLabel, type DamagedComponent, type VehicleView } from "@/types";
 import { AnalysisSummary } from "./AnalysisSummary";
@@ -72,6 +72,8 @@ export function PhotoViewer({
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [sizes, setSizes] = useState<Record<string, [number, number]>>({});
 
   useLayoutEffect(() => {
@@ -87,6 +89,7 @@ export function PhotoViewer({
       setIndex(i);
       setZoom(null);
       setError(null);
+      setConfirmingDelete(false);
     }
   }
 
@@ -114,6 +117,17 @@ export function PhotoViewer({
     if (!res) setError("Network problem. Check your connection and try again.");
     else if (!res.ok) setError(res.error);
     else if (!res.data.analysis) setError("Still couldn't analyze it. Try again later, or take a clearer photo.");
+  }
+
+  async function remove(photoId: string) {
+    setDeleting(true);
+    setError(null);
+    const res = await deletePhoto(vehicleId, photoId).catch(() => null);
+    setDeleting(false);
+    if (!res) return setError("Network problem. Check your connection and try again.");
+    if (!res.ok) return setError(res.error);
+    // The server revalidates the page, so the gallery and 3D damage refresh without this photo.
+    onClose();
   }
 
   const photo = photos[Math.min(index, photos.length - 1)];
@@ -207,6 +221,23 @@ export function PhotoViewer({
           <p role="alert" className="text-sm text-danger">
             {error}
           </p>
+        )}
+        {confirmingDelete ? (
+          <div className="space-y-2 rounded-lg bg-danger-soft p-3 text-ink" role="alert">
+            <p className="text-sm">Delete this photo? Its damage result is removed too, and this can&apos;t be undone.</p>
+            <div className="flex gap-2">
+              <RetroButton type="button" variant="secondary" className="flex-1" disabled={deleting} onClick={() => setConfirmingDelete(false)}>
+                Cancel
+              </RetroButton>
+              <RetroButton type="button" variant="danger" className="flex-1" disabled={deleting} onClick={() => remove(photo.id)}>
+                {deleting ? "Deleting…" : "Delete"}
+              </RetroButton>
+            </div>
+          </div>
+        ) : (
+          <RetroButton type="button" variant="ghost" className="text-danger" onClick={() => setConfirmingDelete(true)}>
+            Delete photo
+          </RetroButton>
         )}
       </div>
     </FullScreenDialog>

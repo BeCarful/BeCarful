@@ -174,6 +174,7 @@ Mongoose models in `models/`: `User`, `Vehicle`, `InsurancePolicy`, `Incident`, 
 **User:** email (unique), name, passwordHash (`select: false`), lastVehicleId.
 
 **Vehicle:** userId, modelId (catalog id), year, make, model, trim?, color, vin?, licensePlate, state.
+Deleting one (`deleteVehicle`, **Remove** on Profile → Garage, inline confirm) removes its Cloud Storage prefix `users/<userId>/vehicles/<vehicleId>/` first, then its photos, assessments, incidents, policies and chat, then the vehicle; `lastVehicleId` moves to the newest remaining vehicle (or null). No cascade in Mongo itself, and no transaction (works on a standalone `mongo:7`); a failed delete can simply be retried.
 
 **DamagePhoto:**
 ```ts
@@ -181,6 +182,7 @@ Mongoose models in `models/`: `User`, `Vehicle`, `InsurancePolicy`, `Incident`, 
   capturedAt?, serverReceivedAt, latitude?, longitude?, locationAccuracy?, sha256?, seal?,
   analysisStatus: "pending" | "analyzing" | "done" | "failed", createdAt }
 ```
+Deleting one (`deletePhoto`: **Delete photo** in the photo viewer with inline confirm, or the chat's `delete_photo` tool behind Confirm) removes the photo doc, its `DamageAssessment` and the Cloud Storage object, then re-runs `refreshIncidentStatus()`. No schema/index change; no transaction.
 
 **DamageAssessment:** one per analyzed photo: `{ userId, vehicleId, incidentId, photoId, view, damagedComponents[] (optional 0–1 `box` each), summary, needsManualReview, photoIssues[], aiModel }`. `photoIssues` (`PHOTO_ISSUES`) come from code, not Gemini, and force `needsManualReview`. The car's damage state = `aggregateDamage()` over the open incident's assessments (worst severity per component).
 
