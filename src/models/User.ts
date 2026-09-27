@@ -6,6 +6,7 @@ const UserSchema = new Schema(
     name: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true, select: false },
     lastVehicleId: { type: Schema.Types.ObjectId, ref: "Vehicle" },
+    assistantId: { type: String },
   },
   { timestamps: true },
 );
