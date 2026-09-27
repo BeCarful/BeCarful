@@ -40,3 +40,27 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# cv-module: Python virtualenvs, packages and caches
+/cv-module/**/.venv/
+/cv-module/**/venv/
+/cv-module/**/env/
+/cv-module/**/__pycache__/
+/cv-module/**/*.py[cod]
+/cv-module/**/*.egg-info/
+/cv-module/**/.eggs/
+/cv-module/**/.mypy_cache/
+/cv-module/**/.pytest_cache/
+/cv-module/**/.ruff_cache/
+/cv-module/**/.coverage
+/cv-module/**/htmlcov/
+/cv-module/dist/
+/cv-module/build/
+/cv-module/artifacts/wheels/
+/cv-module/tmp/
+/cv-module/var/
+
+# cv-module: JS packages and build output
+/cv-module/**/node_modules/
+/cv-module/**/.next/
+/cv-module/**/*.tsbuildinfo
