@@ -44,7 +44,7 @@ npm run dev         # http://localhost:3000
 npm run build
 npm run lint
 npm run typecheck   # next typegen + tsc
-npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, 3D zones, statute search, policy form search, Jev guard, coverage rules, photo seal, image prep, speech text, chat stream reader, silence detector)
+npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, car sides, 3D zones, statute search, policy form search, Jev guard, coverage rules, photo seal, image prep, speech text, chat stream reader, silence detector)
 python3 scripts/tuxemon-idle.py   # regenerate public/tuxemon/*-idle.png (needs Pillow + numpy)
 python3 scripts/sample-policies.py   # regenerate public/samples/state-farm-florida-*.pdf (needs Google Chrome + Pillow)
 ```
@@ -275,7 +275,7 @@ Gemini returns structured JSON, validated server-side with a schema before it's 
 
 Three.js deterministically turns matching meshes (today: position zones, see below) red. The model starts with no damage shown.
 
-- Damage result cards show component, severity, damage types and AI confidence. Tapping a card rotates/focuses the car on that component.
+- **Condition list** (`DamageExplorer`, one list for damage + walkaround): damaged parts first (most severe first), then Front / Rear / Left side / Right side. Every item is a collapsible `<details>`: the part's photos plus the latest clear photo of its side(s), damaged photos outlined red, clear ones green, capture time under each. Damage items show component, severity, damage types and AI confidence; opening one focuses the car on it, **Show on car** scrolls to it. A photo's sides come from Gemini's `view` (`front_left` → front + left), or its damaged parts when the view is unknown (`sidesOf()` in `services/claims/damage.ts`). A side's green photo is its newest analyzed photo with no damage and no manual review.
 - Tapping a red mesh shows component, description, severity, confidence and associated photos.
 - 3D controls: rotate (drag/swipe/mouse), bounded zoom, reset view, X-ray toggle. The part detail card has **+ Take a close-up** (camera).
 
@@ -368,7 +368,7 @@ Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS =
 
 **Pages** start with `PageHeader` (`components/layout/PageHeader.tsx`: eyebrow, title, description, action) inside `space-y-6`; main is `max-w-5xl`, two columns at `lg` where it helps.
 
-**Garage layout (`/garage`, top to bottom):** vehicle header → next step → garage scene with the 3D car → action buttons → photo gallery → damage list. On `lg`+ it's two columns: car on the left, buttons + Damage on the right, then Photos full width below; the Damage card is as tall as the car (not Photos, so collapsing Photos doesn't shrink it) and its list scrolls (tapping a part scrolls to its card).
+**Garage layout (`/garage`, top to bottom):** vehicle header → next step → garage scene with the 3D car → action buttons → photo gallery → Condition list. On `lg`+ it's two columns: car on the left, buttons + Condition on the right, then Photos full width below; the Condition card (always shown) is as tall as the car (not Photos, so collapsing Photos doesn't shrink it) and its list scrolls (tapping a part scrolls to its card).
 
 Action buttons, grouped directly under the car, icon + short label:
 

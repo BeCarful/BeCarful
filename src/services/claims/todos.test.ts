@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { computeTodos, nextIncidentStatus, type ClaimState } from "./todos";
-import { aggregateDamage } from "./damage";
+import { aggregateDamage, sidesOf } from "./damage";
 
 const base: ClaimState = { policyStatus: null, providerName: null, photoCount: 0, damage: [], incident: null };
 const dent = aggregateDamage([
@@ -68,4 +68,12 @@ test("photos without damage need nothing else", () => {
   const s: ClaimState = { ...base, policyStatus: "processed", photoCount: 2, incident: { status: "documenting" } };
   assert.deepEqual(codes(s), []);
   assert.equal(nextIncidentStatus(s, computeTodos(s)), "documenting");
+});
+
+test("sidesOf maps parts and photo views to car sides", () => {
+  assert.deepEqual(sidesOf("left_headlight"), ["front", "left"]);
+  assert.deepEqual(sidesOf("rear_right_quarter"), ["rear", "right"]);
+  assert.deepEqual(sidesOf("front_left"), ["front", "left"]);
+  assert.deepEqual(sidesOf("roof"), []);
+  assert.deepEqual(sidesOf("unknown"), []);
 });
