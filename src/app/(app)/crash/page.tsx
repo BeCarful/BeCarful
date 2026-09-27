@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CrashPhotos } from "@/components/crash/CrashPhotos";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Deadlines } from "@/components/summary/Deadlines";
 import { RetroCard, RetroLinkButton, retroButtonClass } from "@/components/retro";
+import { claimDeadlines } from "@/services/claims/deadlines";
+import { loadClaimState } from "@/services/claims/state";
 import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
 
 export const metadata: Metadata = { title: "Crash mode · BeCarful" };
@@ -82,8 +85,10 @@ export default async function CrashPage({ searchParams }: { searchParams: Promis
     );
   }
 
-  const { vehicles, selected } = await getVehicleContext();
+  const { user, vehicles, selected } = await getVehicleContext();
   if (!selected) redirect("/vehicles/new");
+  const { incident, provider } = await loadClaimState(user._id, selected._id);
+  const now = new Date().toISOString();
 
   return (
     <div className="space-y-6">
@@ -94,6 +99,12 @@ export default async function CrashPage({ searchParams }: { searchParams: Promis
       />
       <RetroCard>
         <CrashPhotos vehicles={vehicles.map((v) => ({ id: v._id.toString(), title: vehicleTitle(v) }))} selectedId={selected._id.toString()} />
+        <Deadlines
+          deadlines={claimDeadlines({ type: incident?.type, providerId: provider?.id, providerName: provider?.name, filed: incident?.status === "filed" })}
+          from={incident?.occurredAt?.toISOString() ?? now}
+          now={now}
+          estimated={!incident?.occurredAt}
+        />
       </RetroCard>
       <div className="flex flex-wrap gap-3">
         <RetroLinkButton href="/crash" variant="ghost">

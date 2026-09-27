@@ -45,7 +45,7 @@ npm run dev         # http://localhost:3000
 npm run build
 npm run lint
 npm run typecheck   # next typegen + tsc
-npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, car sides, dashboard readiness, multi-policy claim/coverage, 3D zones, statute search, policy form search, Jev guard, coverage rules, photo seal, share tokens, claim check, image prep, speech text, chat stream reader, silence detector)
+npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, car sides, dashboard readiness, multi-policy claim/coverage, 3D zones, statute search, policy form search, Jev guard, coverage rules, photo seal, share tokens, claim check, claim deadlines, image prep, speech text, chat stream reader, silence detector)
 npm run voices:design [tuxemon…]    # ElevenLabs Voice Design previews from each Tuxemon's look → MP3s in $TMPDIR/becarful-voice-design (uses credits)
 npm run voices:design -- save <tuxemon> <n>   # save preview n as a voice in the ElevenLabs account, prints the VOICES line to paste
 python3 scripts/tuxemon-idle.py   # regenerate the Tuxemon animations in public/tuxemon/ (needs Pillow + numpy)
@@ -316,7 +316,7 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 
 ## Crash mode
 
-`/crash` (red **Crash mode** button in the phone header). Step 1: Florida at-the-scene duties, most urgent first, each linking its statute: anyone hurt → Call 911 (`tel:911`, § 316.062), stay at the scene / clear the lanes (§ 316.061), call police if hurt or ≥ $2,000 damage (§ 316.065(1)), swap info (§ 316.062), no police report → own written report within 10 days (§ 316.066(1)(e)). Step 2 (`?step=photos`, `CrashPhotos`): a `<select>` of the user's vehicles (`selectVehicle`) + **Add photos**, which runs the normal `PhotoCapture` flow (seal, analysis, first photo opens the incident); "See my car" goes to `/garage`, **Exit to home** to `/` (Dashboard). Not in the `md`+ sidebar; on desktop it's reached from the Summary's **If something happens** card.
+`/crash` (red **Crash mode** button in the phone header). Step 1: Florida at-the-scene duties, most urgent first, each linking its statute: anyone hurt → Call 911 (`tel:911`, § 316.062), stay at the scene / clear the lanes (§ 316.061), call police if hurt or ≥ $2,000 damage (§ 316.065(1)), swap info (§ 316.062), no police report → own written report within 10 days (§ 316.066(1)(e)). Step 2 (`?step=photos`, `CrashPhotos`): a `<select>` of the user's vehicles (`selectVehicle`) + **Add photos**, which runs the normal `PhotoCapture` flow (seal, analysis, first photo opens the incident); "See my car" goes to `/garage`, **Exit to home** to `/` (Dashboard). Not in the `md`+ sidebar; on desktop it's reached from the Summary's **If something happens** card. Step 2 also shows **Deadlines** (see Summary), counted from the open incident's `occurredAt`, else now.
 
 ## Chat
 
@@ -364,6 +364,8 @@ Examples:
 - Ready → checklist all ✓, then **"File your claim with State Farm"** + **[Start Claim]** opening the verified `claimsUrl`
 
 Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS = 3` counts photos that show damage (`damagePhotoCount`), so walkaround photos in the same incident don't count; the claim box, Summary and chat use the same count; `FILE_CLAIM` also needs a processed policy). AI-reworded to-dos are **not** built; the fixed copy is what users see. Claim status changes are user actions only: `markClaimFiled` requires the computed `readyToFile` → `filed`; `closeIncident` requires `filed` → `closed`; the next photo starts a new incident. Incident times go to the server as ISO strings; dates render with `components/summary/LocalTime` (user's timezone). There is no separate "Your claim" card: `ClaimActions` (Start Claim, Call, Have ready, I've filed, Close incident; anchor `#claim`) renders inside the To-do card only when ready to file or filed, and Incident details sits beside the To-do card on `lg`. **Share evidence** (on `/summary`, anchor `#share`, shown once the open incident has photos): optional "who's it for" label + 1/7/30 days → `createShareLink` → the link once with Share… (`navigator.share`), Copy link and Email (`mailto:`); active links list opens and **Stop sharing** (`stopShareLink`).
+
+**Deadlines** (`claimDeadlines()` in `services/claims/deadlines.ts`, pure, tested; `Deadlines.tsx` inside the To-do card once the incident has damage, a type or a time): notify the insurer now (dropped once filed; State Farm quotes its "as soon as reasonably possible", other insurers "your policy sets how soon"), and for a collision (or no type yet) the § 316.066(1)(e) 10-day own crash report and the § 627.736(1)(a) 14-day PIP care rule; State Farm policies (9810C Insured's Duties) add hit-and-run: police within 24 hours, State Farm within 30 days. Days count from `occurredAt` (else the incident's `createdAt`, labeled as an estimate with a link to Incident details), end on the last calendar day in the user's time zone (`dueDate`), and show "N days left" / "Passed". No other insurer's wording is assumed; lawsuit limits (§ 95.11) aren't in `data/` and aren't shown.
 
 ---
 
