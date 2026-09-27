@@ -64,7 +64,7 @@ python3 scripts/tuxemon-idle.py   # regenerate public/tuxemon/*-idle.png (needs 
 | To-dos | Computed on read by `computeTodos()` (pure, tested); no stored `TodoState`. Incident status synced by `refreshIncidentStatus()`. |
 | Selected vehicle | `User.lastVehicleId`, changed by `selectVehicle()`; pages read it via `getVehicleContext()`. Switched from the "Vehicles" list (`VehicleSelector`): a sidebar section on `md`+, a bottom-nav tab that opens a native `popover` (`VehicleMenu`) on phones. |
 | Car models | Static demo catalog `services/vehicles/car-models.ts` (`CAR_MODELS`: id, year/make/model, GLB url, axes, credit), not a DB collection. New vehicles must pick one (`Vehicle.modelId`, year/make/model copied from the catalog); vehicles without `modelId` show the first model. |
-| Photo evidence | Camera only: `registerPhoto` rejects `source: "upload"`. On receipt the server stores `sha256` of the stored bytes and `seal` = HMAC-SHA256 (`AUTH_SECRET`) over vehicleId + sha256 + capturedAt + serverReceivedAt + location (`services/photos/seal.ts`, tested). It proves the bytes and metadata are unchanged since BeCarful received them, not that the device clock/GPS were true. No verify UI yet. |
+| Photo evidence | Camera only: in-app `getUserMedia` camera (`PhotoCapture`), no file input anywhere, and `registerPhoto` rejects `source: "upload"`. On receipt the server stores `sha256` of the stored bytes and `seal` = HMAC-SHA256 (`AUTH_SECRET`) over vehicleId + sha256 + capturedAt + serverReceivedAt + location (`services/photos/seal.ts`, tested). It proves the bytes and metadata are unchanged since BeCarful received them, not that the device clock/GPS were true. No verify UI yet. |
 | 3D car | R3F + drei GLB viewer (`Car3D.tsx`) behind `CarDamageView`, one GLB per catalog model. Parts come from named collections where the GLB has them (`namedPart`: "Left Door", "Headlight - Right", "Windshield"…), else position zones (`car-zones.ts`). The team's prototype (`3d_model_update/`) was folded in and removed: its collection highlight, "damage skips glass/interior" rule, transparency toggle (now **X-ray**) and per-part photo panel (now **+ Take a close-up**, camera only). 2D map (`CarDamageMap2D.tsx`) is the toggle + error fallback. |
 | Design system | HouseToClaim-style tokens + Tailwind v4 `@utility` classes in `globals.css`; no component library. Fonts: Rubik (body) + Tektur (display) via `next/font`. |
 | Agents | Google ADK for TypeScript (`@google/adk`): chat (`services/ai/chat-agent.ts`) and coverage checklist (`services/ai/coverage.ts`) are `LlmAgent`s with `FunctionTool`s. `runAgent()` (`services/ai/adk.ts`) rebuilds an in-memory ADK session per request from MongoDB history. `serverExternalPackages: ["@google/adk"]` (its optional peer deps break bundling). |
@@ -122,9 +122,9 @@ Feature-oriented. All application code lives in `src/` (Next.js `src` folder; `@
 ```
 src/app/(auth)/        login, signup
 src/app/(app)/         authed shell (layout: sky, road sidebar md+ with the Vehicles list, frosted header on phones, bottom nav + Vehicles popover on phones)
-  page.tsx             Home        chat/  summary/  insurance/  profile/  vehicles/new/
+  page.tsx             Home        chat/  summary/  insurance/  profile/  vehicles/new/  crash/
 src/actions/           server actions per feature: auth vehicles photos insurance chat incidents
-src/components/        retro/ layout/ auth/ vehicle/ photos/ insurance/ chat/ summary/
+src/components/        retro/ layout/ auth/ vehicle/ photos/ insurance/ chat/ summary/ crash/
 src/lib/               env (zod, lazy), gcp (Vercel WIF credentials), db (cached mongoose), session (jose), auth, upload-client
 src/models/            User Vehicle InsurancePolicy Incident DamagePhoto DamageAssessment ChatMessage
 src/schemas/           zod: damage, policy, vehicle
@@ -222,11 +222,11 @@ Store stable object keys, not just URLs.
 - Location denied → still allow the photo, show **"Location unavailable"**.
 - Don't call browser GPS/timestamps "verified evidence". Record provenance honestly.
 
-**No uploads.** Only Take Photo, so users can't submit old pictures. `source: "upload"` only exists on older data and is still shown as "Uploaded", never as a live capture. Desktop browsers ignore `capture`, so there Take Photo still opens a file picker.
+**No uploads.** Only Take Photo, so users can't submit old pictures. `source: "upload"` only exists on older data and is still shown as "Uploaded", never as a live capture. There is no file picker: a blocked or missing camera shows an error with **Try again**, never a picker.
 
-**Gallery** (under the action buttons): a `<details>` dropdown ("Photos · N photos"), closed by default. Open: **+ Take photo** (same camera input as the Take Photo tile, `openCamera()`), then thumbnails (3-column grid on phones, horizontal scroll from `sm`) with optional badges (camera / uploaded / damage detected / location available). Tap → full-screen viewer with swipe, zoom, close, capture date, location status, the evidence seal, AI result. Don't show raw GPS coordinates prominently.
+**Gallery** (under the action buttons): a `<details>` dropdown ("Photos · N photos"), closed by default. Open: **+ Take photo** (same camera as the Take Photo tile, `openCamera()`), then thumbnails (3-column grid on phones, horizontal scroll from `sm`) with optional badges (camera / uploaded / damage detected / location available). Tap → full-screen viewer with swipe, zoom, close, capture date, location status, the evidence seal, AI result. Don't show raw GPS coordinates prominently.
 
-Built: `actions/photos.ts`: `createPhotoUpload` (presigned POST) → browser uploads to Cloud Storage → `registerPhoto` (idempotent per key) → `analyzeDamage()` in `services/ai/damage-analysis.ts` (keep its signature). It runs `prepareImage()` first; a file that isn't the declared image type gets the `unreadable` issue without a Gemini call. The viewer draws each part's box on the photo and shows the view. Take Photo uses the native `<input capture="environment">` (no in-app camera screen; a denied camera falls back to the file picker); location starts on the input's click, so every entry point records it. `registerPhoto` downloads the stored bytes once to hash/seal them and reuses them for `analyzeDamage`. If Gemini fails the photo is kept with `analysisStatus: "failed"` and can be retried (`retryPhotoAnalysis`); a photo stuck in `analyzing` for 3+ min shows as failed. Expired image URLs refresh once via `getPhotoViewUrl`.
+Built: `actions/photos.ts`: `createPhotoUpload` (presigned POST) → browser uploads to Cloud Storage → `registerPhoto` (idempotent per key) → `analyzeDamage()` in `services/ai/damage-analysis.ts` (keep its signature). It runs `prepareImage()` first; a file that isn't the declared image type gets the `unreadable` issue without a Gemini call. The viewer draws each part's box on the photo and shows the view. Take Photo opens an in-app camera (`PhotoCapture`: `getUserMedia` rear camera, live preview, shutter draws the frame to a JPEG; needs HTTPS or localhost); `openCamera()` starts it from any entry point, and location starts at the same time. `registerPhoto` downloads the stored bytes once to hash/seal them and reuses them for `analyzeDamage`. If Gemini fails the photo is kept with `analysisStatus: "failed"` and can be retried (`retryPhotoAnalysis`); a photo stuck in `analyzing` for 3+ min shows as failed. Expired image URLs refresh once via `getPhotoViewUrl`.
 
 ## Damage analysis and 3D mapping
 
@@ -289,6 +289,10 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 - **Tuxemon attackers:** `CoverageChecklist.tsx` lists not-covered/unknown perils like the Damage list: the peril's Tuxemon on the left ("Agnidon may attack you"), details on the right; covered perils are a ✓ list. Sprites per peril in `components/insurance/peril-monsters.ts` (12 licensed Tuxemon, credits in `public/tuxemon/ATTRIBUTION.md`); the card must keep its sprite credits line.
 - **No policy on hand:** "Pick your Florida plan" (`FloridaPlanPicker`) → `chooseFloridaPlan(vehicleId, planId)`; the insurance page labels it "Example Florida plan, not your actual policy".
 
+## Crash mode
+
+`/crash` (red **Crash mode** button in the phone header). Step 1: Florida at-the-scene duties, most urgent first, each linking its statute: anyone hurt → Call 911 (`tel:911`, § 316.062), stay at the scene / clear the lanes (§ 316.061), call police if hurt or ≥ $2,000 damage (§ 316.065(1)), swap info (§ 316.062), no police report → own written report within 10 days (§ 316.066(1)(e)). Step 2 (`?step=photos`, `CrashPhotos`): a `<select>` of the user's vehicles (`selectVehicle`) + **Add photos**, which runs the normal `PhotoCapture` flow (seal, analysis, first photo opens the incident); "See my car" and **Exit to home** go to `/`. Not in the `md`+ sidebar yet.
+
 ## Chat
 
 - One thread per vehicle. Context: vehicle info, policy + summary, photos, damage assessments, current incident, that vehicle's prior messages. The ADK agent can also read/act on the user's other vehicles through tools when the user names one (every tool checks `userId` ownership).
@@ -342,7 +346,7 @@ Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS =
 - `public/scenery/`: `ground.svg` (original art reused from the team's HouseToClaim project, no credit needed; used by `.pixel-scene`) and `car.svg` (original pixel car). Tuxemon sprites keep their attribution.
 - Login scene car: `components/auth/IdleCar.tsx`, `car.svg` inlined with round wheels; idles with a 1px body hop (`car-idle`) and two-frame spinning hubs (`wheel-a/b`), still under reduced motion.
 
-**Navigation:** three destinations: **Home**, **Chat**, **Summary**, plus the **Vehicles** list (switch car / add vehicle). Phones: frosted bottom nav Home · Vehicles · Chat · Summary, where Vehicles opens a popover list above the nav. `md`+: road sidebar (`components/layout/AppSidebar.tsx`) with a "Vehicles" section above "Your car", and Profile, day/night and log out in its footer. The frosted header is phones-only (logo, day/night, profile avatar).
+**Navigation:** three destinations: **Home**, **Chat**, **Summary**, plus the **Vehicles** list (switch car / add vehicle). Phones: frosted bottom nav Home · Vehicles · Chat · Summary, where Vehicles opens a popover list above the nav. `md`+: road sidebar (`components/layout/AppSidebar.tsx`) with a "Vehicles" section above "Your car", and Profile, day/night and log out in its footer. The frosted header is phones-only (logo, red **Crash mode** button in the middle, day/night, profile avatar).
 
 **Pages** start with `PageHeader` (`components/layout/PageHeader.tsx`: eyebrow, title, description, action) inside `space-y-6`; main is `max-w-5xl`, two columns at `lg` where it helps.
 

@@ -6,6 +6,7 @@ import { SceneBackground } from "@/components/layout/SceneBackground";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { VehicleMenu } from "@/components/layout/VehicleSelector";
 import { BrandMark } from "@/components/layout/Wordmark";
+import { RetroLinkButton } from "@/components/retro";
 import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
@@ -24,7 +25,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <Link href="/" aria-label="BeCarful home">
             <BrandMark />
           </Link>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex flex-1 justify-center">
+            <RetroLinkButton href="/crash" variant="danger" className="px-3 text-sm">
+              Crash mode
+            </RetroLinkButton>
+          </div>
+          <div className="flex items-center gap-2">
             <ThemeToggle />
             <Link
               href="/profile"
