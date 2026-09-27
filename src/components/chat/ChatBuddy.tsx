@@ -227,7 +227,7 @@ export function ChatBuddy({ vehicleId, assistant, voice }: { vehicleId: string |
     setTalk({ status: "listening" });
     const error = await speech.record(async (audio) => {
       if (stale()) return;
-      if (!audio) return setTalk({ status: "error", error: "Tap the mic, ask your question, then tap it again." });
+      if (!audio) return setTalk({ status: "error", error: "I didn't hear anything. Tap the mic and try again." });
       setTalk({ status: "hearing" });
       const form = new FormData();
       form.append("audio", audio);
@@ -339,7 +339,7 @@ export function ChatBuddy({ vehicleId, assistant, voice }: { vehicleId: string |
               {talk.status === "listening" && (
                 <p className="flex items-center gap-2">
                   <span aria-hidden className="pulse-ring size-2.5 shrink-0 rounded-full bg-danger" />
-                  Listening… tap ■ when you&apos;re done.
+                  Listening… I&apos;ll send it when you pause.
                 </p>
               )}
               {talk.status === "hearing" && <p className="text-ink-soft">Got it…</p>}

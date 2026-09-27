@@ -198,7 +198,7 @@ function ChatThread({
     if (speech.recording) return speech.stop();
     setVoiceNote(null);
     const error = await speech.record(async (audio) => {
-      if (!audio) return setVoiceNote("Tap the mic, ask your question, then tap it again.");
+      if (!audio) return setVoiceNote("I didn't hear anything. Tap the mic and try again.");
       setHearing(true);
       const form = new FormData();
       form.append("audio", audio);
@@ -223,7 +223,7 @@ function ChatThread({
   }
 
   const empty = messages.length === 0 && !outbox;
-  const voiceStatus = speech.recording ? "Listening… tap the mic when you're done." : hearing ? "Got it, writing that down…" : (voiceNote ?? speech.playError);
+  const voiceStatus = speech.recording ? "Listening… I'll send it when you pause, or tap ■." : hearing ? "Got it, writing that down…" : (voiceNote ?? speech.playError);
   return (
     <section className="surface-card mx-auto -mb-8 flex h-[calc(100dvh-10.625rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[26rem] max-w-3xl flex-col overflow-hidden md:-mb-10 md:h-[calc(100dvh-7.25rem)]">
       <header className="flex items-center gap-3 border-b border-border px-4 py-3">
