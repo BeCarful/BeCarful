@@ -1,6 +1,8 @@
 import { isPartId, type PartId } from "@/lib/car/car-parts";
 import type { VisualSeverity } from "@/lib/damage/damage-report";
 
+export { serializeClaimExport } from "./concise-claim-export";
+
 export const DEFAULT_CV_API_BASE_URL = "http://127.0.0.1:8000";
 export const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
 export const MIN_PHOTOS = 1;
@@ -299,17 +301,13 @@ export function claimExportFileName(bundle: ClaimExportV1): string {
   return `becarful-${bundle.claim_id}-${bundle.analysis_run_id}.json`;
 }
 
-export function serializeClaimExport(bundle: ClaimExportV1): string {
-  return JSON.stringify(bundle, null, 2);
-}
-
 export class AssessmentApi {
   readonly baseUrl: string;
 
   constructor(
     baseUrl = process.env.NEXT_PUBLIC_CV_API_BASE_URL ??
       DEFAULT_CV_API_BASE_URL,
-    private readonly fetcher: Fetch = fetch,
+    private readonly fetcher: Fetch = globalThis.fetch.bind(globalThis),
   ) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
   }

@@ -135,6 +135,19 @@ async def test_mocked_structured_intake_response_is_parsed(
     assert result.usage.prompt_tokens == 12
     assert result.usage.output_tokens == 7
     assert fake_client.models.calls[0]["model"] == "gemini-3.8-flash"
+    prompt = fake_client.models.calls[0]["contents"].parts[0].text
+    assert prompt == files("cv_module.prompts").joinpath("intake-v2.txt").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_intake_v2_keeps_close_up_damage_photos_usable() -> None:
+    # Why: intake-v1 let Gemini reject damage close-ups as unusable, which skipped
+    # damage assessment for 5 of 20 sampled CarDD images.
+    prompt = files("cv_module.prompts").joinpath("intake-v2.txt").read_text(encoding="utf-8")
+
+    assert "a close-up alone never makes an image unusable" in prompt
+    assert "The view and usability are independent decisions" in prompt
 
 
 @pytest.mark.asyncio
@@ -166,6 +179,6 @@ async def test_mocked_damage_assessment_uses_v2_prompt(
 
     prompt = fake_client.models.calls[0]["contents"].parts[0].text
     assert result.output.findings == []
-    assert inference.prompt_version == "v2"
+    assert inference.prompt_version == "v3"
     assert "Allowed Parts List:" in prompt
     assert "Do not invent, rename, generalize" in prompt

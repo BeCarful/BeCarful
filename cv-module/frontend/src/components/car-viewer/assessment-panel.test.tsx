@@ -28,6 +28,16 @@ function makeBundle(
       claim_id: "clm_test",
       analysis_run_id: status === "needs_more_photos" ? "run_one" : "run_two",
       status,
+      processing: {
+        model_id: "gemini-3.8-flash",
+        prompt_version: "v2",
+      },
+      images: ["front", "rear", "left", "right"].map((name) => ({
+        image_id: `img_${name}`,
+        view: name,
+        usable: true,
+        quality_reasons: [],
+      })),
       findings:
         status === "needs_more_photos"
           ? []
@@ -37,12 +47,31 @@ function makeBundle(
                 part_id: "hood",
                 damage_type: "dent",
                 visual_severity: "moderate",
+                confidence: {
+                  score: null,
+                  band: "unvalidated",
+                  calibration_version: null,
+                },
+                evidence: [
+                  {
+                    image_id: "img_front",
+                    bbox: {
+                      x_min: 0.1,
+                      y_min: 0.2,
+                      x_max: 0.3,
+                      y_max: 0.4,
+                    },
+                  },
+                ],
               },
             ],
       coverage: {
+        observed: ["front", "rear", "left", "right"],
         missing: status === "needs_more_photos" ? ["right"] : [],
+        recommended_missing: [],
         complete: status !== "needs_more_photos",
       },
+      needs_human_review: status === "needs_human_review",
       review_reasons: ["confidence_unvalidated"],
       limitations: ["Evaluation only"],
     },
@@ -165,6 +194,40 @@ describe("AssessmentPanel", () => {
 
     await user.click(screen.getByRole("button", { name: "Download JSON" }));
     expect(clickSpy).toHaveBeenCalledOnce();
+  });
+
+  it("explains a vehicle mismatch instead of suggesting more coverage", async () => {
+    const user = userEvent.setup();
+    const bundle = makeBundle();
+    bundle.assessment.findings = [];
+    bundle.assessment.coverage = {
+      missing: ["rear", "right"],
+      complete: false,
+    };
+    bundle.assessment.review_reasons = [
+      "vehicle_inconsistency",
+      "confidence_unvalidated",
+    ];
+    const onReady = vi.fn();
+    render(
+      <AssessmentPanel
+        api={configuredApi(bundle)}
+        onAssessmentStarted={vi.fn()}
+        onAssessmentReady={onReady}
+      />,
+    );
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    fireEvent.change(input, { target: { files: photos(3) } });
+
+    await user.click(screen.getByRole("button", { name: "Upload and assess" }));
+    await waitFor(() => expect(onReady).toHaveBeenCalledWith(bundle));
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /different vehicles, so damage was not\s+assessed/,
+    );
+    expect(screen.queryByText(/Coverage suggestion/)).not.toBeInTheDocument();
   });
 
   it("allows one additional photo on a claim that needs more views", async () => {

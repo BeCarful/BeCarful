@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { useViewerState } from "@/hooks/use-viewer-state";
 import type { ClaimExportV1 } from "@/lib/assessment/assessment-api";
+import { describeAssessmentOutcome } from "@/lib/assessment/assessment-outcome";
 import {
   findingsToDamageReport,
   parseDamageReport,
@@ -67,20 +68,10 @@ export function CarViewer() {
     [damageByPart, viewer.selectedPartId, viewer.selectPart],
   );
 
-  const assessmentStatus = assessmentBundle?.assessment.status;
-  const damageStatusLabel = assessmentBundle
-    ? assessmentStatus === "needs_more_photos"
-      ? "Coverage incomplete"
-      : "Gemini result"
-    : assessmentStarted
-      ? "Analyzing"
-      : "Sample data";
-  const emptyDamageMessage =
-    assessmentStatus === "needs_more_photos"
-      ? "Damage not assessed — add the missing vehicle views."
-      : assessmentStarted && !assessmentBundle
-        ? "Assessment in progress…"
-        : "No visible damage findings.";
+  const outcome = describeAssessmentOutcome(
+    assessmentBundle?.assessment ?? null,
+    assessmentStarted,
+  );
 
   return (
     <DamageContext value={damageContext}>
@@ -101,8 +92,8 @@ export function CarViewer() {
           damagedParts={damagedParts}
           selectedPartId={viewer.selectedPartId}
           onSelectPart={viewer.selectPart}
-          statusLabel={damageStatusLabel}
-          emptyMessage={emptyDamageMessage}
+          statusLabel={outcome.statusLabel}
+          emptyMessage={outcome.emptyMessage}
         />
         {isAssessmentOpen && (
           <AssessmentPanel

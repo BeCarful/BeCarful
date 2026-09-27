@@ -79,7 +79,6 @@ class ImageProcessor:
         deterministic_usable = True
         if min(width, height) < self._minimum_short_edge:
             reasons.append("low_resolution")
-            deterministic_usable = False
 
         grayscale = ImageOps.grayscale(image)
         brightness = float(ImageStat.Stat(grayscale).mean[0])

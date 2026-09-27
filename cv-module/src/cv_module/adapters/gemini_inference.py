@@ -50,7 +50,9 @@ class GeminiDamageInference:
         else:
             self._client = None
         self._model_id = model_id
-        self._prompt_version = "v2"
+        # Why: one version names the whole prompt set (intake-v2 + assessment-v2), so a
+        # persisted result can be traced to the exact prompts that produced it.
+        self._prompt_version = "v3"
         self._inline_image_max_bytes = inline_image_max_bytes
 
     @property
@@ -63,7 +65,7 @@ class GeminiDamageInference:
 
     async def classify_intake(self, images: list[InferenceImage]) -> IntakeInferenceResult:
         output, raw, usage = await self._generate(
-            prompt_name="intake-v1.txt",
+            prompt_name="intake-v2.txt",
             images=images,
             output_type=IntakeOutput,
         )

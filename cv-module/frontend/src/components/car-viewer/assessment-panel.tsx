@@ -15,6 +15,7 @@ import {
   type ClaimResponse,
   validatePhoto,
 } from "@/lib/assessment/assessment-api";
+import { VEHICLE_INCONSISTENCY } from "@/lib/assessment/assessment-outcome";
 
 import styles from "./assessment-panel.module.css";
 
@@ -280,6 +281,10 @@ export function AssessmentPanel({
   const jsonValue =
     resultTab === "assessment" ? bundle?.assessment : bundle?.raw_gemini;
   const missingViews = bundle?.assessment.coverage.missing ?? [];
+  // Why: on a vehicle mismatch the backend skips damage inference, so the
+  // coverage hint ("the current result uses your photos") would mislead.
+  const hasVehicleMismatch =
+    bundle?.assessment.review_reasons.includes(VEHICLE_INCONSISTENCY) ?? false;
 
   return (
     <aside className={styles.panel} aria-label="Vehicle photo assessment">
@@ -372,7 +377,14 @@ export function AssessmentPanel({
         </dl>
       )}
 
-      {missingViews.length > 0 && (
+      {hasVehicleMismatch && (
+        <p className={styles.notice} role="status">
+          The photos appear to show different vehicles, so damage was not
+          assessed. Submit photos of one vehicle only.
+        </p>
+      )}
+
+      {!hasVehicleMismatch && missingViews.length > 0 && (
         <p className={styles.notice}>
           Coverage suggestion: add {missingViews.join(", ")} photos for a more
           complete assessment. The current result uses the photos you provided.

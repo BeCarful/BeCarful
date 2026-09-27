@@ -89,6 +89,23 @@ def test_heic_image_is_normalized_to_jpeg() -> None:
     assert result.metrics.height == 600
 
 
+def test_low_resolution_is_reported_without_blocking_gemini() -> None:
+    image = Image.new("RGB", (1000, 667), "blue")
+    output = io.BytesIO()
+    image.save(output, "JPEG")
+    image_processor = ImageProcessor(
+        maximum_bytes=2_000_000,
+        maximum_pixels=4_000_000,
+        normalized_long_edge=2048,
+        minimum_short_edge=720,
+    )
+
+    result = image_processor.process(output.getvalue(), "image/jpeg")
+
+    assert result.deterministic_usable is True
+    assert "low_resolution" in result.quality_reasons
+
+
 def test_normalized_image_is_recompressed_to_inline_limit() -> None:
     image = Image.effect_noise((800, 800), 100).convert("RGB")
     output = io.BytesIO()
