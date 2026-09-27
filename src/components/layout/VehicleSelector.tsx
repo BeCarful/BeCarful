@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useRef, useTransition } from "react";
+import { useRef, useTransition, type ReactNode } from "react";
 import { selectVehicle } from "@/actions/vehicles";
 import { CAR_ICON, NavIcon, VEHICLE_MENU_ID, isActive } from "./BottomNav";
 
@@ -84,5 +84,26 @@ export function VehicleMenu({ vehicles, selectedId }: { vehicles: VehicleOption[
         onDone={() => menu.current?.hidePopover()}
       />
     </div>
+  );
+}
+
+export function OpenCar({ id, href, selected, className, children }: { id: string; href: string; selected: boolean; className: string; children: ReactNode }) {
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      aria-busy={pending || undefined}
+      className={className}
+      onClick={() =>
+        startTransition(async () => {
+          if (!selected) await selectVehicle(id);
+          router.push(href);
+        })
+      }
+    >
+      {pending ? "Opening…" : children}
+    </button>
   );
 }

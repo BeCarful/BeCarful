@@ -404,21 +404,14 @@ SPRITES = {
         ],
         "blink": eyes_closed_at(2700, 4800),
     },
-    "aardorn": {
-        "loop": 4000,
-        "breath": breath([41], (0, 800), (1, 1000), (0, 200)),
-        "moves": [
-            {
-                "op": "shear",
-                "axis": "x",
-                "rect": (29, 16, 38, 29),
-                "root": 29,
-                "tip": 17,
-                "track": [(0, 2000), (1, 80), (0, 80), (1, 80), (0, 1760)],
-            }
+    "hampotamos": {
+        "loop": 4200,
+        "breath": breath([44, 47], (0, 800), (1, 180), (2, 900), (1, 180), (0, 40)),
+        "eyes": [
+            {"rect": (26, 31, 27, 34), "colors": ["#ffffff", "#000000"], "lid": "#8885b8", "line": "#000000"},
+            {"rect": (29, 32, 31, 36), "colors": ["#ffffff", "#000000"], "lid": "#8885b8", "line": "#000000"},
         ],
-        "eyes": [{"rect": (37, 37, 40, 40), "colors": ["#000000", "#ffeed5", "#62626a"], "lid": "#ad7b5a", "line": "#000000"}],
-        "blink": eyes_closed_at(900, 4000),
+        "blink": eyes_closed_at(2600, 4200),
     },
     "cateye": {
         "loop": 4800,

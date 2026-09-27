@@ -1,11 +1,14 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { ASSISTANTS } from "@/components/chat/assistants";
 import { connectDB } from "@/lib/db";
-import { createSession, deleteSession } from "@/lib/auth";
+import { createSession, deleteSession, requireUser } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { User } from "@/models/User";
+import type { ActionResult } from "@/types";
 
 export type AuthState = { error?: string; fields?: Record<string, string> } | undefined;
 
@@ -53,4 +56,13 @@ export async function login(_: AuthState, fd: FormData): Promise<AuthState> {
 export async function logout() {
   await deleteSession();
   redirect("/login");
+}
+
+export async function chooseAssistant(assistantId: string): Promise<ActionResult> {
+  const user = await requireUser();
+  if (!ASSISTANTS.some((a) => a.id === assistantId)) return { ok: false, error: "Pick one of the Tuxemon shown." };
+  user.assistantId = assistantId;
+  await user.save();
+  revalidatePath("/", "layout");
+  return { ok: true, data: undefined };
 }

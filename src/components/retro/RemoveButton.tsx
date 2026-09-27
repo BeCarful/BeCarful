@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { deleteVehicle } from "@/actions/vehicles";
-import { RetroButton } from "@/components/retro";
+import type { ActionResult } from "@/types";
+import { RetroButton } from "./RetroButton";
 
-export function DeleteVehicleButton({ vehicleId, title }: { vehicleId: string; title: string }) {
+export function RemoveButton({ action, title, warning }: { action: () => Promise<ActionResult>; title: string; warning: string }) {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -20,7 +20,7 @@ export function DeleteVehicleButton({ vehicleId, title }: { vehicleId: string; t
   return (
     <div className="basis-full space-y-2 rounded-lg bg-danger-soft p-3" role="alert">
       <p className="text-sm">
-        Remove <strong>{title}</strong>? Its photos, policy, damage results and chat are deleted for good.
+        Remove <strong>{title}</strong>? {warning}
       </p>
       {error && <p className="text-sm font-medium text-danger">{error}</p>}
       <div className="flex gap-2">
@@ -34,7 +34,7 @@ export function DeleteVehicleButton({ vehicleId, title }: { vehicleId: string; t
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
-              const res = await deleteVehicle(vehicleId);
+              const res = await action();
               if (!res.ok) setError(res.error);
             })
           }

@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { googleAuthOptions } from "@/lib/gcp";
 
 export const GEMINI_MODEL = "gemini-2.5-flash";
+export const CHAT_MODEL = "gemini-3.8-flash";
 
 export const genaiAuth = () => ({ vertexai: true, project: env().GOOGLE_CLOUD_PROJECT, location: "global" });
 

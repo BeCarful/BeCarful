@@ -2,14 +2,15 @@ import "server-only";
 import type { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
 import { ChatMessage } from "@/models/ChatMessage";
+import { InsurancePolicy } from "@/models/InsurancePolicy";
 import { Vehicle } from "@/models/Vehicle";
 import { PolicyExtractionSchema } from "@/schemas/policy";
 import { damagePhotoCount } from "@/services/claims/damage";
 import { loadClaimState } from "@/services/claims/state";
+import { getProvider } from "@/services/insurance/providers";
 import { MIN_DAMAGE_PHOTOS } from "@/services/claims/todos";
-import { vehicleTitle } from "@/services/vehicles/context";
+import { vehicleModel, vehicleTitle } from "@/services/vehicles/context";
 import { NOT_FOUND_IN_POLICY, componentLabel, type ChatActionStatus } from "@/types";
-import { ASSISTANT_NAME } from "@/components/chat/TuxemonAssistant";
 
 type Id = Types.ObjectId | string;
 
@@ -37,6 +38,19 @@ export async function recentMessages(userId: Id, vehicleId: Id, limit: number): 
   return docs.reverse().map(toChatView);
 }
 
+export type ChatSubject = { id: string; title: string; insurer: string | null };
+
+export async function chatSubjects(userId: Id): Promise<ChatSubject[]> {
+  await connectDB();
+  const [vehicles, policies] = await Promise.all([
+    Vehicle.find({ userId }).sort({ createdAt: -1 }),
+    InsurancePolicy.find({ userId }).sort({ uploadedAt: -1 }).select("vehicleId providerId").lean(),
+  ]);
+  const insurer = new Map<string, string | null>();
+  for (const p of policies) if (!insurer.has(String(p.vehicleId))) insurer.set(String(p.vehicleId), getProvider(p.providerId)?.name ?? null);
+  return vehicles.map((v) => ({ id: v._id.toString(), title: vehicleTitle(v), insurer: insurer.get(v._id.toString()) ?? null }));
+}
+
 const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "not recorded");
 
 /** Compact JSON facts about one vehicle. Everything is scoped by owner + vehicle. */
@@ -44,30 +58,35 @@ export async function buildVehicleContext(userId: Id, vehicleId: Id): Promise<st
   await connectDB();
   const [vehicle, claim] = await Promise.all([Vehicle.findOne({ _id: vehicleId, userId }), loadClaimState(userId, vehicleId)]);
   if (!vehicle) throw new Error("Vehicle not found for this user");
-  const { policy, provider, incident, photos, assessments, damage, todos } = claim;
-  const extracted = PolicyExtractionSchema.safeParse(policy?.extractedData);
+  const { policies, provider, incident, photos, assessments, damage, todos } = claim;
 
   return JSON.stringify({
     vehicle: {
       name: vehicleTitle(vehicle),
+      model: vehicleModel(vehicle),
       color: vehicle.color,
       licensePlate: `${vehicle.licensePlate} (${vehicle.state})`,
       vinLast4: vehicle.vin ? vehicle.vin.slice(-4) : "not provided",
     },
-    insurer: provider
-      ? { name: provider.name, claimsPhone: provider.phone, claimsUrl: provider.claimsUrl }
+    claimInsurer: provider
+      ? { name: provider.name, claimsPhone: provider.phone, claimsUrl: provider.claimsUrl, why: "Covers this incident, or the first readable policy" }
       : "No insurer on file yet. The user can add their policy from the Insurance button in the Garage (tap the car in the Vehicles menu).",
-    policy: policy
-      ? {
-          status: policy.status,
-          uploadedAt: day(policy.uploadedAt),
-          plainSummary: policy.aiSummary ?? "Not available yet",
-          details: extracted.success
-            ? Object.fromEntries(
-                Object.entries(extracted.data).map(([k, v]) => [k, Array.isArray(v) ? (v.length ? v : NOT_FOUND_IN_POLICY) : (v ?? NOT_FOUND_IN_POLICY)]),
-              )
-            : "Policy details have not been extracted yet",
-        }
+    policies: policies.length
+      ? policies.map((policy) => {
+          const extracted = PolicyExtractionSchema.safeParse(policy.extractedData);
+          const insurer = getProvider(policy.providerId);
+          return {
+            insurer: insurer ? { name: insurer.name, claimsPhone: insurer.phone, claimsUrl: insurer.claimsUrl } : policy.providerId,
+            status: policy.status,
+            uploadedAt: day(policy.uploadedAt),
+            plainSummary: policy.aiSummary ?? "Not available yet",
+            details: extracted.success
+              ? Object.fromEntries(
+                  Object.entries(extracted.data).map(([k, v]) => [k, Array.isArray(v) ? (v.length ? v : NOT_FOUND_IN_POLICY) : (v ?? NOT_FOUND_IN_POLICY)]),
+                )
+              : "Policy details have not been extracted yet",
+          };
+        })
       : "No policy uploaded yet",
     photosForCurrentIncident: {
       total: photos.length,
@@ -106,7 +125,7 @@ export async function buildVehicleContext(userId: Id, vehicleId: Id): Promise<st
   });
 }
 
-export const SYSTEM_PROMPT = `You are ${ASSISTANT_NAME}, a friendly Tuxemon companion inside BeCarful, a car insurance helper app. This chat is about the vehicle in VEHICLE CONTEXT below.
+export const systemPrompt = (assistantName: string) => `You are ${assistantName}, a friendly Tuxemon companion inside BeCarful, a car insurance helper app. This chat is about the vehicle in VEHICLE CONTEXT below.
 
 Rules:
 - Be concise: at most 3 short sentences, or a short list with "- " bullets. Plain text only: no markdown headings, bold, tables or link syntax.
@@ -114,8 +133,9 @@ Rules:
 - If anyone might be hurt or in danger, tell them to get to safety and call 911 before anything else.
 - Use only facts from VEHICLE CONTEXT, tool results and this conversation. Never invent policy terms, amounts, dates, damage or next steps.
 - Coverage: only repeat what the policy data clearly says. If something is missing or unclear, say "${NOT_FOUND_IN_POLICY}" and suggest confirming with the insurer by phone. Never promise that something is covered or that a claim will be paid.
-- Claims: only give the insurer's claimsUrl and claimsPhone exactly as written in VEHICLE CONTEXT. Never make up, guess or change a URL or phone number. The Summary tab also has a verified Start Claim button.
+- A car can have several active policies (VEHICLE CONTEXT "policies"). Name the insurer whenever you quote one, and check every policy before saying something isn't covered.
+- Claims: only give an insurer's claimsUrl and claimsPhone exactly as written in VEHICLE CONTEXT ("claimInsurer" is the one that covers this incident). Never make up, guess or change a URL or phone number. The Summary tab also has a verified Start Claim button.
 - Stay on this vehicle unless the user names another of their vehicles; then use tools for it and say which vehicle you mean.
 - No legal advice. For fault, lawsuits or injuries, suggest the insurer or a licensed professional.
 - Detected damage comes from AI photo analysis and can be wrong; mention that when it matters.
-- In the app: Take Photo (camera only, no uploads) and Insurance are in the Garage with the 3D car, opened by tapping a car in the Vehicles menu; progress, to-dos and the claim link are on the Summary tab (the start page).`;
+- In the app: Take Photo (camera only, no uploads) and Insurance are in the Garage with the 3D car, opened by tapping a car in the Vehicles menu; progress, to-dos and the claim link are on the Summary tab for the selected car; the Dashboard (the start page) shows every car, which are insured and protected, and any open cases.`;

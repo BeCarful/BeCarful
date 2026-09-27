@@ -7,11 +7,12 @@ import { InsurancePolicy, type InsurancePolicyDoc } from "@/models/InsurancePoli
 import { PastedPolicyTextSchema, PolicyExtractionSchema, type PolicyExtraction } from "@/schemas/policy";
 import { checkCoverage } from "@/services/ai/coverage";
 import { analyzePolicy, NotAPolicyError, summarizePolicy } from "@/services/ai/policy-analysis";
-import { getActivePolicy, getOpenIncident, refreshIncidentStatus } from "@/services/claims/state";
+import { refreshIncidentStatus } from "@/services/claims/state";
 import { FLORIDA_PLANS_RETRIEVED, getFloridaPlan, type FloridaPlan } from "@/services/insurance/florida-plans";
 import { getProvider } from "@/services/insurance/providers";
 import {
   createUpload,
+  deleteObject,
   getObjectBytes,
   headObject,
   isOwnedKey,
@@ -35,12 +36,14 @@ const objectId = z.string().refine((id) => isValidObjectId(id));
 const providerId = z.string().refine((id) => Boolean(getProvider(id)), "Pick your insurer from the list.");
 
 const UploadSchema = z.object({ contentType: z.string().max(100), size: z.number() });
+const replaces = objectId.optional();
 const RegisterSchema = z.object({
   key: z.string().min(1).max(300),
   providerId,
   fileName: z.string().transform((s) => s.trim().slice(0, 120) || "policy.pdf"),
+  replaces,
 });
-const PasteSchema = z.object({ providerId, text: PastedPolicyTextSchema });
+const PasteSchema = z.object({ providerId, text: PastedPolicyTextSchema, replaces });
 
 export async function createPolicyUpload(
   vehicleId: string,
@@ -61,7 +64,7 @@ export async function createPolicyUpload(
 
 export async function registerPolicy(
   vehicleId: string,
-  input: { key: string; providerId: string; fileName: string },
+  input: { key: string; providerId: string; fileName: string; replaces?: string },
 ): Promise<PolicyResult> {
   const owner = await requireVehicle(vehicleId);
   const parsed = RegisterSchema.safeParse(input);
@@ -74,10 +77,10 @@ export async function registerPolicy(
   if (!head) return fail("Your upload didn't finish. Check your connection and upload it again.");
   const invalid = validateUpload("policies", head.contentType ?? "", head.size ?? 0);
   if (invalid) return fail(invalid);
-  return createAndAnalyze(owner, { providerId: parsed.data.providerId, s3Key: key, fileName });
+  return createAndAnalyze(owner, { providerId: parsed.data.providerId, s3Key: key, fileName }, undefined, parsed.data.replaces);
 }
 
-export async function registerPolicyText(vehicleId: string, input: { providerId: string; text: string }): Promise<PolicyResult> {
+export async function registerPolicyText(vehicleId: string, input: { providerId: string; text: string; replaces?: string }): Promise<PolicyResult> {
   const owner = await requireVehicle(vehicleId);
   const parsed = PasteSchema.safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Paste the full policy or declarations page.");
@@ -88,7 +91,7 @@ export async function registerPolicyText(vehicleId: string, input: { providerId:
     console.error("registerPolicyText upload", err);
     return fail("We couldn't save your policy text. Check your connection and try again.");
   }
-  return createAndAnalyze(owner, { providerId: parsed.data.providerId, s3Key, fileName: "Pasted policy text" });
+  return createAndAnalyze(owner, { providerId: parsed.data.providerId, s3Key, fileName: "Pasted policy text" }, undefined, parsed.data.replaces);
 }
 
 export async function retryPolicyExtraction(vehicleId: string, policyId: string): Promise<PolicyResult> {
@@ -131,16 +134,28 @@ export async function chooseFloridaPlan(vehicleId: string, planId: string): Prom
   return createAndAnalyze(owner, { providerId: plan.providerId, s3Key, fileName: `${insurer} ${plan.name} (Florida example)`, planId: plan.id }, extracted);
 }
 
-/** Re-runs the coverage agent for the active policy (e.g. after it failed). */
-export async function recheckCoverage(vehicleId: string): Promise<ActionResult> {
+/** Re-runs the coverage agent for one policy (e.g. after it failed). */
+export async function recheckCoverage(vehicleId: string, policyId: string): Promise<ActionResult> {
   const { user, vehicle } = await requireVehicle(vehicleId);
-  const policy = await getActivePolicy(user._id, vehicle._id);
+  if (!objectId.safeParse(policyId).success) return fail(NOT_FOUND);
+  const policy = await InsurancePolicy.findOne({ _id: policyId, userId: user._id, vehicleId: vehicle._id });
   const extracted = PolicyExtractionSchema.safeParse(policy?.extractedData);
   if (!policy || policy.status !== "processed" || !extracted.success) return fail("Add your policy first.");
   const checklist = await runCoverage({ user, vehicle }, policy.providerId, extracted.data);
   if (!checklist) return fail("We couldn't check your coverage just now. Try again in a moment.");
   policy.set({ coverageChecklist: checklist });
   await policy.save();
+  revalidatePath("/", "layout");
+  return { ok: true, data: undefined };
+}
+
+export async function removePolicy(vehicleId: string, policyId: string): Promise<ActionResult> {
+  const { user, vehicle } = await requireVehicle(vehicleId);
+  if (!objectId.safeParse(policyId).success) return fail(NOT_FOUND);
+  const policy = await InsurancePolicy.findOneAndDelete({ _id: policyId, userId: user._id, vehicleId: vehicle._id });
+  if (!policy) return fail(NOT_FOUND);
+  await deleteObject(policy.s3Key).catch((err) => console.error("removePolicy object", policy.s3Key, err));
+  await refreshIncidentStatus(user._id, vehicle._id);
   revalidatePath("/", "layout");
   return { ok: true, data: undefined };
 }
@@ -178,13 +193,20 @@ async function createAndAnalyze(
   owner: Owner,
   input: { providerId: string; s3Key: string; fileName: string; planId?: string },
   known?: PolicyExtraction,
+  replaces?: string,
 ): Promise<PolicyResult> {
   const { user, vehicle } = owner;
-  const policy = await InsurancePolicy.create({ ...input, userId: user._id, vehicleId: vehicle._id, status: "processing" });
-  const incident = await getOpenIncident(user._id, vehicle._id);
-  if (incident) {
-    incident.insurancePolicyId = policy._id;
-    await incident.save();
+  const fresh = { ...input, planId: input.planId ?? null, uploadedAt: new Date(), status: "processing" as const, extractedData: null, aiSummary: null, coverageChecklist: null, error: undefined };
+  let policy;
+  if (replaces) {
+    policy = await InsurancePolicy.findOne({ _id: replaces, userId: user._id, vehicleId: vehicle._id });
+    if (!policy) return fail(NOT_FOUND);
+    const oldKey = policy.s3Key;
+    policy.set(fresh);
+    await policy.save();
+    if (oldKey !== input.s3Key) await deleteObject(oldKey).catch((err) => console.error("replace policy object", oldKey, err));
+  } else {
+    policy = await InsurancePolicy.create({ ...fresh, userId: user._id, vehicleId: vehicle._id });
   }
   await refreshIncidentStatus(user._id, vehicle._id);
   return analyzeAndSave(owner, policy, known);

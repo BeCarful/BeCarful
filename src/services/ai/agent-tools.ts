@@ -6,15 +6,15 @@ import { chooseFloridaPlan, updatePolicyProvider } from "@/actions/insurance";
 import { deletePhoto } from "@/actions/photos";
 import { selectVehicle } from "@/actions/vehicles";
 import { Vehicle } from "@/models/Vehicle";
-import { getActivePolicy, getOpenIncident, loadClaimState } from "@/services/claims/state";
+import { checklistOf } from "@/services/claims/policies";
+import { getOpenIncident, getPolicies, loadClaimState } from "@/services/claims/state";
 import { FLORIDA_PLANS, getFloridaPlan } from "@/services/insurance/florida-plans";
 import { searchPolicyForms } from "@/services/insurance/policy-forms";
 import { PolicyExtractionSchema } from "@/schemas/policy";
 import { PROVIDERS, getProvider } from "@/services/insurance/providers";
-import { vehicleTitle } from "@/services/vehicles/context";
+import { vehicleModel, vehicleTitle } from "@/services/vehicles/context";
 import { INCIDENT_TYPES, PERIL_LABELS, POLICY_PRODUCTS } from "@/types";
 import { buildVehicleContext } from "./chat";
-import type { CoverageItem } from "./coverage-rules";
 import type { ToolKind } from "./guard";
 
 export type ToolScope = { userId: Types.ObjectId; vehicleId: Types.ObjectId };
@@ -64,6 +64,7 @@ export const AGENT_TOOLS: AgentTool[] = [
         vehicles: vehicles.map((v) => ({
           vehicleId: String(v._id),
           name: vehicleTitle(v),
+          model: vehicleModel(v),
           color: v.color,
           plate: `${v.licensePlate} (${v.state})`,
           isThisChat: v._id.equals(scope.vehicleId),
@@ -79,11 +80,14 @@ export const AGENT_TOOLS: AgentTool[] = [
     run: async (scope, { vehicleId }) => {
       const v = await target(scope, vehicleId);
       if (!v) return NO_VEHICLE;
-      const policy = await getActivePolicy(scope.userId, v._id);
-      const checklist = (policy?.coverageChecklist as { items?: CoverageItem[] } | null)?.items;
+      const policies = await getPolicies(scope.userId, v._id);
       return {
         ...JSON.parse(await buildVehicleContext(scope.userId, v._id)),
-        coverageChecklist: checklist?.map((i) => ({ risk: PERIL_LABELS[i.peril], status: i.status, detail: i.detail, law: i.law?.citation })) ?? "Not checked yet",
+        coverageChecklists: policies.map((p) => ({
+          policyId: String(p._id),
+          insurer: getProvider(p.providerId)?.name ?? p.providerId,
+          checklist: checklistOf(p)?.map((i) => ({ risk: PERIL_LABELS[i.peril], status: i.status, detail: i.detail, law: i.law?.citation })) ?? "Not checked yet",
+        })),
       };
     },
   }),
@@ -138,12 +142,19 @@ export const AGENT_TOOLS: AgentTool[] = [
     run: async (scope, { query, product, vehicleId }) => {
       const v = await target(scope, vehicleId);
       if (!v) return NO_VEHICLE;
-      const policy = await getActivePolicy(scope.userId, v._id);
-      if (!policy?.providerId) return { ok: false, error: "This vehicle has no insurer yet." };
+      const policies = await getPolicies(scope.userId, v._id);
+      if (!policies.length) return { ok: false, error: "This vehicle has no insurer yet." };
+      let policy = policies[0];
+      let found = null;
+      for (const p of policies) {
+        const formNumbers = PolicyExtractionSchema.safeParse(p.extractedData).data?.formNumbers ?? [];
+        found = await searchPolicyForms(query, { providerId: p.providerId, formNumbers, product: product ?? "personal_car", limit: 4 });
+        policy = p;
+        if (found) break;
+      }
       const insurer = getProvider(policy.providerId)?.name ?? policy.providerId;
       const formNumbers = PolicyExtractionSchema.safeParse(policy.extractedData).data?.formNumbers ?? [];
-      const found = await searchPolicyForms(query, { providerId: policy.providerId, formNumbers, product: product ?? "personal_car", limit: 4 });
-      if (!found) return { ok: false, error: `BeCarful has no standard policy forms saved for ${insurer}.` };
+      if (!found) return { ok: false, error: `BeCarful has no standard policy forms saved for ${policies.map((p) => getProvider(p.providerId)?.name ?? p.providerId).join(" or ")}.` };
       return {
         insurer,
         searched:
@@ -217,14 +228,20 @@ export const AGENT_TOOLS: AgentTool[] = [
   }),
   tool({
     name: "set_insurer",
-    description: "Changes which insurer the vehicle's current policy belongs to.",
+    description: "Changes which insurer one of the vehicle's policies belongs to. A car can have several policies: pass policyId (from get_vehicle_status) when it has more than one.",
     kind: "write",
-    parameters: z.object({ providerId: z.enum(PROVIDERS.map((p) => p.id) as [string, ...string[]]), vehicleId: vehicleArg }),
-    run: async (scope, { providerId, vehicleId }) => {
+    parameters: z.object({
+      providerId: z.enum(PROVIDERS.map((p) => p.id) as [string, ...string[]]),
+      policyId: z.string().optional().describe("Which policy; required when the vehicle has more than one"),
+      vehicleId: vehicleArg,
+    }),
+    run: async (scope, { providerId, policyId, vehicleId }) => {
       const v = await target(scope, vehicleId);
       if (!v) return NO_VEHICLE;
-      const policy = await getActivePolicy(scope.userId, v._id);
-      if (!policy) return { ok: false, error: "No policy yet. Upload one or choose a Florida plan first." };
+      const policies = await getPolicies(scope.userId, v._id);
+      if (!policies.length) return { ok: false, error: "No policy yet. Upload one or choose a Florida plan first." };
+      const policy = policyId ? policies.find((p) => String(p._id) === policyId) : policies.length === 1 ? policies[0] : null;
+      if (!policy) return { ok: false, error: "This car has several policies. Ask which one, then pass its policyId from get_vehicle_status." };
       return updatePolicyProvider(String(v._id), String(policy._id), providerId);
     },
     describe: (scope, a) => named(scope, a.vehicleId, (n) => `Set ${getProvider(a.providerId)?.name} as the insurer for ${n}`),

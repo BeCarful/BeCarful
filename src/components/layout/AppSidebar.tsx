@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { logout } from "@/actions/auth";
-import { CAR_ICON, NAV, NavIcon, isActive } from "./BottomNav";
+import { CAR_ICON, HOME, NAV, NavIcon, isActive } from "./BottomNav";
 import { ThemeToggle } from "./ThemeToggle";
 import { VehicleSelector, type VehicleOption } from "./VehicleSelector";
 import { PixelCar, Wordmark } from "./Wordmark";
@@ -26,6 +26,11 @@ export function AppSidebar({ email, vehicles, selectedId }: { email: string; veh
         <Wordmark tagline />
       </div>
       <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-4">
+        <Link href={HOME.href} aria-current={isActive(path, HOME.href) ? "page" : undefined} className={`${item} mb-4 ${isActive(path, HOME.href) ? current : idle}`}>
+          <NavIcon paths={HOME.icon} active={isActive(path, HOME.href)} />
+          {HOME.label}
+          {isActive(path, HOME.href) && <PixelCar className="ml-auto h-3 w-auto" windows="fill-(--road-sign)" />}
+        </Link>
         <p className="px-3 pb-2 text-xs font-semibold text-ink-soft">Vehicles</p>
         {selected ? (
           <>

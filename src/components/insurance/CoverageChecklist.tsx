@@ -1,5 +1,5 @@
-import { Fragment, type CSSProperties } from "react";
-import { TuxemonAvatar } from "@/components/chat/TuxemonAssistant";
+import type { CSSProperties } from "react";
+import { TuxemonAttribution, TuxemonAvatar } from "@/components/chat/TuxemonAssistant";
 import { RetroBadge, RetroCard } from "@/components/retro";
 import type { CoverageItem } from "@/services/ai/coverage-rules";
 import { PERIL_LABELS } from "@/types";
@@ -8,7 +8,7 @@ import { RecheckCoverage } from "./RecheckCoverage";
 
 const link = "underline decoration-dotted underline-offset-2 hover:text-accent";
 
-function Law({ law }: { law: CoverageItem["law"] }) {
+export function Law({ law }: { law: CoverageItem["law"] }) {
   if (!law) return null;
   return (
     <a href={law.url} target="_blank" rel="noopener noreferrer" className={`mt-1 inline-block text-xs text-ink-soft ${link}`}>
@@ -17,40 +17,17 @@ function Law({ law }: { law: CoverageItem["law"] }) {
   );
 }
 
-function MonsterCredits({ items }: { items: CoverageItem[] }) {
-  const monsters = [...new Set(items.map((i) => PERIL_MONSTERS[i.peril]))];
-  return (
-    <p className="mt-4 text-[11px] leading-snug text-ink-soft">
-      Sprites from Tuxemon, animated by BeCarful:{" "}
-      {monsters.map((m, i) => (
-        <Fragment key={m.name}>
-          {i > 0 && ", "}
-          {m.name} by{" "}
-          <a className={link} href={m.authorUrl} target="_blank" rel="noopener noreferrer">
-            {m.author}
-          </a>{" "}
-          (
-          <a className={link} href={m.licenseUrl} target="_blank" rel="noopener noreferrer">
-            {m.license}
-          </a>
-          )
-        </Fragment>
-      ))}
-      .{" "}
-      <a className={link} href="/tuxemon/ATTRIBUTION.md" target="_blank" rel="noopener">
-        Full credits
-      </a>
-    </p>
-  );
+export function MonsterCredits({ items }: { items: CoverageItem[] }) {
+  return <TuxemonAttribution monsters={[...new Set(items.map((i) => PERIL_MONSTERS[i.peril]))]} className="mt-4" />;
 }
 
 /** Uncovered risks as Tuxemon that "may attack", covered ones as a short checklist. */
-export function CoverageChecklist({ vehicleId, items }: { vehicleId: string; items: CoverageItem[] | null }) {
+export function CoverageChecklist({ vehicleId, policyId, items }: { vehicleId: string; policyId: string; items: CoverageItem[] | null }) {
   if (!items) {
     return (
       <RetroCard title="What could attack?">
         <p className="mb-4 text-sm text-ink-soft">We haven&apos;t checked which risks your policy covers yet.</p>
-        <RecheckCoverage vehicleId={vehicleId} label="Check my coverage" />
+        <RecheckCoverage vehicleId={vehicleId} policyId={policyId} label="Check my coverage" />
       </RetroCard>
     );
   }
@@ -120,7 +97,7 @@ export function CoverageChecklist({ vehicleId, items }: { vehicleId: string; ite
 
       <div className="flex flex-wrap items-center gap-3 text-xs text-ink">
         <span className="flex-1">Checked by AI against your policy and Florida/federal law. Your policy document is the final word.</span>
-        <RecheckCoverage vehicleId={vehicleId} label="Check again" subtle />
+        <RecheckCoverage vehicleId={vehicleId} policyId={policyId} label="Check again" subtle />
       </div>
     </div>
   );

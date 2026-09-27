@@ -1,8 +1,7 @@
-import type { CSSProperties, ReactNode } from "react";
+import { Fragment, type CSSProperties, type ReactNode } from "react";
+import type { PerilMonster } from "@/components/insurance/peril-monsters";
+import { DEFAULT_ASSISTANT, type Assistant } from "./assistants";
 
-export const ASSISTANT_NAME = "Propellercat";
-
-const SHEET = "/tuxemon/propellercat-sheet.png";
 // Unmodified 128x88 Tuxemon sheet: front frame 64x64 at (0,0), menu frames 24x24 at (0,64) and (24,64).
 const FRAMES = { front: { size: 64, x: 0, y: 0 }, icon: { size: 24, x: 0, y: 64 }, icon2: { size: 24, x: 24, y: 64 } } as const;
 
@@ -12,8 +11,8 @@ export function TuxemonAvatar({
   scale = 2,
   decorative = false,
   className = "",
-  sheet = SHEET,
-  label = ASSISTANT_NAME,
+  sheet = DEFAULT_ASSISTANT.sheet,
+  label = DEFAULT_ASSISTANT.name,
 }: {
   frame?: keyof typeof FRAMES;
   scale?: 1 | 2 | 3;
@@ -46,45 +45,52 @@ export function TuxemonAvatar({
 }
 
 /** The sheet's two menu frames alternating; reduced motion keeps the first. */
-export function TuxemonFace({ scale = 2, className = "" }: { scale?: 1 | 2 | 3; className?: string }) {
+export function TuxemonFace({ scale = 2, className = "", assistant = DEFAULT_ASSISTANT }: { scale?: 1 | 2 | 3; className?: string; assistant?: Assistant }) {
   return (
-    <span role="img" aria-label={ASSISTANT_NAME} className={`relative inline-block shrink-0 ${className}`} style={{ width: 24 * scale, height: 24 * scale }}>
-      <TuxemonAvatar frame="icon" scale={scale} decorative className="face-a absolute inset-0" />
-      <TuxemonAvatar frame="icon2" scale={scale} decorative className="face-b absolute inset-0" />
+    <span role="img" aria-label={assistant.name} className={`relative inline-block shrink-0 ${className}`} style={{ width: 24 * scale, height: 24 * scale }}>
+      <TuxemonAvatar frame="icon" scale={scale} sheet={assistant.sheet} decorative className="face-a absolute inset-0" />
+      <TuxemonAvatar frame="icon2" scale={scale} sheet={assistant.sheet} decorative className="face-b absolute inset-0" />
     </span>
   );
 }
 
-export function TuxemonAssistant({ children }: { children?: ReactNode }) {
+export function TuxemonAssistant({ assistant = DEFAULT_ASSISTANT, children }: { assistant?: Assistant; children?: ReactNode }) {
   return (
     <div className="surface-card flex items-center gap-3 p-4">
       <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-accent-soft">
-        <TuxemonFace />
+        <TuxemonFace assistant={assistant} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-display text-lg font-semibold text-ink">{ASSISTANT_NAME}</p>
+        <p className="font-display text-lg font-semibold text-ink">{assistant.name}</p>
         {children && <div className="text-sm text-ink-soft">{children}</div>}
-        <TuxemonAttribution />
+        <TuxemonAttribution monsters={[assistant]} />
       </div>
     </div>
   );
 }
 
-export function TuxemonAttribution() {
+export function TuxemonAttribution({ monsters = [DEFAULT_ASSISTANT], className = "mt-1" }: { monsters?: PerilMonster[]; className?: string }) {
   const link = "underline decoration-dotted underline-offset-2 hover:text-accent";
   return (
-    <p className="mt-1 text-[11px] leading-snug text-ink-soft">
-      Sprite:{" "}
-      <a className={link} href="https://github.com/Tuxemon/Tuxemon/blob/development/ATTRIBUTIONS.md" target="_blank" rel="noopener noreferrer">
-        {ASSISTANT_NAME}
-      </a>{" "}
-      by{" "}
-      <a className={link} href="https://wiki.tuxemon.org/Tamashihoshi" target="_blank" rel="noopener noreferrer">
-        tamashihoshi
-      </a>{" "}
-      (Tuxemon, animated by BeCarful),{" "}
-      <a className={link} href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">
-        CC BY-SA 4.0
+    <p className={`${className} text-[11px] leading-snug text-ink-soft`}>
+      {monsters.length > 1 ? "Sprites" : "Sprite"} from Tuxemon, animated by BeCarful:{" "}
+      {monsters.map((m, i) => (
+        <Fragment key={m.name}>
+          {i > 0 && ", "}
+          {m.name} by{" "}
+          <a className={link} href={m.authorUrl} target="_blank" rel="noopener noreferrer">
+            {m.author}
+          </a>{" "}
+          (
+          <a className={link} href={m.licenseUrl} target="_blank" rel="noopener noreferrer">
+            {m.license}
+          </a>
+          )
+        </Fragment>
+      ))}
+      .{" "}
+      <a className={link} href="/tuxemon/ATTRIBUTION.md" target="_blank" rel="noopener">
+        Full credits
       </a>
     </p>
   );

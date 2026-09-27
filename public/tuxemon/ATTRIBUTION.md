@@ -100,15 +100,15 @@
 - **License verified from:** Tuxemon `ATTRIBUTIONS.md` at the same commit, section "Tuxemon" → "Chillimp" (https://github.com/Tuxemon/Tuxemon/blob/d7dd0adc0c26214ff58ef3eaec47bd8f1f799cf5/ATTRIBUTIONS.md?plain=1#L712), which reads: `* ["Chillimp"](https://wiki.tuxemon.org/index.php?title=Chillimp) by [Chickenshowman](https://wiki.tuxemon.org/index.php?title=Chickenshowman) is licensed under [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)`
 - **Modifications:** none. The file is byte-for-byte identical to the source (SHA-1 `fe2398cc4faed9f8e63ecdfe50d5bad5f75785c6`).
 
-## aardorn-sheet.png
+## hampotamos-sheet.png
 
-- **Asset:** "Aardorn" battle sprite sheet (front, back and menu frames), from the Tuxemon project
-- **Author:** [Magic-Purple-Hermit](https://wiki.tuxemon.org/index.php?title=Magic-Purple-Hermit)
-- **Original page:** https://wiki.tuxemon.org/index.php?title=Aardorn
-- **Source file:** https://github.com/Tuxemon/Tuxemon/blob/d7dd0adc0c26214ff58ef3eaec47bd8f1f799cf5/mods/tuxemon/gfx/sprites/battle/aardorn-sheet.png
-- **License:** [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)
-- **License verified from:** Tuxemon `ATTRIBUTIONS.md` at the same commit, section "Tuxemon" → "Aardorn" (https://github.com/Tuxemon/Tuxemon/blob/d7dd0adc0c26214ff58ef3eaec47bd8f1f799cf5/ATTRIBUTIONS.md?plain=1#L669), which reads: `* ["Aardorn"](https://wiki.tuxemon.org/index.php?title=Aardorn) by [Magic-Purple-Hermit](https://wiki.tuxemon.org/index.php?title=Magic-Purple-Hermit) is licensed under [CC-BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)`
-- **Modifications:** none. The file is byte-for-byte identical to the source (SHA-1 `c3778bcd258fdaa64e5040b0e2e8e74f53a0e1a3`).
+- **Asset:** "Hampotamos" battle sprite sheet (front, back and menu frames), from the Tuxemon project
+- **Author:** [Catch Challenger](https://wiki.tuxemon.org/index.php?title=Catch_Challenger) (original design and sprites); face sprites tweaked by [Sanglorian](https://wiki.tuxemon.org/index.php?title=Sanglorian)
+- **Original page:** https://wiki.tuxemon.org/index.php?title=Hampotamos
+- **Source file:** https://github.com/Tuxemon/Tuxemon/blob/d7dd0adc0c26214ff58ef3eaec47bd8f1f799cf5/mods/tuxemon/gfx/sprites/battle/hampotamos-sheet.png
+- **License:** [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+- **License verified from:** the Tuxemon project's "Set 1" release (`Tuxemon Set 1.zip`, 2018: README and "Set 1 - Tuxepedia" page), which states the set is "Released under a Creative Commons Attribution-ShareAlike 4.0 licence unless otherwise mentioned" and credits Hampotamos as "Catch Challenger is an open source project, with assets under Creative Commons Attribution. Original design and sprites by Catch Challenger. Face sprites tweaked by Sanglorian." The front and both face frames of this sheet are pixel-identical to that release's `Hampotamos_front.png`, `Hampotamos_face.png` and `Hampotamos_face_2.png`.
+- **Modifications:** none. The file is byte-for-byte identical to the source (SHA-1 `5a92acc16c8e1df2882f39ab9c5ab3a7b0048036`).
 
 ## cateye-sheet.png
 
@@ -133,7 +133,7 @@
 ## Idle animations (`<name>-idle.png`)
 
 - **Source:** the front frame (64x64 at 0,0) of each `<name>-sheet.png` above, by the authors credited in its section.
-- **Modifications (by BeCarful):** each file is a looping animated PNG made from that one frame by `scripts/tuxemon-idle.py`: the body settles 1–2 px (breathing) or floats, the eyes blink, and some creatures get their own motion (Propellercat's propeller spins and tail sways; Agnidon's flames flicker; Noctalo's and Eaglace's wings flap; Selmatek's floating rocks bob; Moloch's arms sway; Bigfin's tail and sprout sway; Cateye's tail and Aardorn's ear twitch; Vamporm's antennae wave; Chillimp's fist bobs). The pixels are moved, and eyelids are painted over the eyes using the sprite's own colors; no new artwork is added. The `-sheet.png` files remain unmodified (the SHA-1s above still apply).
-- **License:** each animation is an adaptation released under the same license as its source sheet: CC BY-SA 4.0 for all except `aardorn-idle.png` (CC BY-SA 3.0) and `nut-idle.png` (CC0 1.0).
+- **Modifications (by BeCarful):** each file is a looping animated PNG made from that one frame by `scripts/tuxemon-idle.py`: the body settles 1–2 px (breathing) or floats, the eyes blink, and some creatures get their own motion (Propellercat's propeller spins and tail sways; Agnidon's flames flicker; Noctalo's and Eaglace's wings flap; Selmatek's floating rocks bob; Moloch's arms sway; Bigfin's tail and sprout sway; Cateye's tail twitches; Hampotamos breathes and blinks; Vamporm's antennae wave; Chillimp's fist bobs). The pixels are moved, and eyelids are painted over the eyes using the sprite's own colors; no new artwork is added. The `-sheet.png` files remain unmodified (the SHA-1s above still apply).
+- **License:** each animation is an adaptation released under the same license as its source sheet: CC BY-SA 4.0 for all except `nut-idle.png` (CC0 1.0).
 
 Tuxemon is © the Tuxemon contributors. BeCarful is not affiliated with or endorsed by the Tuxemon project.

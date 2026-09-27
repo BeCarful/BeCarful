@@ -24,6 +24,12 @@ export async function requireVehicle(vehicleId: string) {
   return { user, vehicle };
 }
 
-export function vehicleTitle(v: { year: number; make: string; model: string; trim?: string | null }) {
+type CarName = { nickname?: string | null; year: number; make: string; model: string; trim?: string | null };
+
+export function vehicleModel(v: CarName) {
   return [v.year, v.make, v.model, v.trim].filter(Boolean).join(" ");
+}
+
+export function vehicleTitle(v: CarName) {
+  return v.nickname || vehicleModel(v);
 }
