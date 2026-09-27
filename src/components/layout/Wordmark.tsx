@@ -24,7 +24,7 @@ export function Wordmark({ tagline = false, className = "" }: { tagline?: boolea
       <BrandMark />
       <span className="flex min-w-0 flex-col">
         <span className="font-display text-xl leading-none font-semibold tracking-tight text-ink">BeCarful</span>
-        {tagline && <span className="mt-1 truncate text-xs text-ink-soft">Snap. Understand. Claim.</span>}
+        {tagline && <span className="mt-1 truncate text-xs text-ink-soft">careful with your car</span>}
       </span>
     </Link>
   );

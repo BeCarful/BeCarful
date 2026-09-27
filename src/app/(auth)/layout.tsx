@@ -17,7 +17,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
         <section className="flex flex-col gap-6">
           <Wordmark tagline />
           <div>
-            <p className="eyebrow">Your car. Your policy. Your next step.</p>
+            <p className="eyebrow">know what happens before it happens</p>
             <p className="mt-3 font-display text-3xl leading-tight font-semibold tracking-tight text-ink sm:text-4xl">
               Had a bump?
               <br />
