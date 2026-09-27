@@ -1,9 +1,11 @@
 import "server-only";
 import { FunctionTool, LlmAgent } from "@google/adk";
+import { ThinkingLevel } from "@google/genai";
 import type { Types } from "mongoose";
 import { env } from "@/lib/env";
 import { AGENT_TOOLS, type ToolScope } from "./agent-tools";
 import { adkModel, runAgent } from "./adk";
+import { CHAT_MODEL } from "./gemini";
 import { buildVehicleContext, recentMessages, systemPrompt } from "./chat";
 import { searchLawTool } from "./coverage";
 import { classifyWithJev, decide } from "./guard";
@@ -25,6 +27,7 @@ export async function runChatAgent(
   userId: Types.ObjectId,
   vehicleId: Types.ObjectId,
   assistantName: string,
+  onText?: (delta: string, fresh: boolean) => void,
 ): Promise<{ text: string; action: ProposedAction | null }> {
   const [history, context] = await Promise.all([recentMessages(userId, vehicleId, HISTORY_FOR_MODEL), buildVehicleContext(userId, vehicleId)]);
   const last = history.at(-1);
@@ -53,10 +56,10 @@ export async function runChatAgent(
 
   const agent = new LlmAgent({
     name: "propellercat",
-    model: adkModel(),
+    model: adkModel(CHAT_MODEL),
     instruction: () => `${systemPrompt(assistantName)}\n${TOOL_RULES}\n\nVEHICLE CONTEXT (JSON):\n${context}`,
     tools: [...tools, searchLawTool],
-    generateContentConfig: { temperature: 0.4 },
+    generateContentConfig: { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } },
     beforeToolCallback: async ({ tool, args }) => {
       const def = AGENT_TOOLS.find((t) => t.name === tool.name);
       if (!def || def.kind === "read") return undefined;
@@ -84,6 +87,7 @@ export async function runChatAgent(
     userId: String(userId),
     history: firstUser < 0 ? [] : earlier.slice(firstUser),
     message: { role: "user", parts: [{ text: last.content }] },
+    onText,
   });
   if (!text) throw new Error("Empty reply from the agent");
   return { text, action };

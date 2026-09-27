@@ -1,15 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState, useTransition, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
-import { resolveChatAction, sendChatMessage, transcribeSpeech } from "@/actions/chat";
+import { resolveChatAction, transcribeSpeech } from "@/actions/chat";
 import { selectVehicle } from "@/actions/vehicles";
 import { CAR_ICON, NavIcon } from "@/components/layout/BottomNav";
 import { RetroBadge, RetroButton, retroInputClass } from "@/components/retro";
 import type { ChatMessageView, ChatSubject } from "@/services/ai/chat";
-import { ChatBubble } from "./ChatBubble";
+import { ChatBubble, TypingBubble } from "./ChatBubble";
 import type { Assistant } from "./assistants";
 import { TuxemonAttribution, TuxemonAvatar, TuxemonFace } from "./TuxemonAssistant";
+import { streamChat } from "./stream";
 import { useVoice } from "./useVoice";
 
 type Topic = "car" | "insurance";
@@ -35,8 +35,6 @@ function suggestions(topic: Topic, insurer: string | null) {
 }
 
 const MAX_LENGTH = 1000;
-const PAGE_FRAME =
-  "mx-auto -mb-8 h-[calc(100dvh-10.625rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[26rem] max-w-3xl md:-mb-10 md:h-[calc(100dvh-7.25rem)]";
 const SHIELD_ICON = ["M12 3 5 6v5c0 4.5 3 8.4 7 10 4-1.6 7-5.5 7-10V6l-7-3Z"];
 const MIC_ICON = ["M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z", "M6 11a6 6 0 0 0 12 0", "M12 17v4"];
 const STOP_ICON = ["M7 7h10v10H7z"];
@@ -47,7 +45,7 @@ type Outbox = { text: string; error: string | null };
 const ACTION_DONE = { done: "Done", failed: "Didn't work", cancelled: "Cancelled", running: "Working…", pending: "" } as const;
 
 /** A write the agent proposed. Nothing changes until the user taps Confirm. */
-function ActionCard({ vehicleId, message, onUpdate }: { vehicleId: string; message: ChatMessageView; onUpdate: (m: ChatMessageView) => void }) {
+export function ActionCard({ vehicleId, message, onUpdate }: { vehicleId: string; message: ChatMessageView; onUpdate: (m: ChatMessageView) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const action = message.action!;
@@ -122,29 +120,18 @@ type Props = {
   assistant: Assistant;
   subjects: ChatSubject[];
   voice: boolean;
-  className?: string;
-  onClose?: () => void;
 };
 
-export function Chat({ messages, ...props }: Props & { messages: ChatMessageView[] | null }) {
+export function Chat({ messages, ...props }: Props & { messages: ChatMessageView[] }) {
   const [topic, setTopic] = useState<Topic>("car");
   const [switching, startTransition] = useTransition();
-  const { vehicleId, className = PAGE_FRAME } = props;
 
   function choose(id: string, next: Topic) {
     setTopic(next);
-    if (id !== vehicleId) startTransition(() => selectVehicle(id));
+    if (id !== props.vehicleId) startTransition(() => selectVehicle(id));
   }
 
-  if (!messages) {
-    return (
-      <section aria-busy className={`surface-card flex flex-col items-center justify-center gap-3 overflow-hidden ${className}`}>
-        <TuxemonFace assistant={props.assistant} />
-        <p className="text-sm text-ink-soft">Opening your chat…</p>
-      </section>
-    );
-  }
-  return <ChatThread key={vehicleId} {...props} initialMessages={messages} topic={topic} switching={switching} onChoose={choose} />;
+  return <ChatThread key={props.vehicleId} {...props} initialMessages={messages} topic={topic} switching={switching} onChoose={choose} />;
 }
 
 /** Mount with key={vehicleId}: all state here belongs to one vehicle's thread. */
@@ -153,8 +140,6 @@ function ChatThread({
   assistant,
   subjects,
   voice,
-  className = PAGE_FRAME,
-  onClose,
   initialMessages,
   topic,
   switching,
@@ -164,6 +149,7 @@ function ChatThread({
   const [messages, setMessages] = useState(() => (unanswered ? initialMessages.slice(0, -1) : initialMessages));
   const [outbox, setOutbox] = useState<Outbox | null>(unanswered ? { text: unanswered.content, error: "I haven't replied to this yet. Tap Retry to ask again." } : null);
   const [draft, setDraft] = useState("");
+  const [streamed, setStreamed] = useState("");
   const [hearing, setHearing] = useState(false);
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
   const speech = useVoice();
@@ -191,15 +177,17 @@ function ChatThread({
     if (!text || sending) return;
     setVoiceNote(null);
     setOutbox({ text, error: null });
+    setStreamed("");
     setDraft((d) => (d.trim() === text ? "" : d));
-    const res = await sendChatMessage(vehicleId, text).catch(() => null);
-    if (res?.ok) {
+    const res = await streamChat(vehicleId, text, setStreamed);
+    setStreamed("");
+    if (res.ok) {
       const stale = (x: ChatMessageView): ChatMessageView => (x.action?.status === "pending" ? { ...x, action: { ...x.action, status: "cancelled" } } : x);
       setMessages((m) => [...m.map(stale), res.data.user, res.data.reply]);
       setOutbox(null);
       if (spoken) speech.play(res.data.reply.id);
     } else {
-      setOutbox({ text, error: res?.error ?? "Couldn't reach BeCarful. Check your connection, then tap Retry." });
+      setOutbox({ text, error: res.error });
     }
   }
 
@@ -233,33 +221,19 @@ function ChatThread({
 
   const empty = messages.length === 0 && !outbox;
   const voiceStatus = speech.recording ? "Listening… tap the mic when you're done." : hearing ? "Got it, writing that down…" : (voiceNote ?? speech.playError);
-  const Title = onClose ? "h2" : "h1";
-  const iconButton = "grid size-11 shrink-0 place-items-center rounded-lg text-ink-soft transition hover:bg-panel-shade hover:text-ink";
-
   return (
-    <section className={`surface-card flex flex-col overflow-hidden ${className}`}>
+    <section className="surface-card mx-auto -mb-8 flex h-[calc(100dvh-10.625rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[26rem] max-w-3xl flex-col overflow-hidden md:-mb-10 md:h-[calc(100dvh-7.25rem)]">
       <header className="flex items-center gap-3 border-b border-border px-4 py-3">
         <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-xl bg-accent-soft">
           <TuxemonFace assistant={assistant} />
         </span>
         <div className="min-w-0 flex-1">
-          <Title className="font-display text-lg leading-tight font-semibold text-ink">{assistant.name}</Title>
+          <h1 className="font-display text-lg leading-tight font-semibold text-ink">{assistant.name}</h1>
           <p className="truncate text-xs text-ink-soft">Chatting about your {about}</p>
         </div>
-        {onClose ? (
-          <>
-            <Link href="/chat" onClick={onClose} aria-label="Open full chat" className={iconButton}>
-              <NavIcon paths={["M9 5h10v10", "M19 5 5 19"]} active={false} />
-            </Link>
-            <button type="button" onClick={onClose} aria-label={`Close ${assistant.name}`} className={iconButton}>
-              <NavIcon paths={["M6 6l12 12", "M18 6 6 18"]} active={false} />
-            </button>
-          </>
-        ) : (
-          <RetroBadge tone="accent" className="max-w-[45%] truncate max-sm:hidden">
-            <span className="truncate">{subject.title}</span>
-          </RetroBadge>
-        )}
+        <RetroBadge tone="accent" className="max-w-[45%] truncate max-sm:hidden">
+          <span className="truncate">{subject.title}</span>
+        </RetroBadge>
       </header>
 
       <div
@@ -306,16 +280,7 @@ function ChatThread({
             {outbox.error && <span className="mt-1 text-xs font-medium text-ink-soft">Not answered yet</span>}
           </ChatBubble>
         )}
-        {sending && (
-          <ChatBubble role="assistant" assistant={assistant}>
-            <span className="flex gap-1 py-1.5" aria-hidden>
-              <span className="size-2 animate-bounce rounded-full bg-ink-soft [animation-delay:-0.3s]" />
-              <span className="size-2 animate-bounce rounded-full bg-ink-soft [animation-delay:-0.15s]" />
-              <span className="size-2 animate-bounce rounded-full bg-ink-soft" />
-            </span>
-            <span className="sr-only">{assistant.name} is typing…</span>
-          </ChatBubble>
-        )}
+        {sending && (streamed ? <ChatBubble role="assistant" text={streamed} assistant={assistant} /> : <TypingBubble assistant={assistant} />)}
         {outbox?.error && (
           <div role="alert" className="flex items-center gap-3 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2">
             <p className="flex-1 text-sm text-danger">{outbox.error}</p>
