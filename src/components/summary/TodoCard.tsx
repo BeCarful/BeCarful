@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { WithProviderLogo } from "@/components/insurance/ProviderPicker";
 import { RetroBadge, RetroCard } from "@/components/retro";
+import type { InsuranceProvider } from "@/services/insurance/providers";
 import type { TodoItem } from "@/types";
 
 function Marker({ state }: { state: "done" | "next" | "open" }) {
@@ -16,7 +18,7 @@ function Marker({ state }: { state: "done" | "next" | "open" }) {
   );
 }
 
-export function TodoCard({ items, children }: { items: TodoItem[]; children?: ReactNode }) {
+export function TodoCard({ items, provider, children }: { items: TodoItem[]; provider?: InsuranceProvider; children?: ReactNode }) {
   const left = items.filter((t) => !t.done).length;
   const next = items.find((t) => !t.done);
   return (
@@ -28,7 +30,9 @@ export function TodoCard({ items, children }: { items: TodoItem[]; children?: Re
               <Marker state={t.done ? "done" : t === next ? "next" : "open"} />
               <span className="min-w-0 flex-1">
                 <span className="sr-only">{t.done ? "Done: " : "To do: "}</span>
-                <span className={`block ${t.done ? "text-ink-soft" : "font-semibold text-ink"}`}>{t.title}</span>
+                <span className={`block ${t.done ? "text-ink-soft" : "font-semibold text-ink"}`}>
+                  <WithProviderLogo text={t.title} provider={provider} />
+                </span>
                 {t.detail && <span className="block text-sm text-ink-soft">{t.detail}</span>}
               </span>
             </>
