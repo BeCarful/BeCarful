@@ -1,0 +1,172 @@
+State Farm Florida car policy endorsement 2030AR: Entity Named Insured
+Form: 2030AR
+Insurers: State Farm Mutual Automobile Insurance Company; State Farm Fire and Casualty Company
+Product: personal_car
+Source: Florida OIR IRFS filing 24-098215 (approved 12/03/2024), document 619494
+Extraction: pdftotext; OIR approval stamp and page numbers removed
+Retrieved: 2026-09-26
+
+ENTITY NAMED INSURED
+2030AR
+This endorsement is a part of the policy. Except for the changes this endorsement makes, all other
+provisions of the GU
+policy
+remain
+the same and apply to this endorsement.
+1. All references to resident relative and non-owned car in the policy are deleted.
+2. LIABILITY COVERAGE (Bodily Injury and Property Damage)
+a. Additional Definition
+Insured is changed to read:
+Insured means:
+1. you for:
+a. the ownership, maintenance, or use of:
+(1) a your car;
+(2) a newly acquired car; or
+(3) a trailer; and
+b. the maintenance or use of a temporary substitute car;
+2. any person for their use of:
+a. a your car;
+b. a newly acquired car;
+c. a temporary substitute car; or
+d. a trailer while attached to a car described in a., b., or c. above.
+Such vehicle must be used with your express or implied permission; and
+3. any other person or organization vicariously liable for the use of a vehicle by an insured as defined in 1. or 2.
+above, but only for such vicarious liability. This provision applies only if the vehicle is:
+a. neither owned by, nor hired by, that other person or organization; and
+b. neither available for, nor being used for, carrying persons for a charge.
+Insured does not include the United States of America or any of the Federal Government’s departments or agencies.
+b. Exclusions
+(1) Exclusion 2. is changed to read:
+THERE IS NO COVERAGE FOR AN INSURED FOR BODILY INJURY TO ANY PERSON WHO BOTH RESIDES PRIMARILY WITH AN INSURED AND WHO:
+a. IS RELATED TO THAT INSURED BY BLOOD, MARRIAGE, OR ADOPTION; OR
+b. IS A WARD OR FOSTER CHILD OF THAT INSURED;
+(2) Exclusion 5. is changed to read:
+THERE IS NO COVERAGE FOR AN INSURED FOR BODILY INJURY TO THAT INSURED’S FELLOW EMPLOYEE WHILE THE FELLOW EMPLOYEE IS IN THE COURSE AND SCOPE OF THAT PERSON’S EMPLOYMENT. This exclusion does not apply if this Liability Coverage provided by this policy is used to certify
+financial responsibility;
+(3) Exclusion 8. is changed to read:
+THERE IS NO COVERAGE FOR AN INSURED WHILE MAINTAINING OR USING A VEHICLE IN CONNECTION WITH THAT INSURED’S EMPLOYMENT IN OR ENGAGEMENT OF ANY KIND IN A CAR BUSINESS.
+This exclusion does not apply to:
+a. you; or
+©, Copyright, State Farm Mutual Automobile Insurance Company, 2024
+2030AR
+b. any agent, employee, or business partner of you
+while maintaining or using a your car, a newly acquired car, a
+temporary
+substitute
+car, or a trailer owned
+by you;
+(4) The following exclusion is added:
+THERE IS NO COVERAGE FOR AN INSURED FOR DAMAGES RESULTING FROM:
+a. THE HANDLING OF PROPERTY BEFORE IT IS MOVED FROM THE PLACE WHERE IT IS ACCEPTED BY
+THE INSURED FOR MOVEMENT INTO OR ONTO A VEHICLE FOR WHICH THE INSURED IS PROVIDED
+LIABILITY COVERAGE BY THIS POLICY;
+b. THE HANDLING OF PROPERTY AFTER IT IS MOVED FROM THE VEHICLE DESCRIBED IN a. ABOVE
+TO THE PLACE WHERE IT IS FINALLY DELIVERED BY THE INSURED; OR
+c. THE MOVEMENT OF PROPERTY BY MEANS OF A MECHANICAL DEVICE, OTHER THAN A HAND
+TRUCK, THAT IS NOT ATTACHED TO THE VEHICLE DESCRIBED IN a. ABOVE.
+3. PROPERTY DAMAGE LIABILITY COVERAGE
+a. Additional Definition
+Insured is changed to read:
+Insured means:
+1. you for:
+a. the ownership, maintenance, or use of:
+(1) a your car;
+(2) a newly acquired car; or
+(3) a trailer; and
+b. the maintenance or use of a temporary substitute car;
+2. any person for their use of:
+a. a your car;
+b. a newly acquired car;
+c. a temporary substitute car; or
+d. a trailer while attached to a car described in a., b., or c. above.
+Such vehicle must be used with your express or implied permission; and
+3. any other person or organization vicariously liable for the use of a vehicle by an insured as defined in 1. or 2.
+above, but only for such vicarious liability. This provision applies only if the vehicle is:
+a. neither owned by, nor hired by, that other person or organization; and
+b. neither available for, nor being used for, carrying persons for a charge.
+Insured does not include the United States of America or any of the Federal Government’s departments or agencies.
+b. Exclusions
+(1) Exclusion 6. is changed to read:
+THERE IS NO COVERAGE FOR AN INSURED WHILE MAINTAINING OR USING A VEHICLE IN CONNECTION
+WITH THAT INSURED’S EMPLOYMENT IN OR ENGAGEMENT OF ANY KIND IN A CAR BUSINESS. This exclusion does not apply to:
+a. you; or
+b. any agent, employee, or business partner of you
+while maintaining or using a your car, a newly acquired car, a temporary substitute car, or a trailer owned by
+you;
+(2) The following exclusion is added:
+©, Copyright, State Farm Mutual Automobile Insurance Company, 2024
+2030AR
+THERE IS NO COVERAGE FOR AN INSURED FOR DAMAGES RESULTING
+FROM:
+1. THE HANDLING OF PROPERTY BEFORE IT IS MOVED FROM
+THEFICPLACE
+WHERE IT IS ACCEPTED
+BY THE INSURED FOR MOVEMENT INTO OR ONTO A VEHICLE FOR WHICHUR
+THE INSURED
+ISTION
+PROVIDED PROPERTY DAMAGE LIABILITY COVERAGE BY THIS POLICY;
+2. THE HANDLING OF PROPERTY AFTER IT IS MOVED FROM THE VEHICLE DESCRIBED IN 1. ABOVE
+TO THE PLACE WHERE IT IS FINALLY DELIVERED BY THE INSURED; OR
+3. THE MOVEMENT OF PROPERTY BY MEANS OF A MECHANICAL DEVICE, OTHER THAN A HAND
+TRUCK, THAT IS NOT ATTACHED TO THE VEHICLE DESCRIBED IN 1. ABOVE.
+4. NO-FAULT COVERAGE
+a. Additional Definitions
+Insured is changed to read:
+Insured means any person while occupying or when struck as a pedestrian by:
+1. a your car;
+2. a newly acquired car;
+3. a temporary substitute car; or
+4. a trailer while attached to a car described in 1., 2., or 3. above.
+5. MEDICAL PAYMENTS COVERAGE
+a. Additional Definitions
+Insured is changed to read:
+Insured means any person while occupying:
+1. a your car;
+2. a newly acquired car;
+3. a temporary substitute car; or
+4. a trailer while attached to a car described in 1., 2., or 3. above.
+Such vehicle must be used with your express or implied permission.
+b. Exclusions
+(1) Exclusion 10. is changed to read:
+THERE IS NO COVERAGE FOR AN INSURED WHILE MAINTAINING OR USING A VEHICLE IN CONNECTION WITH THAT INSURED’S EMPLOYMENT IN OR ENGAGEMENT OF ANY KIND IN A CAR BUSINESS.
+This exclusion does not apply to any agent, employee, or business partner of you while maintaining or using:
+a. a your car;
+b. a newly acquired car;
+c. a temporary substitute car; or
+d. a trailer owned by you;
+(2) Exclusions 12. and 14. are deleted.
+6. UNINSURED MOTOR VEHICLE COVERAGE (Stacking and Non-Stacking)
+a. Additional Definitions
+Insured is changed to read:
+Insured means:
+1. any person while occupying:
+a. a your car;
+b. a newly acquired car; or
+©, Copyright, State Farm Mutual Automobile Insurance Company, 2024
+2030AR
+c. a temporary substitute car.
+Such vehicle must be used with your express or implied permission;FLand
+2. you or any person or organization entitled to recover compensatory damages as a result of bodily injury to
+an insured defined in item 1. above.
+7. UNINSURED MOTOR VEHICLE COVERAGE (Non-Stacking)
+Exclusions
+Exclusion 2. is deleted.
+8. PHYSICAL DAMAGE COVERAGES
+Additional Definitions
+a. Covered Vehicle is changed to read:
+Covered Vehicle means:
+1. a your car, but only for those coverages for which a premium for that your car is shown under the corresponding “Coverage Symbol” in the “POLICY PREMIUM” schedules on the Declarations;
+2. a newly acquired car, if a premium is shown under the corresponding “Coverage Symbol” in the “POLICY
+PREMIUM” schedules on the Declarations;
+3. a temporary substitute car, if a premium is shown under the corresponding “Coverage Symbol” in the “POLICY
+PREMIUM” schedules on the Declarations; and
+4. a camper that is:
+a. shown on the Declarations; and
+b. designed to be mounted or installed on a your car described in 1. above, but only for those coverages for
+which a premium is shown for that your car under the corresponding “Coverage Symbol” in the “POLICY
+PREMIUM” schedules on the Declarations.
+A covered vehicle includes the parts and equipment that are common to the use of the vehicle as a vehicle. However, parts and equipment of campers must be securely fixed as a permanent part of the camper.
+b. Insured is changed to read:
+Insured means you.
+2030AR
+©, Copyright, State Farm Mutual Automobile Insurance Company, 2024

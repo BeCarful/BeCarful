@@ -5,7 +5,7 @@ import { CoverageChecklist } from "@/components/insurance/CoverageChecklist";
 import { InsuranceSetup } from "@/components/insurance/InsuranceSetup";
 import { COVERAGE_FIELDS, DETAIL_FIELDS, PolicyFields } from "@/components/insurance/PolicyFields";
 import { PolicyUpload } from "@/components/insurance/PolicyUpload";
-import { ProviderMark } from "@/components/insurance/ProviderPicker";
+import { ProviderMark, ProviderName } from "@/components/insurance/ProviderPicker";
 import { assistantById, type Assistant } from "@/components/chat/assistants";
 import { TuxemonAttribution, TuxemonAvatar } from "@/components/chat/TuxemonAssistant";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -37,7 +37,7 @@ export default async function InsurancePage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Insurance"
-        title={policy ? (provider?.name ?? "Your policy") : "Add your insurance"}
+        title={policy ? provider ? <ProviderName provider={provider} /> : "Your policy" : "Add your insurance"}
         description={
           policy
             ? `${vehicleTitle(selected)}: what your policy covers, in plain words.`

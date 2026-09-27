@@ -127,7 +127,7 @@ export async function chooseFloridaPlan(vehicleId: string, planId: string): Prom
     console.error("chooseFloridaPlan upload", err);
     return fail("We couldn't save that plan. Check your connection and try again.");
   }
-  const extracted: PolicyExtraction = { provider: insurer, policyNumber: null, effectiveDates: null, premium: null, coveredVehicle: null, ...plan.coverage };
+  const extracted: PolicyExtraction = { provider: insurer, policyNumber: null, effectiveDates: null, premium: null, coveredVehicle: null, formNumbers: [], ...plan.coverage };
   return createAndAnalyze(owner, { providerId: plan.providerId, s3Key, fileName: `${insurer} ${plan.name} (Florida example)`, planId: plan.id }, extracted);
 }
 

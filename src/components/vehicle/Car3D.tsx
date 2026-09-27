@@ -93,7 +93,7 @@ function prepare(source: THREE.Object3D, forward: THREE.Vector3, left: THREE.Vec
     const materialNames = materials.map((m) => m.name).join(" ");
     const kind = partKind(names, materialNames);
     const named = namedPart(names);
-    const skin: Skin = isInterior(names, materialNames) ? "clear" : kind === "glass" ? "glass" : "paint";
+    const skin: Skin = kind === "glass" ? "glass" : isInterior(names, materialNames) ? "clear" : "paint";
     o.geometry = o.geometry.clone();
     o.material = Array.isArray(o.material) ? o.material.map(tintable) : tintable(o.material);
     const pos = o.geometry.getAttribute("position");

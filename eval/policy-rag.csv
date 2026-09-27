@@ -1,0 +1,33 @@
+question,product,form,section,text
+Is flood or water damage to my car covered?,personal_car,,,"water, flood"
+Will you pay for a rental car while my car is being repaired after an accident?,personal_car,,Car Rental,not drivable or is being\s+repaired
+What do I have to do right after an accident?,personal_car,,^INSURED’S DUTIES,
+Do I pay a deductible to replace a cracked windshield?,personal_car,,,windshield
+Am I covered while I'm driving for Uber or Lyft?,personal_car,,,TRANSPORTATION NETWORK
+I just bought another car. Is it covered right away?,personal_car,,,Newly Acquired Car means|Newly Owned or Newly Leased Car
+Who counts as a resident relative on my policy?,personal_car,,,Resident Relative means
+Will my policy pay the medical bills of my passengers?,personal_car,,^(NO-FAULT|MEDICAL PAYMENTS) COVERAGE › Insuring Agreement,
+What happens if the driver who hit me has no insurance?,personal_car,,^UNINSURED MOTOR VEHICLE COVERAGE,
+How much does personal injury protection pay for medical expenses?,personal_car,,^NO-FAULT COVERAGE,"\$10,000"
+Is damage from racing or a speed contest excluded?,personal_car,,Exclusions,RACING
+Can State Farm cancel my car insurance?,personal_car,,,cancel
+Is my car covered if someone steals it?,personal_car,,Comprehensive Coverage|Additional Definitions,theft
+Does my policy pay for towing when my car breaks down?,personal_car,,Emergency Road Service,towing
+Is mold damage covered?,personal_car,,,fungi
+How do you decide what my car is worth if it is totaled?,personal_car,,Limit and Loss Settlement,actual cash value
+Will they fix my car with aftermarket parts instead of original parts?,personal_car,,,non-original equipment
+Who defends me if I get sued after a crash?,personal_car,,Insuring Agreement,defend an insured
+My dog got hurt in the crash. Does insurance pay the vet?,personal_car,,Pet Injury,
+Am I covered if I drive my car into Mexico?,personal_car,,Mexico,
+Do I have to answer questions under oath?,personal_car,,Questioning Under Oath,
+What does the policy pay if someone dies in the crash?,personal_car,,DEATH|Death Benefits,death
+I disagree with the repair estimate. How is it settled?,personal_car,,,disagreement as to the cost of repair
+Is my own car insured if my friend borrows it?,personal_car,,Additional Definition › Insured|Insuring Agreement,
+Does the policy cover a car I rent on vacation?,personal_car,,,Temporary Substitute Car means|Non-Owned Car means|rented
+Is my collector car paid at its guaranteed value if it's totaled?,classic_plus,^SC 900$,,Guaranteed Value®
+Are spare parts for my classic car covered?,classic_plus,^SC (900|501 FL)$,,spare parts
+Is my passenger covered on my collector motorcycle?,classic_plus,^SC 103 FL$,,
+Is my car covered at a high performance driving school on a race track?,classic_plus,^SC 12[67] FL$,,
+Is my classic car covered while it is being restored or built?,classic_plus,^SC 116 FL$,,
+Does the policy cover automobilia and collectibles in my garage?,classic_plus,^SC 500 FL$,,
+Can I drive my classic car to work every day?,classic_plus,^SC 900$,,regular use vehicle|commut

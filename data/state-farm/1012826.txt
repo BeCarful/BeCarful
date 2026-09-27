@@ -1,0 +1,100 @@
+State Farm Florida car policy form 1012826: Uninsured Motor Vehicle Coverage Selection or Rejection
+Form: 1012826
+Insurers: State Farm Mutual Automobile Insurance Company; State Farm Fire and Casualty Company
+Product: personal_car
+Source: Florida OIR IRFS filing 24-098215 (approved 12/03/2024), document 619500
+Extraction: pdftotext; OIR approval stamp and page numbers removed
+Retrieved: 2026-09-26
+
+State Farm Mutual Automobile Insurance Company
+State Farm Fire and Casualty Company
+Acknowledgment of Coverage
+Selection or Rejection
+Uninsured Motor Vehicle Coverage — Florida
+YOU ARE ELECTING NOT TO PURCHASE
+CERTAIN VALUABLE COVERAGE WHICH
+PROTECTS YOU AND YOUR FAMILY OR YOU ARE
+PURCHASING UNINSURED MOTORIST LIMITS
+LESS THAN YOUR BODILY INJURY LIABILITY
+LIMITS WHEN YOU SIGN THIS FORM. PLEASE
+READ CAREFULLY.
+Uninsured Motor Vehicle Coverage provides for payment of
+certain benefits for damages caused by owners or operators of
+uninsured motor vehicles because of bodily injury or death
+resulting therefrom. Such benefits may include payments for
+certain medical expenses, lost wages, and pain and suffering,
+subject to limitations and conditions contained in the policy. For
+the purpose of this coverage an uninsured motor vehicle may
+include a motor vehicle as to which the bodily injury liability limits,
+if any, are less than your damages.
+This coverage can be purchased in either a “Stacking” form or,
+for a reduction in premium, a “Non-Stacking” form. "Stacking"
+is not available for policies with a named insured that is not a
+natural person.
+If you select the Stacking option, and you or a resident family
+member are injured by an uninsured motorist, and the injured
+person’s damages exceed the limits of the policy on the motor
+vehicle which the injured person is occupying, the injured person
+can add the coverage under two or more household policies to
+determine the limit of coverage that may be available to him/her.
+If you select the Non-Stacking option and you or a resident
+family member are injured by an uninsured motorist, except as
+provided in (1) below, the injured person may not add together
+coverage under two or more household policies to determine the
+total limits of coverage that may be available to him/her. Except
+as provided in (1) below, the coverage available to the injured
+person is only the coverage available as to that motor vehicle
+he/she was occupying. The non-stacking form is also subject to
+the following:
+(1) If the injured person is occupying a motor vehicle not owned
+by him/her or a family member who resides with him/her,
+he/she may add to the coverage on the car occupied the
+highest limits of coverage afforded for any one vehicle
+insured by him/her or any family member who resides with
+him/her.
+(2) If the injured person is occupying a motor vehicle owned by
+him/her or a family member who resides with him/her, there
+is no coverage if uninsured motorist coverage was not
+purchased on that vehicle.
+(3) If the injured person is not occupying a motor vehicle at the
+time of the accident, he/she may select the coverage
+afforded for any one vehicle insured by him/her or any
+family member who resides with him/her. No other policy
+will apply.
+Signature on
+next page
+SRU FL
+1012826 2000 160422 200 08-15-2024
+Acknowledgment of Coverage Selection or Rejection — Uninsured Motor Vehicle Coverage — Florida, page 2 of 2
+Selection or Rejection of Coverage
+Florida law requires that motor vehicle liability policies include “stacking” Uninsured Motor Vehicle Coverage, unless you select
+“non-stacking” coverage. “Stacking” is not available for policies with a named insured that is not a natural person. The selected
+coverage must be at limits equal to the Liability Coverage limits for bodily injury in your policy, unless you select lower limits of
+coverage. You also have the right to reject Uninsured Motor Vehicle Coverage.
+Select one of the options below:
+I reject all forms of Uninsured Motor Vehicle Coverage.
+I reject the stacking form of Uninsured Motor Vehicle Coverage and, instead, select the non-stacking form of Uninsured Motor
+Vehicle Coverage with limits equal to my Liability Coverage limits for bodily injury.
+I reject the stacking form of Uninsured Motor Vehicle Coverage with limits equal to my Liability Coverage limits for bodily injury
+and, instead, select the stacking form of Uninsured Motor Vehicle Coverage with lower limits of $X,XXX,XXX / $X,XXX,XXX
+Each Person
+Each Accident
+I reject the stacking form of Uninsured Motor Vehicle Coverage with limits equal to my Liability Coverage limits for bodily injury
+and, instead, select the non-stacking form of Uninsured Motor Vehicle Coverage with lower limits of $X,XXX,XXX / $X,XXX,XXX
+Each Person
+Each Accident
+I understand and agree that, unless a named insured requests in writing the deletion of such limitations and pays the appropriate
+premium for such coverage, this acknowledgment of coverage selection or rejection shall be:
+(1) binding on all insureds under the policy; and
+(2) applicable to the policy of insurance described below, and to any policy which renews, extends, changes, supersedes,
+or replaces this policy with the same bodily injury liability limits.
+Application/Policy number
+Agent code
+Named Insured(s) or Spouse (as appearing on the application or policy)
+#$S01 - for office use only
+#$D01 - for office use only
+Signature of any Named Insured/Applicant
+(If a business, a company representative should print and sign here)
+Date (MM/DD/YYYY)
+SRU FL
+1012826 2000 160422 200 08-15-2024

@@ -1,13 +1,14 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-
-export const JURISDICTIONS = ["florida", "federal"] as const;
-export type Jurisdiction = (typeof JURISDICTIONS)[number];
+import { connectDB } from "@/lib/db";
+import { Statute } from "@/models/Statute";
+import { JURISDICTIONS, type Jurisdiction } from "@/types";
 
 export type StatuteChunk = { citation: string; url: string; jurisdiction: Jurisdiction; text: string };
 export type StatuteHit = StatuteChunk & { score: number };
 
-type Index = { chunks: StatuteChunk[]; tf: Map<string, number>[]; lengths: number[]; df: Map<string, number>; avgLength: number };
+type Doc = { citation: string; section?: string; text: string };
+export type Index<T extends Doc> = { chunks: T[]; tf: Map<string, number>[]; lengths: number[]; df: Map<string, number>; avgLength: number };
 
 const CHUNK_CHARS = 1500;
 const STOPWORDS = new Set(
@@ -24,24 +25,28 @@ export function tokenize(text: string): string[] {
 export function chunkStatute(raw: string, jurisdiction: Jurisdiction): StatuteChunk[] {
   const [citation = "", sourceLine = "", , ...body] = raw.split("\n");
   const url = sourceLine.replace(/^Source:\s*/, "").trim();
-  const chunks: StatuteChunk[] = [];
+  return chunkLines(body.filter((l) => !l.trim().startsWith("History."))).map((text) => ({ citation, url, jurisdiction, text }));
+}
+
+export function chunkLines(lines: string[], maxChars = CHUNK_CHARS): string[] {
+  const chunks: string[] = [];
   let buf = "";
-  for (const line of body.map((l) => l.trim()).filter((l) => l && !l.startsWith("History."))) {
-    if (buf && buf.length + line.length > CHUNK_CHARS) {
-      chunks.push({ citation, url, jurisdiction, text: buf });
+  for (const line of lines.map((l) => l.trim()).filter(Boolean)) {
+    if (buf && buf.length + line.length > maxChars) {
+      chunks.push(buf);
       buf = "";
     }
     buf = buf ? `${buf}\n${line}` : line;
   }
-  if (buf) chunks.push({ citation, url, jurisdiction, text: buf });
+  if (buf) chunks.push(buf);
   return chunks;
 }
 
-export function buildIndex(chunks: StatuteChunk[]): Index {
+export function buildIndex<T extends Doc>(chunks: T[]): Index<T> {
   const df = new Map<string, number>();
   const tf = chunks.map((c) => {
     const counts = new Map<string, number>();
-    for (const t of tokenize(`${c.citation}\n${c.text}`)) counts.set(t, (counts.get(t) ?? 0) + 1);
+    for (const t of tokenize(`${c.citation}\n${c.section ?? ""}\n${c.text}`)) counts.set(t, (counts.get(t) ?? 0) + 1);
     for (const t of counts.keys()) df.set(t, (df.get(t) ?? 0) + 1);
     return counts;
   });
@@ -50,14 +55,14 @@ export function buildIndex(chunks: StatuteChunk[]): Index {
 }
 
 // ponytail: in-memory BM25 over ~70 statute files (~470 KB); move to embeddings + a vector index if the corpus grows or recall suffers.
-export function search(index: Index, query: string, opts: { jurisdiction?: Jurisdiction; limit?: number } = {}): StatuteHit[] {
+export function search<T extends Doc>(index: Index<T>, query: string, opts: { filter?: (chunk: T) => boolean; limit?: number } = {}): (T & { score: number })[] {
   const terms = [...new Set(tokenize(query))];
   const n = index.chunks.length;
   const k1 = 1.2;
   const b = 0.75;
-  const hits: StatuteHit[] = [];
+  const hits: (T & { score: number })[] = [];
   index.chunks.forEach((chunk, i) => {
-    if (opts.jurisdiction && chunk.jurisdiction !== opts.jurisdiction) return;
+    if (opts.filter && !opts.filter(chunk)) return;
     let score = 0;
     for (const t of terms) {
       const f = index.tf[i].get(t);
@@ -71,17 +76,33 @@ export function search(index: Index, query: string, opts: { jurisdiction?: Juris
   return hits.sort((x, y) => y.score - x.score).slice(0, opts.limit ?? 5);
 }
 
-let cached: Index | undefined;
-
-export function statuteIndex(dataDir = path.join(process.cwd(), "data")): Index {
-  if (cached) return cached;
-  const chunks = JURISDICTIONS.flatMap((j) =>
+export function readStatuteFiles(dataDir = path.join(process.cwd(), "data")): StatuteChunk[] {
+  return JURISDICTIONS.flatMap((j) =>
     readdirSync(path.join(dataDir, j))
       .filter((f) => f.endsWith(".txt"))
       .sort()
       .flatMap((f) => chunkStatute(readFileSync(path.join(dataDir, j, f), "utf8"), j)),
   );
-  return (cached = buildIndex(chunks));
 }
 
-export const searchStatutes = (query: string, opts?: { jurisdiction?: Jurisdiction; limit?: number }) => search(statuteIndex(), query, opts);
+export function cachedIndex<T extends Doc>(load: () => Promise<T[]>, emptyError: string): () => Promise<Index<T>> {
+  let cached: Promise<Index<T>> | undefined;
+  return () =>
+    (cached ??= load()
+      .then((chunks) => {
+        if (!chunks.length) throw new Error(emptyError);
+        return buildIndex(chunks);
+      })
+      .catch((err) => {
+        cached = undefined;
+        throw err;
+      }));
+}
+
+export const statuteIndex = cachedIndex<StatuteChunk>(async () => {
+  await connectDB();
+  return Statute.find({}, { _id: 0, citation: 1, url: 1, jurisdiction: 1, text: 1 }).sort({ _id: 1 }).lean();
+}, "No statutes in MongoDB. Run `npm run ingest`.");
+
+export const searchStatutes = async (query: string, { jurisdiction, limit }: { jurisdiction?: Jurisdiction; limit?: number } = {}): Promise<StatuteHit[]> =>
+  search(await statuteIndex(), query, { limit, filter: jurisdiction && ((c) => c.jurisdiction === jurisdiction) });

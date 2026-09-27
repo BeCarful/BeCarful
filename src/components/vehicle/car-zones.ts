@@ -19,7 +19,7 @@ export const ZONE = {
 
 export function partKind(nodeNames: string[], materialName: string): PartKind {
   const names = [...nodeNames, materialName].join(" ");
-  if (/wheel|tire|tyre|(?<![a-z])rim|calliper|caliper/i.test(names)) return "wheel";
+  if (/wheel(?![\s_]*arch)|tire|tyre|(?<![a-z])rim|calliper|caliper/i.test(names)) return "wheel";
   if (/red_glass|(?<!de)tail/i.test(names)) return "taillight";
   if (/glass|window/i.test(names)) return "glass";
   if (/(?<!high)light|lamp/i.test(names)) return "light";
@@ -38,7 +38,7 @@ export function namedPart(nodeNames: string[]): ComponentId | null {
 }
 
 export function isInterior(nodeNames: string[], materialName: string) {
-  return /interior|upholstery|cockpit|seat|(^|[^a-z])int([^a-z]|$)/i.test([...nodeNames, materialName].join(" "));
+  return /interior|upholstery|cockpit|cabin|dashboard|seat|steer|(^|[^a-z])int([^a-z]|$)/i.test([...nodeNames, materialName].join(" "));
 }
 
 /** f: +1 front … -1 rear, l: +1 car's left … -1 right, h: 0 ground … 1 roof. */

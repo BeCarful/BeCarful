@@ -1,0 +1,22 @@
+State Farm Classic+ notice SC N 010 FL 06 26: Florida Notice of Availability
+Form: SC N 010 FL
+Insurers: State Farm Classic Insurance Company (collector vehicles, administered by Hagerty)
+Product: classic_plus
+Source: Florida OIR IRFS filing 25-056482 (approved 01/15/2026), document 554631
+Extraction: pdftotext; OIR approval stamp and page numbers removed
+Retrieved: 2026-09-26
+
+SC N 010 FL 06 26
+FLORIDA NOTICE OF AVAILABILITY
+For information or assistance with any insurance problem, be sure to contactFLyour
+STATE FARM AGENT first.
+Your good neighbor agent will be happy to help you.
+Hagerty Insurance Agency, LLC Administers this insurance program on behalf of STATE FARM CLASSIC
+INSURANCE COMPANY. Section 627.4131 of the Florida Insurance Code requires notification of the following
+information:
+HAGERTY INSURANCE AGENCY, LLC
+121 Drivers Edge
+Traverse City, MI 49684
++1 877-922-6044
+SC N 010 FL 06 26
+State Farm Classic Insurance Company

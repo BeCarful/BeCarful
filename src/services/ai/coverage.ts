@@ -2,8 +2,8 @@ import "server-only";
 import { FunctionTool, LlmAgent } from "@google/adk";
 import { z } from "zod";
 import type { PolicyExtraction } from "@/schemas/policy";
-import { JURISDICTIONS, searchStatutes, statuteIndex } from "@/services/law/statutes";
-import { PERIL_LABELS, PERILS } from "@/types";
+import { searchStatutes, statuteIndex } from "@/services/law/statutes";
+import { JURISDICTIONS, PERIL_LABELS, PERILS } from "@/types";
 import { adkModel, runAgent } from "./adk";
 import { AgentChecklistSchema, enforceEvidence, type CoverageItem } from "./coverage-rules";
 
@@ -15,8 +15,8 @@ export const searchLawTool = new FunctionTool({
     query: z.string().min(2).max(300),
     jurisdiction: z.enum(JURISDICTIONS).optional().describe("florida or federal; omit to search both"),
   }),
-  execute: ({ query, jurisdiction }) => ({
-    results: searchStatutes(query, { jurisdiction, limit: 4 }).map((h) => ({ citation: h.citation, url: h.url, excerpt: h.text.slice(0, 1200) })),
+  execute: async ({ query, jurisdiction }) => ({
+    results: (await searchStatutes(query, { jurisdiction, limit: 4 })).map((h) => ({ citation: h.citation, url: h.url, excerpt: h.text.slice(0, 1200) })),
   }),
 });
 
@@ -53,5 +53,5 @@ export async function checkCoverage(input: { userId: string; vehicleState: strin
   });
   const raw = state.checklist ?? (text ? JSON.parse(text) : null);
   const parsed = AgentChecklistSchema.parse(typeof raw === "string" ? JSON.parse(raw) : raw);
-  return enforceEvidence(parsed, input.extraction, statuteIndex().chunks);
+  return enforceEvidence(parsed, input.extraction, (await statuteIndex()).chunks);
 }

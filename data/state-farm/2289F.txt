@@ -1,0 +1,38 @@
+State Farm Florida car policy endorsement 2289F: Single Limit Liability Coverage
+Form: 2289F
+Insurers: State Farm Mutual Automobile Insurance Company; State Farm Fire and Casualty Company
+Product: personal_car
+Source: Florida OIR IRFS filing 24-098215 (approved 12/03/2024), document 619490
+Extraction: pdftotext, right-hand (proposed) column of the comparison, x>=306 of 612 pt; OIR approval stamp and page numbers removed
+Retrieved: 2026-09-26
+
+2289F SINGLE LIMIT LIABILITY COVERAGE
+This endorsement is a part of the policy. Except for the
+changes this endorsement makes, all other provisions of
+the policy remain the same and apply to this endorsement.
+LIABILITY COVERAGE (Bodily Injury and Property
+Damage)
+The Limit provision is replaced by the following:
+Limit
+The Liability Coverage limit is shown in the
+“COVERAGES AND LIMITS” schedule on the
+Declarations.
+The dollar amount shown under “Each Accident” is the
+most we will pay for all damages resulting from any
+one accident.
+The limit shown for Liability Coverage is the most we
+will pay regardless of the number of:
+1. insureds;
+2. claims made;
+3. vehicles insured;
+4. premiums shown on the Declarations; or
+5. vehicles involved in the accident.
+If the insured must provide the limits required by a
+motor vehicle compulsory insurance, financial
+responsibility, motor carrier or similar law, then the limit
+provided by this policy will be applied to meet the limits
+required by such law. Regardless of such
+requirements, we will not pay more than the limit
+shown on the Declarations.
+1 of 1
+utomobile Insurance Company, 2024

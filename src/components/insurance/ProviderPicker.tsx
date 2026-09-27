@@ -4,19 +4,33 @@ import { DEFAULT_PROVIDER_ID, PROVIDERS, type InsuranceProvider } from "@/servic
 export function ProviderMark({ provider, className }: { provider: InsuranceProvider; className: string }) {
   if (provider.logo)
     return (
-      <span aria-hidden className={`grid shrink-0 place-items-center rounded-lg border border-border bg-white p-1 ${className}`}>
-        <Image src={provider.logo} alt="" width={96} height={96} className="size-full object-contain" />
+      <span aria-hidden className={`shrink-0 overflow-hidden rounded-[22%] border border-border bg-white ${className}`}>
+        <Image src={provider.logo} alt="" width={96} height={96} className="size-full object-cover" />
       </span>
     );
   return (
     <span
       aria-hidden
-      className={`grid shrink-0 place-items-center rounded-lg font-display font-semibold text-white ${className}`}
+      className={`grid shrink-0 place-items-center rounded-[22%] font-display font-semibold text-white ${className}`}
       style={{ backgroundColor: provider.color }}
     >
       {provider.shortName}
     </span>
   );
+}
+
+export function ProviderName({ provider }: { provider: InsuranceProvider }) {
+  return (
+    <span className="inline-flex items-center gap-[0.35em] align-bottom whitespace-nowrap">
+      <ProviderMark provider={provider} className="size-[1.3em] text-[0.5em]" />
+      {provider.name}
+    </span>
+  );
+}
+
+export function WithProviderLogo({ text, provider }: { text: string; provider?: InsuranceProvider | null }) {
+  if (!provider || !text.includes(provider.name)) return text;
+  return text.split(provider.name).flatMap((part, i) => (i ? [<ProviderName key={i} provider={provider} />, part] : [part]));
 }
 
 export function ProviderPicker({ value, onChange, disabled }: { value: string; onChange: (id: string) => void; disabled?: boolean }) {

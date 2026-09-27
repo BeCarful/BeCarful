@@ -3,6 +3,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RetroBadge, RetroCard, RetroLinkButton } from "@/components/retro";
+import { ProviderName } from "@/components/insurance/ProviderPicker";
 import { ClaimActions } from "@/components/summary/ClaimActions";
 import { IncidentForm } from "@/components/summary/IncidentForm";
 import { StatusPanel } from "@/components/summary/StatusPanel";
@@ -106,7 +107,7 @@ export default async function SummaryPage() {
           <RetroCard title="Insurance" action={policyBadge && <RetroBadge tone={policyBadge[0]}>{policyBadge[1]}</RetroBadge>}>
             {policy ? (
               <div className="space-y-3">
-                <p className="text-lg leading-tight font-semibold">{provider?.name ?? "Unknown insurer"}</p>
+                <p className="text-lg leading-tight font-semibold">{provider ? <ProviderName provider={provider} /> : "Unknown insurer"}</p>
                 {policy.status === "processed" ? (
                   <dl className="divide-y divide-border text-sm">
                     {(
@@ -147,7 +148,7 @@ export default async function SummaryPage() {
       </div>
 
       <div className={`grid items-start gap-6 ${incident ? "lg:grid-cols-2" : ""}`}>
-        <TodoCard items={todos.items}>
+        <TodoCard items={todos.items} provider={provider}>
           <ClaimActions
             vehicleId={vehicleId}
             todos={todos}
