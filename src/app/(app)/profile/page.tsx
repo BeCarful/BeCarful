@@ -1,4 +1,6 @@
 import { logout } from "@/actions/auth";
+import { AssistantPicker } from "@/components/chat/AssistantPicker";
+import { assistantById } from "@/components/chat/assistants";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { RetroBadge, RetroButton, RetroCard, RetroLinkButton } from "@/components/retro";
@@ -42,6 +44,10 @@ export default async function ProfilePage() {
         ) : (
           <p className="text-sm text-ink-soft">No vehicles yet.</p>
         )}
+      </RetroCard>
+      <RetroCard title="Chat buddy">
+        <p className="mb-3 text-sm text-ink-soft">Pick the Tuxemon that floats on your screens and answers your questions.</p>
+        <AssistantPicker selectedId={assistantById(user.assistantId).id} />
       </RetroCard>
       <RetroCard title="Settings">
         <div className="flex items-center justify-between gap-3">

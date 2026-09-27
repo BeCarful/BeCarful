@@ -3,6 +3,7 @@
 import { isValidObjectId } from "mongoose";
 import { z } from "zod";
 import { ChatMessage } from "@/models/ChatMessage";
+import { assistantById } from "@/components/chat/assistants";
 import { requireUser } from "@/lib/auth";
 import { agentTool } from "@/services/ai/agent-tools";
 import { chatSubjects, recentMessages, toChatView, type ChatMessageView, type ChatSubject } from "@/services/ai/chat";
@@ -55,7 +56,7 @@ export async function sendChatMessage(vehicleId: string, text: string): Promise<
         : await ChatMessage.create({ ...scope, role: "user", content: parsed.data });
     // A new message makes older proposals stale: they must be asked for again.
     await ChatMessage.updateMany({ ...scope, "action.status": "pending" }, { "action.status": "cancelled" });
-    const { text: content, action } = await runChatAgent(user._id, vehicle._id);
+    const { text: content, action } = await runChatAgent(user._id, vehicle._id, assistantById(user.assistantId).name);
     const reply = await ChatMessage.create({ ...scope, role: "assistant", content, ...(action ? { action } : {}) });
     return { ok: true, data: { user: toChatView(userMsg), reply: toChatView(reply) } };
   } catch (err) {

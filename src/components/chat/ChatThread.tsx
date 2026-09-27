@@ -8,7 +8,8 @@ import { CAR_ICON, NavIcon } from "@/components/layout/BottomNav";
 import { RetroBadge, RetroButton, retroInputClass } from "@/components/retro";
 import type { ChatMessageView, ChatSubject } from "@/services/ai/chat";
 import { ChatBubble } from "./ChatBubble";
-import { ASSISTANT_NAME, TuxemonAttribution, TuxemonAvatar, TuxemonFace } from "./TuxemonAssistant";
+import type { Assistant } from "./assistants";
+import { TuxemonAttribution, TuxemonAvatar, TuxemonFace } from "./TuxemonAssistant";
 import { useVoice } from "./useVoice";
 
 type Topic = "car" | "insurance";
@@ -118,6 +119,7 @@ function SubjectChip({
 
 type Props = {
   vehicleId: string;
+  assistant: Assistant;
   subjects: ChatSubject[];
   voice: boolean;
   className?: string;
@@ -137,7 +139,7 @@ export function Chat({ messages, ...props }: Props & { messages: ChatMessageView
   if (!messages) {
     return (
       <section aria-busy className={`surface-card flex flex-col items-center justify-center gap-3 overflow-hidden ${className}`}>
-        <TuxemonFace />
+        <TuxemonFace assistant={props.assistant} />
         <p className="text-sm text-ink-soft">Opening your chat…</p>
       </section>
     );
@@ -148,6 +150,7 @@ export function Chat({ messages, ...props }: Props & { messages: ChatMessageView
 /** Mount with key={vehicleId}: all state here belongs to one vehicle's thread. */
 function ChatThread({
   vehicleId,
+  assistant,
   subjects,
   voice,
   className = PAGE_FRAME,
@@ -237,10 +240,10 @@ function ChatThread({
     <section className={`surface-card flex flex-col overflow-hidden ${className}`}>
       <header className="flex items-center gap-3 border-b border-border px-4 py-3">
         <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-xl bg-accent-soft">
-          <TuxemonFace />
+          <TuxemonFace assistant={assistant} />
         </span>
         <div className="min-w-0 flex-1">
-          <Title className="font-display text-lg leading-tight font-semibold text-ink">{ASSISTANT_NAME}</Title>
+          <Title className="font-display text-lg leading-tight font-semibold text-ink">{assistant.name}</Title>
           <p className="truncate text-xs text-ink-soft">Chatting about your {about}</p>
         </div>
         {onClose ? (
@@ -248,7 +251,7 @@ function ChatThread({
             <Link href="/chat" onClick={onClose} aria-label="Open full chat" className={iconButton}>
               <NavIcon paths={["M9 5h10v10", "M19 5 5 19"]} active={false} />
             </Link>
-            <button type="button" onClick={onClose} aria-label={`Close ${ASSISTANT_NAME}`} className={iconButton}>
+            <button type="button" onClick={onClose} aria-label={`Close ${assistant.name}`} className={iconButton}>
               <NavIcon paths={["M6 6l12 12", "M18 6 6 18"]} active={false} />
             </button>
           </>
@@ -267,9 +270,9 @@ function ChatThread({
       >
         {empty && (
           <div className="mx-auto max-w-lg py-4 text-center">
-            <TuxemonAvatar frame="front" scale={2} className="tux-wild mx-auto" />
+            <TuxemonAvatar frame="front" scale={2} sheet={assistant.sheet} label={assistant.name} className="tux-wild mx-auto" />
             <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-ink">
-              Hi! I&apos;m {ASSISTANT_NAME}.{" "}
+              Hi! I&apos;m {assistant.name}.{" "}
               {topic === "insurance" && subject.insurer
                 ? `Ask me about your ${subject.insurer} policy for the ${subject.title}: coverage, deductibles or filing a claim.`
                 : `Ask me anything about your ${subject.title}: your policy, the damage, or how to file a claim.`}
@@ -282,7 +285,7 @@ function ChatThread({
           </div>
         )}
         {messages.map((m) => (
-          <ChatBubble key={m.id} role={m.role} text={m.content}>
+          <ChatBubble key={m.id} role={m.role} text={m.content} assistant={assistant}>
             {voice && m.role === "assistant" && (
               <button
                 type="button"
@@ -299,18 +302,18 @@ function ChatThread({
           </ChatBubble>
         ))}
         {outbox && (
-          <ChatBubble role="user" text={outbox.text}>
+          <ChatBubble role="user" text={outbox.text} assistant={assistant}>
             {outbox.error && <span className="mt-1 text-xs font-medium text-ink-soft">Not answered yet</span>}
           </ChatBubble>
         )}
         {sending && (
-          <ChatBubble role="assistant">
+          <ChatBubble role="assistant" assistant={assistant}>
             <span className="flex gap-1 py-1.5" aria-hidden>
               <span className="size-2 animate-bounce rounded-full bg-ink-soft [animation-delay:-0.3s]" />
               <span className="size-2 animate-bounce rounded-full bg-ink-soft [animation-delay:-0.15s]" />
               <span className="size-2 animate-bounce rounded-full bg-ink-soft" />
             </span>
-            <span className="sr-only">{ASSISTANT_NAME} is typing…</span>
+            <span className="sr-only">{assistant.name} is typing…</span>
           </ChatBubble>
         )}
         {outbox?.error && (
@@ -388,14 +391,14 @@ function ChatThread({
         )}
         <form ref={formRef} onSubmit={onSubmit} className="flex items-end gap-2">
           <label className="min-w-0 flex-1">
-            <span className="sr-only">Message {ASSISTANT_NAME}</span>
+            <span className="sr-only">Message {assistant.name}</span>
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDown}
               rows={1}
               maxLength={MAX_LENGTH}
-              placeholder={`Message ${ASSISTANT_NAME}…`}
+              placeholder={`Message ${assistant.name}…`}
               enterKeyHint="send"
               className={`${retroInputClass} max-h-36 resize-none [field-sizing:content]`}
             />
@@ -406,7 +409,7 @@ function ChatThread({
               variant={speech.recording ? "danger" : "secondary"}
               onClick={talk}
               disabled={!speech.recording && (busy || outbox !== null)}
-              aria-label={speech.recording ? "Stop and send" : `Talk to ${ASSISTANT_NAME}`}
+              aria-label={speech.recording ? "Stop and send" : `Talk to ${assistant.name}`}
               className={`px-3 ${speech.recording ? "pulse-ring" : ""}`}
             >
               <NavIcon paths={speech.recording ? STOP_ICON : MIC_ICON} active />
@@ -416,7 +419,7 @@ function ChatThread({
             Send
           </RetroButton>
         </form>
-        <TuxemonAttribution />
+        <TuxemonAttribution monsters={[assistant]} />
       </div>
     </section>
   );

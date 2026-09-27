@@ -175,7 +175,7 @@ Mongoose models in `models/`: `User`, `Vehicle`, `InsurancePolicy`, `Incident`, 
 - Use references, not duplicated data. Add indexes (e.g. `{ userId, vehicleId }`).
 - Persist the user's last-selected vehicle (`User.lastVehicleId`).
 
-**User:** email (unique), name, passwordHash (`select: false`), lastVehicleId.
+**User:** email (unique), name, passwordHash (`select: false`), lastVehicleId, assistantId? (chat buddy; unset = Propellercat).
 
 **Vehicle:** userId, modelId (catalog id), year, make, model, trim?, color, vin?, licensePlate, state.
 Deleting one (`deleteVehicle`, **Remove** on Profile → Garage, inline confirm) removes its Cloud Storage prefix `users/<userId>/vehicles/<vehicleId>/` first, then its photos, assessments, incidents, policies and chat, then the vehicle; `lastVehicleId` moves to the newest remaining vehicle (or null). No cascade in Mongo itself, and no transaction (works on a standalone `mongo:7`); a failed delete can simply be retried.
@@ -302,12 +302,13 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 - Assistant is a friendly Tuxemon character (licensed asset, with attribution). Retro dialog-box bubbles. Friendly but not childish.
 - Answers are concise by default. No authoritative coverage determinations the policy doesn't clearly support.
 - Example questions: "What does my insurance cover?", "What's my deductible?", "Which parts look damaged?", "Do I need more photos?", "Where do I file my claim?", "Summarize everything that happened."
-- Built: the assistant is **Propellercat** (Tuxemon, by tamashihoshi, CC BY-SA 4.0; credits in `public/tuxemon/ATTRIBUTION.md`). The chat page must keep showing `<TuxemonAttribution />`.
+- Built: the default assistant is **Propellercat** (Tuxemon, by tamashihoshi, CC BY-SA 4.0; credits in `public/tuxemon/ATTRIBUTION.md`). The chat page must keep showing `<TuxemonAttribution />` for the chosen assistant.
 - `sendChatMessage(vehicleId, text)`; retry = resend the same text (the server reuses an unanswered identical last message). Gemini context comes from `buildVehicleContext()` in `services/ai/chat.ts` (`loadClaimState` + Vehicle, VIN last 4 only, claim link/phone only from `providers.ts`).
 - The reply comes from the ADK agent (`runChatAgent`). Tools (`services/ai/agent-tools.ts`): read `list_vehicles`, `get_vehicle_status`, `list_photos`, `list_florida_plans`, `search_insurance_law`; write `update_incident_details`, `switch_vehicle`, `choose_florida_plan`, `set_insurer`; destructive `mark_claim_filed`, `close_incident`, `delete_photo`. Writes reuse the existing server actions, so their validation and state rules still apply. A write that needs the user's OK shows a Confirm/Cancel card under the reply (`resolveChatAction`).
+- **Choose your assistant:** Profile → **Chat buddy** (`AssistantPicker` → `chooseAssistant`) picks any of the 13 licensed Tuxemon in `components/chat/assistants.ts` (`ASSISTANTS` = Propellercat + the peril monsters; `assistantById()` falls back to Propellercat). The choice sets the buddy, chat avatars and name, the agent's name in `systemPrompt(name)`, and the "In plain words" avatar on Insurance. The voice stays the same. Every sprite shown keeps its credits via `<TuxemonAttribution monsters={…} />`.
 - `Chat` in `components/chat/ChatThread.tsx` is used by both the chat page and the floating buddy. Under the suggestions, an **About** row lists each vehicle as a car chip plus its active policy's insurer chip (`chatSubjects()`), current vehicle first. Picking another vehicle calls `selectVehicle` (switches the whole app); the insurer chip switches the suggestions to insurance questions. The topic only changes suggestions and copy, not what the agent sees.
 - **Voice** (when `ELEVENLABS_API_KEY` is set): mic button next to Send (tap to talk, tap to stop) and **Tap to talk** on an empty thread; a spoken question gets its reply read aloud, and every reply has **Listen**. `useVoice` plays one shared `Audio` element, unlocked with a silent clip on the mic tap so iOS lets the reply play after the wait.
-- **Chat buddy** (`ChatBuddy`, in the app layout): Propellercat hovers along the bottom of every authed page except `/chat` (`buddy-wander` + `buddy-bob`, still under reduced motion). Tapping it opens the same chat as a panel (bottom sheet on phones, bottom-right on `md`+) loaded by `loadChat(vehicleId)`: same thread, voice, About chips and Confirm cards; ↗ opens `/chat`, Esc/✕ closes.
+- **Chat buddy** (`ChatBuddy`, in the app layout): the user's assistant floats in the bottom-right corner of every authed page except `/chat`, bobbing in place (`buddy-bob`, still under reduced motion). Tapping it opens the same chat as a panel (bottom sheet on phones, bottom-right on `md`+) loaded by `loadChat(vehicleId)`: same thread, voice, About chips and Confirm cards; ↗ opens `/chat`, Esc/✕ closes.
 
 ## Summary tab and to-do list
 

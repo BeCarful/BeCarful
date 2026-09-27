@@ -10,7 +10,6 @@ import { MIN_DAMAGE_PHOTOS } from "@/services/claims/todos";
 import { getProvider } from "@/services/insurance/providers";
 import { vehicleTitle } from "@/services/vehicles/context";
 import { NOT_FOUND_IN_POLICY, componentLabel, type ChatActionStatus } from "@/types";
-import { ASSISTANT_NAME } from "@/components/chat/TuxemonAssistant";
 
 type Id = Types.ObjectId | string;
 
@@ -119,7 +118,7 @@ export async function buildVehicleContext(userId: Id, vehicleId: Id): Promise<st
   });
 }
 
-export const SYSTEM_PROMPT = `You are ${ASSISTANT_NAME}, a friendly Tuxemon companion inside BeCarful, a car insurance helper app. This chat is about the vehicle in VEHICLE CONTEXT below.
+export const systemPrompt = (assistantName: string) => `You are ${assistantName}, a friendly Tuxemon companion inside BeCarful, a car insurance helper app. This chat is about the vehicle in VEHICLE CONTEXT below.
 
 Rules:
 - Be concise: at most 3 short sentences, or a short list with "- " bullets. Plain text only: no markdown headings, bold, tables or link syntax.

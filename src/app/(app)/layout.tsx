@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ChatBuddy } from "@/components/chat/ChatBuddy";
+import { assistantById } from "@/components/chat/assistants";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { SceneBackground } from "@/components/layout/SceneBackground";
@@ -47,7 +48,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl px-4 pt-6 pb-28 outline-none sm:px-6 md:px-8 md:pb-16">
         {children}
       </main>
-      <ChatBuddy vehicleId={selectedId} voice={voiceEnabled()} />
+      <ChatBuddy vehicleId={selectedId} assistant={assistantById(user.assistantId)} voice={voiceEnabled()} />
       <BottomNav />
       <VehicleMenu vehicles={options} selectedId={selectedId} />
     </div>

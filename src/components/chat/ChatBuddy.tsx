@@ -7,11 +7,12 @@ import { isActive } from "@/components/layout/BottomNav";
 import { RetroButton } from "@/components/retro";
 import type { ChatMessageView, ChatSubject } from "@/services/ai/chat";
 import { Chat } from "./ChatThread";
-import { ASSISTANT_NAME, TuxemonAvatar } from "./TuxemonAssistant";
+import type { Assistant } from "./assistants";
+import { TuxemonAvatar } from "./TuxemonAssistant";
 
 type Loaded = { vehicleId: string; messages: ChatMessageView[]; subjects: ChatSubject[] };
 
-export function ChatBuddy({ vehicleId, voice }: { vehicleId: string | null; voice: boolean }) {
+export function ChatBuddy({ vehicleId, assistant, voice }: { vehicleId: string | null; assistant: Assistant; voice: boolean }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -58,13 +59,13 @@ export function ChatBuddy({ vehicleId, voice }: { vehicleId: string | null; voic
         ref={buddy}
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={`Talk to ${ASSISTANT_NAME}`}
+        aria-label={`Talk to ${assistant.name}`}
         aria-haspopup="dialog"
-        title={`Talk to ${ASSISTANT_NAME} · sprite by tamashihoshi (Tuxemon), CC BY-SA 4.0`}
-        className="buddy-wander fixed right-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 rounded-full hover:[animation-play-state:paused] focus-visible:[animation-play-state:paused] md:right-8 md:bottom-8"
+        title={`Talk to ${assistant.name} · sprite by ${assistant.author} (Tuxemon), ${assistant.license}`}
+        className="fixed right-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 rounded-full md:right-8 md:bottom-8"
       >
         <span className="buddy-bob relative block drop-shadow-[0_6px_4px_var(--shadow)]">
-          <TuxemonAvatar frame="front" scale={1} decorative />
+          <TuxemonAvatar frame="front" scale={1} sheet={assistant.sheet} decorative />
           {voice && (
             <span aria-hidden className="absolute -right-1 bottom-1 grid size-6 place-items-center rounded-full bg-accent text-accent-ink shadow-[0_1px_2px_var(--shadow)]">
               <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round">
@@ -83,7 +84,7 @@ export function ChatBuddy({ vehicleId, voice }: { vehicleId: string | null; voic
     <div
       ref={panel}
       role="dialog"
-      aria-label={`Talk to ${ASSISTANT_NAME}`}
+      aria-label={`Talk to ${assistant.name}`}
       tabIndex={-1}
       onKeyDown={(e) => e.key === "Escape" && close()}
       className="fade-in fixed inset-x-2 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-50 outline-none md:inset-x-auto md:right-6 md:bottom-6 md:w-[26rem]"
@@ -109,6 +110,7 @@ export function ChatBuddy({ vehicleId, voice }: { vehicleId: string | null; voic
       ) : (
         <Chat
           vehicleId={vehicleId!}
+          assistant={assistant}
           messages={loaded?.vehicleId === vehicleId ? loaded.messages : null}
           subjects={loaded?.subjects ?? []}
           voice={voice}

@@ -4,7 +4,7 @@ import type { Types } from "mongoose";
 import { env } from "@/lib/env";
 import { AGENT_TOOLS, type ToolScope } from "./agent-tools";
 import { adkModel, runAgent } from "./adk";
-import { SYSTEM_PROMPT, buildVehicleContext, recentMessages } from "./chat";
+import { buildVehicleContext, recentMessages, systemPrompt } from "./chat";
 import { searchLawTool } from "./coverage";
 import { classifyWithJev, decide } from "./guard";
 
@@ -21,7 +21,11 @@ Tools:
 export type ProposedAction = { tool: string; args: Record<string, unknown>; label: string };
 
 /** Answers the latest user message with the ADK agent. At most one guarded write can wait for the user's tap. */
-export async function runChatAgent(userId: Types.ObjectId, vehicleId: Types.ObjectId): Promise<{ text: string; action: ProposedAction | null }> {
+export async function runChatAgent(
+  userId: Types.ObjectId,
+  vehicleId: Types.ObjectId,
+  assistantName: string,
+): Promise<{ text: string; action: ProposedAction | null }> {
   const [history, context] = await Promise.all([recentMessages(userId, vehicleId, HISTORY_FOR_MODEL), buildVehicleContext(userId, vehicleId)]);
   const last = history.at(-1);
   if (last?.role !== "user") throw new Error("No user message to answer");
@@ -50,7 +54,7 @@ export async function runChatAgent(userId: Types.ObjectId, vehicleId: Types.Obje
   const agent = new LlmAgent({
     name: "propellercat",
     model: adkModel(),
-    instruction: () => `${SYSTEM_PROMPT}\n${TOOL_RULES}\n\nVEHICLE CONTEXT (JSON):\n${context}`,
+    instruction: () => `${systemPrompt(assistantName)}\n${TOOL_RULES}\n\nVEHICLE CONTEXT (JSON):\n${context}`,
     tools: [...tools, searchLawTool],
     generateContentConfig: { temperature: 0.4 },
     beforeToolCallback: async ({ tool, args }) => {

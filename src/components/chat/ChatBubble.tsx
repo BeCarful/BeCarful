@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { ASSISTANT_NAME, TuxemonFace } from "./TuxemonAssistant";
+import type { Assistant } from "./assistants";
+import { TuxemonFace } from "./TuxemonAssistant";
 
 /** Plain text only: paragraphs plus "- " bullet lists. Never renders HTML from the model. */
 function AssistantText({ text }: { text: string }) {
@@ -33,15 +34,15 @@ function AssistantText({ text }: { text: string }) {
   return <div className="space-y-2 break-words">{blocks}</div>;
 }
 
-export function ChatBubble({ role, text, children }: { role: "user" | "assistant"; text?: string; children?: ReactNode }) {
+export function ChatBubble({ role, text, assistant, children }: { role: "user" | "assistant"; text?: string; assistant: Assistant; children?: ReactNode }) {
   if (role === "assistant") {
     return (
       <div className="fade-in flex items-end gap-2 pr-6">
         <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-accent-soft">
-          <TuxemonFace scale={1} />
+          <TuxemonFace scale={1} assistant={assistant} />
         </span>
         <div className="min-w-0 max-w-[85%] rounded-2xl rounded-bl-sm bg-panel-shade px-3.5 py-2.5 text-[15px] leading-relaxed text-ink">
-          <span className="sr-only">{ASSISTANT_NAME}: </span>
+          <span className="sr-only">{assistant.name}: </span>
           {text !== undefined && <AssistantText text={text} />}
           {children}
         </div>

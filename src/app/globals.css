@@ -423,24 +423,6 @@ body {
   animation: pulse-ring 1.8s ease-out infinite;
 }
 
-@keyframes buddy-wander {
-  0%,
-  100% {
-    transform: none;
-  }
-  25% {
-    transform: translate(calc(-1 * min(28vw, 14rem)), -1.5rem);
-  }
-  50% {
-    transform: translate(calc(-1 * min(55vw, 30rem)), 0.25rem);
-  }
-  75% {
-    transform: translate(calc(-1 * min(22vw, 10rem)), -2.5rem);
-  }
-}
-@utility buddy-wander {
-  animation: buddy-wander 28s ease-in-out infinite;
-}
 @keyframes buddy-bob {
   0%,
   100% {
@@ -468,7 +450,6 @@ body {
     opacity: 0;
   }
   .tux-wild,
-  .buddy-wander,
   .buddy-bob {
     animation: none !important;
   }
