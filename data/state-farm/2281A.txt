@@ -1,0 +1,43 @@
+State Farm Florida car policy endorsement 2281A: Florida Non-Cancellable Policy
+Form: 2281A
+Insurers: State Farm Mutual Automobile Insurance Company; State Farm Fire and Casualty Company
+Product: personal_car
+Source: Florida OIR IRFS filing 24-098215 (approved 12/03/2024), document 619489
+Extraction: pdftotext, right-hand (proposed) column of the comparison, x>=306 of 612 pt; OIR approval stamp and page numbers removed
+Retrieved: 2026-09-26
+
+2281A
+FLORIDA NON-CANCELLABLE POLICY
+This endorsement is a part of the policy. Except for the
+changes this endorsement makes, all other provisions of the
+policy remain the same and apply to this endorsement.
+The following changes apply until the date specified for the
+expiration of this endorsement on the Declarations.
+[Editorial]
+GENERAL TERMS
+The following provision is added:
+Notwithstanding any policy provision to the contrary:
+a. you may not cancel Liability Coverage
+(Bodily Injury and Property Damage),
+Property Damage Liability Coverage, or
+No-Fault Coverage before the end of the
+current policy period.
+b. if a notice of cancellation has not been provided by
+us within 30 days of the policy effective date, then
+we will not cancel Liability Coverage (Bodily Injury
+and Property Damage), Property Damage
+Liability Coverage, or No-Fault Coverage before
+the end of the current policy period.
+c. any premium charged for Liability Coverage
+(Bodily Injury and Property Damage), Property
+Damage Liability Coverage, or No-Fault
+Coverage becomes nonrefundable.
+d. the policy may not be changed for any reason that
+materially increases the risk.
+However, if there is a material increase in risk that
+requires you to obtain a new policy before the end of
+the current policy period, and you obtain the new
+policy from us, then we will credit the new policy with
+any unearned premium available from this policy.
+1 of 1
+utomobile Insurance Company, 2024

@@ -1,5 +1,7 @@
 State Farm Florida Personal Car Policy Booklet, form 9810C
+Form: 9810C
 Insurers: State Farm Mutual Automobile Insurance Company; State Farm Fire and Casualty Company
+Product: personal_car
 Source: Florida OIR IRFS filing 24-098215 (approved 12/03/2024, effective new 01/02/2026, renewal 03/14/2026), document 619492 (side-by-side comparison, 9810A vs 9810C)
 Extraction: right-hand column only (9810C), pdftotext -layout cropped at x>=306 of 612 pt; page footers and repeated headers removed. Replace with the clean approved 9810C document (11/25/2024) when available.
 Retrieved: 2026-09-26

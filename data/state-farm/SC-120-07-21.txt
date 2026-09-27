@@ -1,0 +1,24 @@
+State Farm Classic+ endorsement SC 120 07 21: Waiver of Subrogation Endorsement
+Form: SC 120
+Insurers: State Farm Classic Insurance Company (collector vehicles, administered by Hagerty)
+Product: classic_plus
+Source: Florida OIR IRFS filing 25-056482 (approved 01/15/2026), document 554613
+Extraction: pdftotext; OIR approval stamp and page numbers removed
+Retrieved: 2026-09-26
+
+SC 120 07 21
+PLEASE READ THIS ENDORSEMENT CAREFULLY AS IT CHANGES
+YOUR
+POLICY
+WAIVER OF SUBROGATION ENDORSEMENT
+PART F – GENERAL PROVISIONS
+Under the Our Right to Recover Payment provision, the following is added to paragraph A.:
+If premium has been paid for this Waiver of Subrogation Endorsement and this endorsement is attached
+to your policy, our rights in this paragraph A. as to the person(s) or organization(s) shown below do not apply
+when you sign a contract with an “authorized third party broker” for the sale of “your covered auto”, or a written
+repair order related to “your covered auto”, with that person(s) or organization(s) that includes a waiver of
+subrogation or limitation of liability provision.
+Name of Person(s) or Organization(s):
+All other policy provisions apply.
+SC 120 07 21
+State Farm Classic Insurance Company

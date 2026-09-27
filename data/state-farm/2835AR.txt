@@ -1,0 +1,251 @@
+State Farm Florida car policy endorsement 2835AR: Coverage Extension for Named Person
+Form: 2835AR
+Insurers: State Farm Mutual Automobile Insurance Company; State Farm Fire and Casualty Company
+Product: personal_car
+Source: Florida OIR IRFS filing 24-098215 (approved 12/03/2024), document 619491
+Extraction: pdftotext, right-hand (proposed) column of the comparison, x>=306 of 612 pt; OIR approval stamp and page numbers removed
+Retrieved: 2026-09-26
+
+2835AR COVERAGE EXTENSION FOR NAMED
+PERSON
+This endorsement is a part of the policy. Except for the
+changes this endorsement makes, all other provisions of
+the policy remain the same and apply to this endorsement.
+1. You and your, wherever they appear in Liability
+Coverage (Bodily Injury and Property Damage),
+Property Damage Liability Coverage, Uninsured Motor
+Vehicle Coverage (Stacking and Non-Stacking), and the
+Physical Damage Coverages, include a designee.
+2. Insured and named insured, wherever they appear in
+No-Fault Coverage and Medical Payments coverage,
+include designee.
+3. DEFINITIONS
+a. The following is added:
+Designee means:
+1. the person whose name is shown
+immediately following the title of this
+endorsement on the Declarations; and
+2. the spouse of the person described in 1.
+above if that spouse resides primarily
+with that person.
+b. The first sentence of Newly Acquired Car is
+changed to read:
+Newly Acquired Car means a car newly
+owned by you.
+c. Non-Owned Car is changed to read:
+Non-Owned Car means a car that is in the
+lawful possession of a designee or any
+resident relative and that neither:
+1. is owned by:
+a. you;
+b. any designee;
+c. any resident relative;
+d. any other person who resides
+primarily in a designee’s
+household; or
+e. an employer of any person
+described in b., c., or d. above; nor
+2. has been operated by, rented by, or in the
+possession of:
+a. you;
+b. any designee; or
+c. any resident relative
+1 of 5
+utomobile Insurance Company, 2024
+n of Language
+and Underlining indicates additions)
+PROPOSED ENDORSEMENT
+2835AR COVERAGE EXTENSION FOR NAMED
+PERSON
+during any part of each of the 31 or more
+consecutive days immediately prior to
+the date of the accident or loss.
+d. Resident Relative is changed to read:
+Resident Relative means a person, other
+than a designee, who resides primarily with a
+designee and who is:
+1. related to that designee by blood,
+marriage, or adoption, including a
+designee’s unmarried and
+unemancipated child who is away at
+school and otherwise maintains their
+primary residence with that designee; or
+2. a ward or a foster child of the designee,
+or a person described in 1. above.
+e. Temporary Substitute Car is changed to read:
+Temporary Substitute Car means a car that
+is in the lawful possession of the person
+operating it and that:
+1. replaces a your car or a newly acquired
+car for a short time while that car is out
+of use due to its:
+a. breakdown;
+b. repair;
+c. servicing;
+d. damage; or
+e. theft; and
+2. neither you, the designee, nor the
+person operating it own or have
+registered.
+f. You or Your is changed to read:
+You or Your means the named insured or
+named insureds shown on the Declarations.
+4. LIABILITY COVERAGE (Bodily Injury and Property
+Damage) and PROPERTY DAMAGE LIABILITY
+COVERAGE
+a. Additional Definition
+Item 2. of Insured is changed to read:
+2. a designee for the maintenance or use
+of a car that is owned by, or furnished
+2 of 5
+utomobile Insurance Company, 2024
+n of Language
+and Underlining indicates additions)
+PROPOSED ENDORSEMENT
+2835AR COVERAGE EXTENSION FOR NAMED
+PERSON
+by an employer to, a person who resides
+primarily in that designee’s household,
+but only if such car is neither owned by
+a designee, nor furnished by an
+employer to a designee;
+b. Exclusions
+The following exclusion is added:
+THERE IS NO COVERAGE FOR AN
+INSURED FOR DAMAGES RESULTING
+FROM:
+1. THE HANDLING OF PROPERTY
+BEFORE IT IS MOVED FROM THE
+PLACE WHERE IT IS ACCEPTED BY
+THE INSURED FOR MOVEMENT INTO
+OR ONTO A VEHICLE FOR WHICH THE
+INSURED IS PROVIDED LIABILITY
+COVERAGE BY THIS POLICY;
+2. THE HANDLING OF PROPERTY
+AFTER IT IS MOVED FROM THE
+VEHICLE DESCRIBED IN 1. ABOVE TO
+THE PLACE WHERE IT IS FINALLY
+DELIVERED BY THE INSURED; OR
+3. THE MOVEMENT OF PROPERTY BY
+MEANS OF A MECHANICAL DEVICE,
+OTHER THAN A HAND TRUCK, THAT
+IS NOT ATTACHED TO THE VEHICLE
+DESCRIBED IN 1. ABOVE.
+5. MEDICAL PAYMENTS COVERAGE
+Additional Definitions
+Insured means the designee and relatives:
+1. while occupying a motor vehicle;
+2. through being struck as a pedestrian by a
+motor vehicle; or
+3. through being struck as a pedestrian by a
+motorcycle of a type required to be licensed
+for use on Florida highways.
+6. UNINSURED MOTOR VEHICLE COVERAGE
+(Stacking and Non-Stacking)
+a. Additional Definitions
+Insured is changed to read:
+Insured means:
+1. the designee;
+2. resident relatives;
+3 of 5
+utomobile Insurance Company, 2024
+n of Language
+and Underlining indicates additions)
+PROPOSED ENDORSEMENT
+2835AR COVERAGE EXTENSION FOR NAMED
+PERSON
+3. any other person while occupying:
+a. a your car;
+b. a newly acquired car; or
+c. a temporary substitute car.
+Such vehicle must be used with your
+express or implied permission; and
+4. you or any person or organization
+entitled to recover compensatory
+damages as a result of bodily injury to
+an insured as defined in 1., 2., or 3.
+above.
+7. UNINSURED MOTOR VEHICLE
+COVERAGE (Non-Stacking)
+Exclusions
+The exception to Exclusion 2.b. is changed to read:
+This exclusion (2.b.) does not apply to a designee
+while occupying or through being struck by a
+motor vehicle not owned by a designee;
+8. PHYSICAL DAMAGE COVERAGES
+Additional Definitions
+a. Covered Vehicle is changed to read:
+Covered Vehicle means:
+1. a your car, but only for those coverages for
+which a premium for that your car is shown
+under the corresponding “Coverage Symbol”
+in the “POLICY PREMIUM” schedules on the
+Declarations;
+2. a newly acquired car, if a premium is shown
+under the corresponding “Coverage Symbol”
+in the “POLICY PREMIUM” schedules on the
+Declarations;
+3. a temporary substitute car but only for
+those coverages available to the car being
+replaced;
+4. a camper that is:
+a. shown on the Declarations; and
+b. designed to be mounted or installed on a
+your car described in 1. above, but only
+for those coverages for which a premium
+is shown for that your car under the
+corresponding “Coverage Symbol” in the
+“POLICY PREMIUM” schedules on the
+Declarations;
+5. a non-owned car;
+4 of 5
+utomobile Insurance Company, 2024
+n of Language
+and Underlining indicates additions)
+PROPOSED ENDORSEMENT
+2835AR COVERAGE EXTENSION FOR NAMED
+PERSON
+a. if a premium is shown under the
+corresponding “Coverage Symbol” in the
+“POLICY PREMIUM” schedules on the
+Declarations; and
+b. while it is:
+(1) being driven by the designee or a
+resident relative; or
+(2) in the custody of the designee or a
+resident relative if at the time of the
+loss it is:
+(a) not being driven; or
+(b) being driven by a person other
+than the designee or a
+resident relative and being
+occupied by the designee or a
+resident relative;
+6. a non-owned trailer:
+a. if a premium is shown under the
+corresponding “Coverage Symbol” in the
+“POLICY PREMIUM” schedules on the
+Declarations; and
+b. while it is being used by the designee or
+a resident relative; and
+7. a non-owned camper:
+a. if a premium is shown under the
+corresponding “Coverage Symbol” in the
+“POLICY PREMIUM” schedules on the
+Declarations; and
+b. while it is being used by the designee or
+a resident relative.
+A covered vehicle also includes the parts and
+equipment that are common to the use of the
+vehicle as a vehicle. However, parts and
+equipment of trailers and campers must be
+securely fixed as a permanent part of the trailer
+or camper.
+b. Insured is changed to read:
+Insured means you, designees, and resident
+relatives.
+9. GENERAL TERMS
+The last paragraph of 6. Newly Owned or Newly
+Leased Car is deleted.
+5 of 5
+utomobile Insurance Company, 2024
