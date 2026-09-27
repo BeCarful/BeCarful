@@ -197,6 +197,11 @@ All AI coders (Claude Code and Codex) must follow these rules:
 - **Decision**: Test mobile camera capture through a Next.js `POST /api/upload` route that writes validated photos to `cv-module/frontend/public/uploads/` only outside production. The production Python backend remains responsible for Firebase Authentication and signed Google Cloud Storage uploads.
 - **Rationale**: This isolates verification of the browser camera and multipart upload flow from unfinished cloud infrastructure without creating an unauthenticated production upload endpoint.
 
+### ADR-005: CV preprocessing runs inside the BeCarful app
+- **Date**: 2026-09-27
+- **Decision**: `services/image_processing.py`'s checks (type sniffing, EXIF orientation, quality thresholds, normalization) are ported to `src/services/ai/image-prep.ts` in the app and run before every damage analysis. View and evidence boxes come from the app's single Gemini damage call; the app keeps its own component IDs. This is the one exception to the code boundary rule.
+- **Rationale**: On real photos, unrotated phone images made the app's analysis swap left/right; the port fixed it without running a second backend.
+
 ---
 
 ## Change Log
@@ -210,3 +215,4 @@ All AI coders (Claude Code and Codex) must follow these rules:
 | 2026-09-26 | Claude Code | Intake prompt v2 (prompt set `v3`) | End-to-end test on 20 CarDD train images: `intake-v1` marked damage close-ups (`close_up`, `extreme_close_up`) unusable, so 5/20 claims ended `needs_more_photos` with no damage assessment. `intake-v2.txt` makes view and usability independent and keeps close-ups usable. Result: 20/20 assessed; recall rose for dent (0.75→1.00), crack (0.50→0.75), glass_shatter (0.67→1.00), lamp_broken (0.33→1.00) with unchanged precision. `prompt_version` is now `v3` (intake-v2 + assessment-v2) |
 | 2026-09-26 | Claude Code | Frontend vehicle-mismatch message | When `review_reasons` contains `vehicle_inconsistency`, the backend skips damage inference. The damage panel showed "No visible damage findings." — it now says damage was not assessed because the photos show different vehicles (`lib/assessment/assessment-outcome.ts`) |
 | 2026-09-27 | Claude Code | Removed `cv-module/frontend/` | The BeCarful app at the repo root is the only UI. ADR-002–004 describe the removed frontend |
+| 2026-09-27 | Claude Code | CV preprocessing in the app | Ported image checks to `src/services/ai/image-prep.ts`; damage analysis now returns view + boxes. See ADR-005 |

@@ -14,6 +14,7 @@ export function PhotoImage({
   alt,
   className = "",
   style,
+  onLoad,
 }: {
   vehicleId: string;
   photoId: string;
@@ -21,6 +22,7 @@ export function PhotoImage({
   alt: string;
   className?: string;
   style?: React.CSSProperties;
+  onLoad?: React.ReactEventHandler<HTMLImageElement>;
 }) {
   const [url, setUrl] = useState(src);
   const [state, setState] = useState<"ok" | "refreshed" | "broken">("ok");
@@ -41,5 +43,5 @@ export function PhotoImage({
     );
   }
   // eslint-disable-next-line @next/next/no-img-element -- presigned S3 URLs, not optimizable by next/image
-  return <img src={url} alt={alt} className={className} style={style} loading="lazy" decoding="async" onError={onError} />;
+  return <img src={url} alt={alt} className={className} style={style} loading="lazy" decoding="async" onLoad={onLoad} onError={onError} />;
 }
