@@ -55,7 +55,7 @@ export function CarDamageView(props: Props) {
             onClick={() => setView(v)}
             className={`min-h-8 rounded-md px-3 ${view === v ? "bg-accent text-accent-ink" : "text-ink"}`}
           >
-            {v === "3d" ? "3D" : "Map"}
+            {v === "3d" ? "3D" : "2D"}
           </button>
         ))}
       </div>
