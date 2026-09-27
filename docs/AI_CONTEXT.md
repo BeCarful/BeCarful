@@ -79,19 +79,6 @@ When any AI tool makes changes, it must:
 | Database | *TBD* | |
 | CI/CD | *TBD* | |
 
-### Frontend (`cv-module/frontend/`)
-
-| Layer | Technology | Notes |
-|-------|-----------|-------|
-| Language | TypeScript (strict) | |
-| Framework | Next.js 16 (App Router, Turbopack), React 19 | Next 16 has breaking changes — read `cv-module/frontend/node_modules/next/dist/docs/` before writing Next code |
-| 3D | three.js + `@react-three/fiber` + `@react-three/drei` | Procedural white Suzuki XL7 placeholder; a `.glb` can replace it via `CAR_MODEL_URL` |
-| Styling | CSS Modules + `globals.css` | No Tailwind |
-| Testing | Vitest + Testing Library (jsdom) | Vite is used only through Vitest |
-| Linter/Formatter | ESLint (next config) + Prettier | Double quotes, semicolons |
-| Package Manager | npm | |
-| Database | None | Frontend has no DB layer; data will come from the backend API |
-
 ---
 
 ## ⛔ Code Boundary Rule
@@ -112,7 +99,6 @@ Everything else — features, tests, utilities, configs, assets — goes inside 
 ```
 BeCarful/
 ├── cv-module/          # ⬅ ALL source code goes here
-│   ├── frontend/       # Next.js + three.js 3D car viewer (see its README.md)
 │   └── ...             # Features, tests, configs, assets
 ├── docs/               # Documentation (including this file)
 │   └── AI_CONTEXT.md   # This file — shared AI knowledge base
@@ -175,18 +161,6 @@ All AI coders (Claude Code and Codex) must follow these rules:
 # TBD
 ```
 
-### Frontend (`cv-module/frontend/`)
-
-```bash
-cd cv-module/frontend
-npm install        # install dependencies
-npm run dev        # dev server on http://localhost:3000
-npm test           # Vitest unit tests
-npm run lint       # ESLint
-npm run format     # Prettier
-npm run build      # production build
-```
-
 ---
 
 ## Architecture Decisions
@@ -235,3 +209,4 @@ npm run build      # production build
 | 2026-09-26 | Codex | Local camera upload test | Added a development-only Next.js camera upload flow that saves validated test photos under `frontend/public/uploads/`. See ADR-004 |
 | 2026-09-26 | Claude Code | Intake prompt v2 (prompt set `v3`) | End-to-end test on 20 CarDD train images: `intake-v1` marked damage close-ups (`close_up`, `extreme_close_up`) unusable, so 5/20 claims ended `needs_more_photos` with no damage assessment. `intake-v2.txt` makes view and usability independent and keeps close-ups usable. Result: 20/20 assessed; recall rose for dent (0.75→1.00), crack (0.50→0.75), glass_shatter (0.67→1.00), lamp_broken (0.33→1.00) with unchanged precision. `prompt_version` is now `v3` (intake-v2 + assessment-v2) |
 | 2026-09-26 | Claude Code | Frontend vehicle-mismatch message | When `review_reasons` contains `vehicle_inconsistency`, the backend skips damage inference. The damage panel showed "No visible damage findings." — it now says damage was not assessed because the photos show different vehicles (`lib/assessment/assessment-outcome.ts`) |
+| 2026-09-27 | Claude Code | Removed `cv-module/frontend/` | The BeCarful app at the repo root is the only UI. ADR-002–004 describe the removed frontend |

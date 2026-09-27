@@ -99,23 +99,6 @@ exact headers the client must include in its PUT request. A claim may contain at
 The export endpoint combines source-image metadata, validated `AssessmentV1`, and the raw Gemini
 intake and assessment JSON. The raw assessment is `null` when damage inference was skipped.
 
-## Local browser workflow
-
-Start the API from `cv-module`, then start the frontend in a second terminal:
-
-```powershell
-.\scripts\dev.ps1
-cd frontend
-npm run dev
-```
-
-Open `http://localhost:3000`, select **Assess photos**, and choose 1–12 laptop images. One usable
-photo is enough to run Gemini; front, rear, left, and right photos are suggested for more complete
-coverage. Local CORS is
-limited to `http://localhost:3000` and `http://127.0.0.1:3000`. The frontend defaults to the API at
-`http://127.0.0.1:8000`; override it with `NEXT_PUBLIC_CV_API_BASE_URL` when necessary. The Gemini
-API key remains only in the backend `.env` and is never sent to the browser.
-
 ## Google Cloud deployment
 
 1. Create or select the Google Cloud project and choose a globally unique Storage bucket name.
