@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { retryPhotoAnalysis } from "@/actions/photos";
 import { RetroBadge } from "@/components/retro";
 import type { PhotoView } from "@/services/photos/view";
+import { componentLabel, type DamagedComponent, type VehicleView } from "@/types";
 import { AnalysisSummary } from "./AnalysisSummary";
 import { CloseButton, FullScreenDialog, SHEET_CLASS } from "./FullScreenDialog";
 import { PhotoImage } from "./PhotoImage";
@@ -19,6 +20,41 @@ function Chevron({ d }: { d: string }) {
 }
 
 const formatDate = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+
+const viewLabel = (v: VehicleView) => `${v.charAt(0).toUpperCase()}${v.slice(1).replace("_", "-")} view`;
+
+function DamageBoxes({ items, size: [w, h] }: { items: DamagedComponent[]; size: [number, number] }) {
+  const boxed = items.flatMap(({ component, box }) => (box ? [{ component, box }] : []));
+  if (!boxed.length) return null;
+  const font = Math.max(w, h) * 0.022;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet" className="pointer-events-none absolute inset-0 size-full" aria-hidden>
+      {boxed.map(({ component, box }) => (
+        <g key={component}>
+          <rect
+            x={box.xMin * w}
+            y={box.yMin * h}
+            width={(box.xMax - box.xMin) * w}
+            height={(box.yMax - box.yMin) * h}
+            className="fill-none stroke-danger"
+            strokeWidth={3}
+            vectorEffect="non-scaling-stroke"
+          />
+          <text
+            x={box.xMin * w + font * 0.4}
+            y={box.yMin * h + font * 1.2}
+            fontSize={font}
+            strokeWidth={font * 0.18}
+            paintOrder="stroke"
+            className="fill-white stroke-black font-medium"
+          >
+            {componentLabel(component)}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
 
 export function PhotoViewer({
   vehicleId,
@@ -36,6 +72,7 @@ export function PhotoViewer({
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sizes, setSizes] = useState<Record<string, [number, number]>>({});
 
   useLayoutEffect(() => {
     const el = scroller.current;
@@ -121,14 +158,23 @@ export function PhotoViewer({
                 aria-label={zoomed ? "Zoom out" : "Zoom in"}
                 className={`size-full ${zoomed ? "cursor-zoom-out" : "cursor-zoom-in"}`}
               >
-                <PhotoImage
-                  vehicleId={vehicleId}
-                  photoId={p.id}
-                  src={p.url}
-                  alt={`${p.source === "camera" ? "Camera" : "Uploaded"} photo ${i + 1} of ${photos.length}`}
-                  className="size-full object-contain transition-transform duration-200"
+                <div
+                  className="relative size-full transition-transform duration-200"
                   style={zoomed ? { transform: "scale(2.5)", transformOrigin: `${zoom.x}% ${zoom.y}%` } : undefined}
-                />
+                >
+                  <PhotoImage
+                    vehicleId={vehicleId}
+                    photoId={p.id}
+                    src={p.url}
+                    alt={`${p.source === "camera" ? "Camera" : "Uploaded"} photo ${i + 1} of ${photos.length}`}
+                    className="size-full object-contain"
+                    onLoad={(e) => {
+                      const { naturalWidth, naturalHeight } = e.currentTarget;
+                      setSizes((s) => ({ ...s, [p.id]: [naturalWidth, naturalHeight] }));
+                    }}
+                  />
+                  {p.analysis && sizes[p.id] && <DamageBoxes items={p.analysis.damagedComponents} size={sizes[p.id]} />}
+                </div>
               </button>
             </div>
           );
@@ -141,6 +187,7 @@ export function PhotoViewer({
           <RetroBadge tone={photo.hasLocation ? "ok" : "neutral"}>
             {photo.hasLocation ? "Location recorded" : "Location unavailable"}
           </RetroBadge>
+          {photo.analysis && photo.analysis.view !== "unknown" && <RetroBadge tone="neutral">{viewLabel(photo.analysis.view)}</RetroBadge>}
         </div>
         <p className="text-sm text-ink-soft">
           {camera ? `Captured ${formatDate(photo.date)} · device time` : `Uploaded ${formatDate(photo.date)}`}
