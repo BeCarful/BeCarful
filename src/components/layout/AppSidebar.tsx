@@ -17,7 +17,7 @@ export function AppSidebar({ email, vehicles, selectedId }: { email: string; veh
   const path = usePathname();
   return (
     <aside className="road fixed inset-y-0 left-0 z-30 hidden w-60 flex-col md:flex">
-      <span key={path} aria-hidden className="road-line" />
+      <span key={`${path}:${selectedId}`} aria-hidden className="road-line" />
       <div className="border-b border-border px-4 py-4">
         <Wordmark tagline />
       </div>
