@@ -130,4 +130,10 @@
 - **License verified from:** Tuxemon `ATTRIBUTIONS.md` at the same commit, section "Tuxemon" → "Nut & Bolt" (https://github.com/Tuxemon/Tuxemon/blob/d7dd0adc0c26214ff58ef3eaec47bd8f1f799cf5/ATTRIBUTIONS.md?plain=1#L512), which reads: `* ["Nut & Bolt"](https://forum.tuxemon.org/viewtopic.php?id=59) by [TacoBot](https://wiki.tuxemon.org/TacoBot) is licensed under [Public Domain](https://creativecommons.org/publicdomain/zero/1.0/)`
 - **Modifications:** none. The file is byte-for-byte identical to the source (SHA-1 `40ffa9bc2a8a855fcffeff319fbf804759e87957`).
 
+## Idle animations (`<name>-idle.png`)
+
+- **Source:** the front frame (64x64 at 0,0) of each `<name>-sheet.png` above, by the authors credited in its section.
+- **Modifications (by BeCarful):** each file is a looping animated PNG made from that one frame by `scripts/tuxemon-idle.py`: the body settles 1–2 px (breathing) or floats, the eyes blink, and some creatures get their own motion (Propellercat's propeller spins and tail sways; Agnidon's flames flicker; Noctalo's and Eaglace's wings flap; Selmatek's floating rocks bob; Moloch's arms sway; Bigfin's tail and sprout sway; Cateye's tail and Aardorn's ear twitch; Vamporm's antennae wave; Chillimp's fist bobs). The pixels are moved, and eyelids are painted over the eyes using the sprite's own colors; no new artwork is added. The `-sheet.png` files remain unmodified (the SHA-1s above still apply).
+- **License:** each animation is an adaptation released under the same license as its source sheet: CC BY-SA 4.0 for all except `aardorn-idle.png` (CC BY-SA 3.0) and `nut-idle.png` (CC0 1.0).
+
 Tuxemon is © the Tuxemon contributors. BeCarful is not affiliated with or endorsed by the Tuxemon project.

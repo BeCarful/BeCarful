@@ -42,7 +42,8 @@ npm run dev         # http://localhost:3000
 npm run build
 npm run lint
 npm run typecheck   # next typegen + tsc
-npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, 3D zones, statute search, Jev guard, coverage rules)
+npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, 3D zones, statute search, Jev guard, coverage rules, photo seal)
+python3 scripts/tuxemon-idle.py   # regenerate public/tuxemon/*-idle.png (needs Pillow + numpy)
 ```
 
 **Google Cloud** (Vertex AI for Gemini + Cloud Storage for files): `brew install --cask gcloud-cli`, then `gcloud auth application-default login --impersonate-service-account=<app service account>`. Signed upload/view URLs need a service account, so plain user ADC is not enough; you need Service Account Token Creator on it. The app service account needs Vertex AI User on the project and Storage Object Admin on the bucket. Vercel: Workload Identity Federation (Vercel OIDC) to the same service account.
@@ -61,8 +62,10 @@ npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage m
 | Presigned URLs | Never stored; `getViewUrl(key)` on read (1 h). DB stores `s3Key` only (no `imageUrl`/`documentUrl` fields). |
 | Insurer metadata | Static `services/insurance/providers.ts` (not a DB collection); `InsurancePolicy.providerId` is its string id. |
 | To-dos | Computed on read by `computeTodos()` (pure, tested); no stored `TodoState`. Incident status synced by `refreshIncidentStatus()`. |
-| Selected vehicle | `User.lastVehicleId`, changed by `selectVehicle()`; pages read it via `getVehicleContext()`. |
-| 3D car | R3F + drei GLB viewer (`Car3D.tsx`) behind `CarDamageView`; parts are position zones (`car-zones.ts`) because the sample GLB is split by material. 2D map (`CarDamageMap2D.tsx`) is the toggle + error fallback. |
+| Selected vehicle | `User.lastVehicleId`, changed by `selectVehicle()`; pages read it via `getVehicleContext()`. Switched from the "Vehicles" list (`VehicleSelector`): a sidebar section on `md`+, a bottom-nav tab that opens a native `popover` (`VehicleMenu`) on phones. |
+| Car models | Static demo catalog `services/vehicles/car-models.ts` (`CAR_MODELS`: id, year/make/model, GLB url, axes, credit), not a DB collection. New vehicles must pick one (`Vehicle.modelId`, year/make/model copied from the catalog); vehicles without `modelId` show the first model. |
+| Photo evidence | Camera only: `registerPhoto` rejects `source: "upload"`. On receipt the server stores `sha256` of the stored bytes and `seal` = HMAC-SHA256 (`AUTH_SECRET`) over vehicleId + sha256 + capturedAt + serverReceivedAt + location (`services/photos/seal.ts`, tested). It proves the bytes and metadata are unchanged since BeCarful received them, not that the device clock/GPS were true. No verify UI yet. |
+| 3D car | R3F + drei GLB viewer (`Car3D.tsx`) behind `CarDamageView`, one GLB per catalog model. Parts come from named collections where the GLB has them (`namedPart`: "Left Door", "Headlight - Right", "Windshield"…), else position zones (`car-zones.ts`). The team's prototype (`3d_model_update/`) was folded in and removed: its collection highlight, "damage skips glass/interior" rule, transparency toggle (now **X-ray**) and per-part photo panel (now **+ Take a close-up**, camera only). 2D map (`CarDamageMap2D.tsx`) is the toggle + error fallback. |
 | Design system | HouseToClaim-style tokens + Tailwind v4 `@utility` classes in `globals.css`; no component library. Fonts: Rubik (body) + Tektur (display) via `next/font`. |
 | Agents | Google ADK for TypeScript (`@google/adk`): chat (`services/ai/chat-agent.ts`) and coverage checklist (`services/ai/coverage.ts`) are `LlmAgent`s with `FunctionTool`s. `runAgent()` (`services/ai/adk.ts`) rebuilds an in-memory ADK session per request from MongoDB history. `serverExternalPackages: ["@google/adk"]` (its optional peer deps break bundling). |
 | Agent write guard | Jev (TypeSafe AI, `POST /v1/systemone`) classifies each non-read tool call in `beforeToolCallback`; code decides via `decide()` (`services/ai/guard.ts`, tested): reads run, `destructive` tools always wait for a Confirm tap, writes run alone only when Jev says benign + requested, confident "suspicious" is blocked, no key/outage → Confirm. A waiting write is stored as `ChatMessage.action` and run once by `resolveChatAction`. |
@@ -71,6 +74,7 @@ npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage m
 | Gemini auth | Vertex AI only: `genaiAuth()` in `services/ai/gemini.ts` (`GOOGLE_CLOUD_PROJECT`, location `global`, model `GEMINI_MODEL` constant), Application Default Credentials. Used by `@google/genai` and ADK. |
 | Florida plans | Static, sourced `services/insurance/florida-plans.ts` (4 example configurations per insurer, retrieved 2026-09-26, no premiums). Picking one stores its text as the policy original, sets `planId` and skips Gemini extraction. |
 | Dev origin | `allowedDevOrigins: ["127.0.0.1"]` in `next.config.ts` so the dev server also hydrates when opened via 127.0.0.1 (Next 16 blocks dev assets from other hostnames). |
+| Tuxemon animation | Full-body sprites play a looping APNG (`public/tuxemon/<name>-idle.png`) generated by `scripts/tuxemon-idle.py` from the unmodified sheet's front frame: breathing/floating, blinks, per-creature motion. Tune a sprite's settings there and rerun; the adaptation is credited in `ATTRIBUTION.md` and the on-screen credit lines. |
 
 ---
 
@@ -111,23 +115,23 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS · MongoDB 
 
 ## Project structure
 
-Feature-oriented:
+Feature-oriented. All application code lives in `src/` (Next.js `src` folder; `@/*` → `./src/*`). File paths elsewhere in this doc are relative to `src/` unless they start with `public/`, `data/` or `scripts/`. Config files, `public/`, `data/`, `scripts/` and `.env*` stay at the repo root.
 
 ```
-app/(auth)/        login, signup
-app/(app)/         authed shell (layout: sky, meadow sidebar md+, frosted header with vehicle selector, bottom nav on phones)
-  page.tsx         Home        chat/  summary/  insurance/  profile/  vehicles/new/
-actions/           server actions per feature: auth vehicles photos insurance chat incidents
-components/        retro/ layout/ auth/ vehicle/ photos/ insurance/ chat/ summary/
-lib/               env (zod, lazy), db (cached mongoose), session (jose), auth, upload-client
-models/            User Vehicle InsurancePolicy Incident DamagePhoto DamageAssessment ChatMessage
-schemas/           zod: damage, policy, vehicle
-services/          ai/ storage/ insurance/ vehicles/ claims/ law/
-types/             shared constants + types (component IDs, statuses, task codes)
-proxy.ts           optimistic auth redirect (Next 16 name for middleware)
-scripts/seed.ts    demo data
-public/            scenery/ (grass, ground, pixel car SVGs)  tuxemon/ (sprites + ATTRIBUTION.md)  models/ (GLB car + ATTRIBUTION.md)
-data/              RAG source texts, one .txt per statute section (citation + source URL header): florida/ (2026 F.S.: ch. 627 Part XI, ch. 324, related sections), federal/ (2024 U.S. Code)
+src/app/(auth)/        login, signup
+src/app/(app)/         authed shell (layout: sky, road sidebar md+ with the Vehicles list, frosted header on phones, bottom nav + Vehicles popover on phones)
+  page.tsx             Home        chat/  summary/  insurance/  profile/  vehicles/new/
+src/actions/           server actions per feature: auth vehicles photos insurance chat incidents
+src/components/        retro/ layout/ auth/ vehicle/ photos/ insurance/ chat/ summary/
+src/lib/               env (zod, lazy), db (cached mongoose), session (jose), auth, upload-client
+src/models/            User Vehicle InsurancePolicy Incident DamagePhoto DamageAssessment ChatMessage
+src/schemas/           zod: damage, policy, vehicle
+src/services/          ai/ storage/ insurance/ vehicles/ claims/ law/
+src/types/             shared constants + types (component IDs, statuses, task codes)
+src/proxy.ts           optimistic auth redirect (Next 16 name for middleware)
+scripts/seed.ts        demo data
+public/                logo.png (brand logo; favicon is app/icon.png)  insurers/ (insurer logos)  scenery/ (grass, ground, pixel car SVGs)  tuxemon/ (sprite sheets, generated *-idle.png animations + ATTRIBUTION.md)  models/ (catalog GLBs lamborghini-sc18, peugeot-308 + ATTRIBUTION.md)
+data/                  RAG source texts, one .txt per statute section (citation + source URL header): florida/ (2026 F.S.: ch. 627 Part XI, ch. 324, related sections), federal/ (2024 U.S. Code), state-farm/ (Florida OIR IRFS filing PDFs named <file log #>_<doc id>.pdf; policy wording text in 9810C-personal-car-policy.txt), source GLBs of the catalog cars (not served), peugeot-308/ (reference renders)
 ```
 
 Key service files:
@@ -139,6 +143,8 @@ Key service files:
 - `services/law/statutes.ts` — statute chunking + BM25 search over `data/`
 - `services/claims/todos.ts` — deterministic to-do rules + incident status (pure, tested); `state.ts` loads a vehicle's claim state; `damage.ts` merges per-photo assessments
 - `services/vehicles/context.ts` — `getVehicleContext()` for pages, `requireVehicle(vehicleId)` ownership gate for every vehicle-scoped action
+- `services/vehicles/car-models.ts` — demo car catalog (`CAR_MODELS`, `carModel(id)`), shared by the form, actions, seed and `Car3D`
+- `services/photos/seal.ts` — `sha256Hex` + `sealPhoto` (photo evidence HMAC)
 
 ## Environment variables
 
@@ -164,12 +170,12 @@ Mongoose models in `models/`: `User`, `Vehicle`, `InsurancePolicy`, `Incident`, 
 
 **User:** email (unique), name, passwordHash (`select: false`), lastVehicleId.
 
-**Vehicle:** userId, year, make, model, trim?, color, vin?, licensePlate, state.
+**Vehicle:** userId, modelId (catalog id), year, make, model, trim?, color, vin?, licensePlate, state.
 
 **DamagePhoto:**
 ```ts
 { userId, vehicleId, incidentId, s3Key, contentType, source: "camera" | "upload",
-  capturedAt?, serverReceivedAt, latitude?, longitude?, locationAccuracy?,
+  capturedAt?, serverReceivedAt, latitude?, longitude?, locationAccuracy?, sha256?, seal?,
   analysisStatus: "pending" | "analyzing" | "done" | "failed", createdAt }
 ```
 
@@ -184,7 +190,7 @@ Mongoose models in `models/`: `User`, `Vehicle`, `InsurancePolicy`, `Incident`, 
 `CoverageItem = { peril, status: "covered" | "not_covered" | "unknown", detail, law: { citation, url } | null }`, one per `PERILS` (types/index.ts: collision, liability, injury, uninsured_driver, theft, fire, flood, storm, vandalism, animal, glass, roadside).
 The newest `uploadedAt` per vehicle is the active policy (`getActivePolicy`); older ones are history.
 
-**Insurance providers:** `PROVIDERS` in `services/insurance/providers.ts`: `{ id, name, claimsUrl, phone, officialDomains, supportedStates }`. **State Farm** (`state-farm`) is the preferred/demo insurer. `isOfficialUrl()` validates any URL against `officialDomains`.
+**Insurance providers:** `PROVIDERS` in `services/insurance/providers.ts`: `{ id, name, shortName, color, logo?, claimsUrl, phone, officialDomains, supportedStates }`. `ProviderMark` shows `logo` if set, else a `shortName` tile. **State Farm** (`state-farm`) is the preferred/demo insurer (hackathon sponsor; its emblem is used with that permission). `isOfficialUrl()` validates any URL against `officialDomains`.
 
 **Incident:** userId, vehicleId, insurancePolicyId, type (`INCIDENT_TYPES`), occurredAt, location, notes, status, filedAt. Photos/assessments reference it by `incidentId`.
 Statuses: `documenting` → `analyzing` → `action_required` → `ready_to_file` → `filed` → `closed`. The open incident is the newest non-`closed` one; the first photo creates it (`getOrCreateOpenIncident`). `filed`/`closed` are set only by explicit user actions; the rest by `refreshIncidentStatus()`.
@@ -210,11 +216,11 @@ Store stable object keys, not just URLs.
 - Location denied → still allow the photo, show **"Location unavailable"**.
 - Don't call browser GPS/timestamps "verified evidence". Record provenance honestly.
 
-**Upload Photo:** existing photos from device, `source: "upload"`. Never present uploads as live captures.
+**No uploads.** Only Take Photo, so users can't submit old pictures. `source: "upload"` only exists on older data and is still shown as "Uploaded", never as a live capture. Desktop browsers ignore `capture`, so there Take Photo still opens a file picker.
 
-**Gallery** (under the action buttons): horizontal scroll of small thumbnails with optional badges (camera / uploaded / damage detected / location available). Tap → full-screen viewer with swipe, zoom, close, capture/upload date, location status, AI result. Don't show raw GPS coordinates prominently.
+**Gallery** (under the action buttons): a `<details>` dropdown ("Photos · N photos"), closed by default. Open: **+ Take photo** (same camera input as the Take Photo tile, `openCamera()`), then thumbnails (3-column grid on phones, horizontal scroll from `sm`) with optional badges (camera / uploaded / damage detected / location available). Tap → full-screen viewer with swipe, zoom, close, capture date, location status, the evidence seal, AI result. Don't show raw GPS coordinates prominently.
 
-Built: `actions/photos.ts`: `createPhotoUpload` (presigned POST) → browser uploads to Cloud Storage → `registerPhoto` (idempotent per key) → `analyzeDamage()` in `services/ai/damage-analysis.ts` (keep its signature; a custom image pipeline can replace it). Take Photo uses the native `<input capture="environment">` (no in-app camera screen; a denied camera falls back to the file picker). Uploads never store capture time or location. If Gemini fails the photo is kept with `analysisStatus: "failed"` and can be retried (`retryPhotoAnalysis`); a photo stuck in `analyzing` for 3+ min shows as failed. Expired image URLs refresh once via `getPhotoViewUrl`.
+Built: `actions/photos.ts`: `createPhotoUpload` (presigned POST) → browser uploads to Cloud Storage → `registerPhoto` (idempotent per key) → `analyzeDamage()` in `services/ai/damage-analysis.ts` (keep its signature; a custom image pipeline can replace it). Take Photo uses the native `<input capture="environment">` (no in-app camera screen; a denied camera falls back to the file picker); location starts on the input's click, so every entry point records it. `registerPhoto` downloads the stored bytes once to hash/seal them and reuses them for `analyzeDamage`. If Gemini fails the photo is kept with `analysisStatus: "failed"` and can be retried (`retryPhotoAnalysis`); a photo stuck in `analyzing` for 3+ min shows as failed. Expired image URLs refresh once via `getPhotoViewUrl`.
 
 ## Damage analysis and 3D mapping
 
@@ -250,12 +256,13 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 
 - Damage result cards show component, severity, damage types and AI confidence. Tapping a card rotates/focuses the car on that component.
 - Tapping a red mesh shows component, description, severity, confidence and associated photos.
-- 3D controls: rotate (drag/swipe/mouse), bounded zoom, reset view.
+- 3D controls: rotate (drag/swipe/mouse), bounded zoom, reset view, X-ray toggle. The part detail card has **+ Take a close-up** (camera).
 
 **Current state:** `components/vehicle/CarDamageView.tsx` (props unchanged: `{ damage: AggregatedDamage[]; focused?: ComponentId | null; onSelect?: (id: ComponentId) => void }`) lazy-loads `Car3D.tsx` (React Three Fiber, `useGLTF`, OrbitControls, no pan, bounded zoom) with a **3D / Map** toggle; Map is the keyboard-accessible 2D SVG (`CarDamageMap2D.tsx`), also shown if WebGL or the GLB fails. `DamageExplorer` wires the cards, the focus state and the detail panel.
-- Model: `public/models/car.glb` = the sample "2019 Lamborghini SC18 Alston" (Ddiaz Design, **CC BY-NC-SA 4.0: non-commercial only**, credits in `public/models/ATTRIBUTION.md` + a credit line in the viewer), optimized from `data/2019_lamborghini_sc18_alston.glb` (11.7 MB → 2.3 MB: meshopt + 1024px WebP). Same model for every vehicle for now.
-- The GLB is split by material, not by part, so `car-zones.ts` maps every vertex/tap to a component ID by its normalized position (front/back, left/right, height; thresholds in `ZONE`, orientation + credits in `CAR_MODEL`). Damaged zones are tinted per vertex by severity; taps classify the hit point; selecting a part eases the camera to it.
-- Next step: a simplified model with one mesh per big part named by component ID (doors, hood, trunk, bumpers…) makes picking and coloring exact; then replace the zone lookup with mesh names.
+- Models: one GLB per `CAR_MODELS` entry, credit line in the viewer + `public/models/ATTRIBUTION.md`. `lamborghini-sc18.glb` ("2019 Lamborghini SC18 Alston", Ddiaz Design, **CC BY-NC-SA 4.0: non-commercial only**, the team's part-grouped version, 9.4 → 2.5 MB) and `peugeot-308.glb` (2021 Peugeot 308, CC BY 4.0 per its Sketchfab metadata, 22 → 4.9 MB). Sources in `data/` (`2019_lamborghini_sc18_alston_fixed.glb`, `peugeot-308.glb`); optimized with `npx @gltf-transform/cli optimize in.glb out.glb --compress meshopt --texture-compress webp --texture-size 1024 --flatten false --join false --palette false --instance false --simplify false` (keeps node/material names, which `partKind` reads). Both face +z with their left at +x.
+- Garage background is a plain `bg-panel-shade` (no sky/grass behind the car).
+- Meshes under a named part collection (`namedPart`, e.g. the Lambo's "Left Door", "Headlight - Left", "Windshield") map to that component exactly; everything else, `car-zones.ts` maps per vertex/tap to a component ID by its normalized position (front/back, left/right, height; thresholds in `ZONE`, orientation + credits per model in `CAR_MODELS`). `partKind` reads node + material names; its regexes skip "Trim", "Highlights" and "detail" so they aren't taken for rims, lights or taillights. Damaged zones are tinted per vertex by severity, except interior meshes (`isInterior`) and door glass, which stay clear; taps classify the hit point; selecting a part eases the camera to it. **X-ray** (a shared shader uniform) makes untinted surfaces see-through so damage stands out.
+- Next step: name the remaining big parts in the GLBs (hood, trunk, bumpers, fenders, quarters) so `namedPart` covers them and zones are only a fallback.
 
 **Processing UX:** retro step sequence, not an endless spinner, e.g. *Uploading evidence… → Inspecting vehicle… → Identifying visible damage… → Mapping vehicle components… → Updating your car…*
 
@@ -315,9 +322,9 @@ Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS =
 
 ## UI and design
 
-**Style:** a polished RPG companion (modeled on the HouseToClaim design) under an 8-bit pixel sky: an asphalt road sidebar (yellow center line, green highway-sign active item, crosswalk), white rounded cards, slate text, blue primary actions, restrained red brand mark, gold highlights. Pixel art frames the work (scenery, pixel scenes, Tuxemon sprites, pixel icons, stepped progress) but never sits behind body text. Playful but trustworthy enough for insurance documents.
+**Style:** a polished RPG companion (modeled on the HouseToClaim design) under an 8-bit pixel sky: an asphalt road sidebar (yellow center line, green highway-sign active item, crosswalk), white rounded cards, slate text, blue primary actions, restrained red brand, pixel crashed-car logo (`BrandMark` → `public/logo.png`), gold highlights. Pixel art frames the work (scenery, pixel scenes, Tuxemon sprites, pixel icons, stepped progress) but never sits behind body text. Playful but trustworthy enough for insurance documents.
 
-**Tokens and utilities** live only in `app/globals.css` (light `:root` + dark `[data-theme="dark"]`). Road tokens (`--road`, `--road-ink(-soft)`, `--road-line`, `--road-paint`, `--road-sign(-ink)`) + `road-sign` utility for the sidebar. Colors: `panel`, `panel-shade`, `ink`, `ink-soft`, `muted`, `border`, `input`, `accent` (+`-hover/-soft/-ink`), `brand`, `gold`, `danger/ok/warn` (+`-soft`, use `bg-warn-soft text-warn` for chips), `pixel-outline`, `pixel-panel`. Utilities: `surface-card`, `pixel-frame` (nameplates on scenes), `pixel-scene`, `eyebrow`, `page-title`, `page-description`, `section-title`, `field-label/-hint/-input/-select`, `task-card`, `fade-in`, `appear`, `face-a/face-b`, `pulse-ring`. No raw hex outside pixel art.
+**Tokens and utilities** live only in `app/globals.css` (light `:root` + dark `[data-theme="dark"]`). Road tokens (`--road`, `--road-ink(-soft)`, `--road-line`, `--road-paint`, `--road-sign(-ink)`) + `road-sign` utility for the sidebar. Colors: `panel`, `panel-shade`, `ink`, `ink-soft`, `muted`, `border`, `input`, `accent` (+`-hover/-soft/-ink`), `brand`, `gold`, `danger/ok/warn` (+`-soft`, use `bg-warn-soft text-warn` for chips), `pixel-outline`, `pixel-panel`. Utilities: `surface-card`, `pixel-frame` (nameplates on scenes), `pixel-scene`, `eyebrow`, `page-title`, `page-description`, `section-title`, `field-label/-hint/-input/-select`, `task-card`, `fade-in`, `appear`, `face-a/face-b`, `tux-front` (set by `TuxemonAvatar`: plays `<name>-idle.png`, the sheet's still frame under reduced motion), `tux-wild` (staggered entrance, `--tux-delay`), `pulse-ring`. No raw hex outside pixel art.
 
 **Type:** Rubik for everything readable; Tektur (`font-display`) only for page/card titles, nameplates and short display numbers, never for policy/body text. Cards rounded-xl with a thin border, controls rounded-lg (44px min), chips rounded-full. No thick retro borders or hard offset shadows except `pixel-frame`.
 
@@ -326,7 +333,7 @@ Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS =
 - Dark: night sky with twinkling square stars and a square moon, the same road at night, dark slate cards, night lighting on the 3D car. Not inverted colors.
 - `public/scenery/`: `ground.svg` (original art reused from the team's HouseToClaim project, no credit needed; used by `.pixel-scene`) and `car.svg` (original pixel car). Tuxemon sprites keep their attribution.
 
-**Navigation:** only three destinations: **Home**, **Chat**, **Summary**. Phones: frosted bottom nav. `md`+: road sidebar (`components/layout/AppSidebar.tsx`) with Profile, day/night and log out in its footer. The frosted header always shows the vehicle switcher. Profile avatar top-right on phones.
+**Navigation:** three destinations: **Home**, **Chat**, **Summary**, plus the **Vehicles** list (switch car / add vehicle). Phones: frosted bottom nav Home · Vehicles · Chat · Summary, where Vehicles opens a popover list above the nav. `md`+: road sidebar (`components/layout/AppSidebar.tsx`) with a "Vehicles" section above "Your car", and Profile, day/night and log out in its footer. The frosted header is phones-only (logo, day/night, profile avatar).
 
 **Pages** start with `PageHeader` (`components/layout/PageHeader.tsx`: eyebrow, title, description, action) inside `space-y-6`; main is `max-w-5xl`, two columns at `lg` where it helps.
 
@@ -335,8 +342,7 @@ Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS =
 Action buttons, grouped directly under the car, icon + short label:
 
 ```
-[ Take Photo ] [ Upload Photo ]       wide:  [ Take Photo ] [ Upload Photo ] [ Insurance ]
-[ Insurance ]
+[ Take Photo ] [ Insurance ]
 ```
 
 **Retro components** (`components/retro`, same APIs, new look): `RetroCard`, `RetroButton`, `RetroDialog`, `RetroBadge`, `PixelProgress`, `RetroField`; plus `VehicleSelector`, `PhotoThumbnail`, `PhotoViewer`, `TodoCard`, `ChatBubble`, `TuxemonAssistant`, `StatusPanel`. Reuse them instead of page-specific buttons or cards.
@@ -358,8 +364,8 @@ Each state tells the user what to do next: camera denied, GPS denied, upload fai
 ## Demo data
 
 Fictional seed user with:
-- **2025 Toyota Camry XSE**: State Farm policy, front-left damage, several photos, existing chat history.
-- **2023 Honda Civic**: different insurer, no incident, no damage.
+- **2021 Peugeot 308** (`peugeot-308`): State Farm policy, front-left damage, several sealed camera photos, existing chat history.
+- **2019 Lamborghini SC18 Alston** (`lamborghini-sc18`): different insurer, no incident, no damage.
 
 Switching between them must visibly change the 3D damage state, photos, insurance, chat, summary and to-dos.
 
@@ -378,7 +384,7 @@ Status (2026-09-26): phases 1–6 built end-to-end (3D uses the zone-mapped samp
 7. **Polish:** loading/error/empty states, animation, mobile, accessibility, security review, performance.
 
 **First vertical slice (build this before anything else):**
-Login → select vehicle → Home → 3D car → Take/Upload Photo → Cloud Storage → metadata in MongoDB → Gemini damage analysis → validated component IDs → save assessment → meshes turn red → photo in gallery → Summary to-dos update.
+Login → select vehicle → Home → 3D car → Take Photo → Cloud Storage → metadata in MongoDB → Gemini damage analysis → validated component IDs → save assessment → meshes turn red → photo in gallery → Summary to-dos update.
 
 **Then:** Insurance PDF → Cloud Storage → MongoDB → Gemini extraction → Summary updates → Chat answers about that vehicle/policy → to-dos recalculate → verified claim link when ready.
 
