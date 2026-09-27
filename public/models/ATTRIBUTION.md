@@ -17,3 +17,9 @@ Modified: re-exported from Blender (`3d_model_update/public/peugeot.glb`), geome
 License: Freecreat purchase. The model stays its creator's property; Freecreat's page says not to redistribute, resell or use it commercially without permission.
 
 Modified: split into named parts (source `waymo_organized.glb`, kept out of git because of the license), Left/Right swapped in the node names (they were named from the front view, so "Left" sat on the car's right), geometry meshopt-compressed, textures resized to 1024px and converted to WebP (`@gltf-transform/cli optimize`).
+
+`bmw-e92.glb` is "BMW M3 E92" by [fvrenbld](https://sketchfab.com/890244234), from [Sketchfab](https://sketchfab.com/3d-models/bmw-m3-e92-6bfdc66c8ea4498fb229c86ac4578c76).
+
+License: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+Modified: split into named part groups (team edit, `data/bmw_e92_organized.glb`), geometry meshopt-compressed, textures resized to 1024px and converted to WebP (`@gltf-transform/cli optimize`).

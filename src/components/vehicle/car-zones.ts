@@ -38,7 +38,7 @@ export function namedPart(nodeNames: string[]): ComponentId | null {
 }
 
 export function isInterior(nodeNames: string[], materialName: string) {
-  return /interior|upholstery|cockpit|cabin|dashboard|seat|(^|[^a-z])int([^a-z]|$)/i.test([...nodeNames, materialName].join(" "));
+  return /interior|upholstery|cockpit|cabin|dashboard|seat|steer|(^|[^a-z])int([^a-z]|$)/i.test([...nodeNames, materialName].join(" "));
 }
 
 /** f: +1 front … -1 rear, l: +1 car's left … -1 right, h: 0 ground … 1 roof. */

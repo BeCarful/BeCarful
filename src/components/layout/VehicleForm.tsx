@@ -12,7 +12,9 @@ const FIELDS = [
   { name: "vin", label: "VIN (optional)", placeholder: "17 characters", maxLength: 17 },
 ] as const;
 
-const CARS = CAR_MODELS.map((m) => ({ id: m.id, name: `${m.year} ${m.make} ${m.model}` }));
+const CARS = [...CAR_MODELS]
+  .sort((a, b) => `${a.make} ${a.model}`.localeCompare(`${b.make} ${b.model}`))
+  .map((m) => ({ id: m.id, name: `${m.year} ${m.make} ${m.model}` }));
 
 export function VehicleForm() {
   const [state, action, pending] = useActionState<VehicleFormState, FormData>(createVehicle, undefined);
@@ -49,7 +51,7 @@ export function VehicleForm() {
           {state?.fieldErrors?.modelId ? (
             <span className="mt-1 block text-sm text-danger">{state.fieldErrors.modelId}</span>
           ) : (
-            <span className="field-hint">Demo: pick a car from the list. It&apos;s the 3D model you&apos;ll mark damage on.</span>
+            <span className="field-hint">Demo: pick a car from the list. Cars without their own 3D model borrow a similar one to mark damage on.</span>
           )}
         </label>
         {FIELDS.map((f) => (
