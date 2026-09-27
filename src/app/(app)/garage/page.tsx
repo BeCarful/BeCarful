@@ -3,8 +3,9 @@ import { WithProviderLogo } from "@/components/insurance/ProviderPicker";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PhotoActions } from "@/components/photos/PhotoActions";
 import { RetroBadge, RetroLinkButton } from "@/components/retro";
+import { ClaimCheck } from "@/components/vehicle/ClaimCheck";
 import { DamageExplorer } from "@/components/vehicle/DamageExplorer";
-import { loadClaimState } from "@/services/claims/state";
+import { claimCheckFor, loadClaimState } from "@/services/claims/state";
 import { listPhotoViews } from "@/services/photos/view";
 import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
 import type { IncidentStatus, TaskCode } from "@/types";
@@ -37,6 +38,7 @@ export default async function GaragePage() {
   const vehicleId = vehicle.id;
   const status = claim.incident ? STATUS[claim.incident.status] : undefined;
   const next = claim.todos.items.find((t) => !t.done);
+  const check = claimCheckFor(claim);
 
   return (
     <div className="space-y-6">
@@ -60,6 +62,7 @@ export default async function GaragePage() {
           </RetroLinkButton>
         </section>
       )}
+      {check && <ClaimCheck verdict={check.verdict} items={check.items} />}
       <DamageExplorer
         key={vehicleId}
         vehicleId={vehicleId}

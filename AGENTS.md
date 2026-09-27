@@ -45,7 +45,7 @@ npm run dev         # http://localhost:3000
 npm run build
 npm run lint
 npm run typecheck   # next typegen + tsc
-npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, car sides, 3D zones, statute search, policy form search, Jev guard, coverage rules, photo seal, image prep)
+npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, car sides, 3D zones, statute search, policy form search, Jev guard, coverage rules, photo seal, claim check, image prep)
 python3 scripts/tuxemon-idle.py   # regenerate public/tuxemon/*-idle.png (needs Pillow + numpy)
 python3 scripts/sample-policies.py   # regenerate public/samples/state-farm-florida-*.pdf (needs Google Chrome + Pillow)
 ```
@@ -153,7 +153,7 @@ Key service files:
 - `services/law/statutes.ts` — statute chunking (`readStatuteFiles`) + BM25 search over the `statutes` collection (the BM25 helpers are generic)
 - `services/insurance/policy-forms.ts` — section-aware policy form chunking (`readPolicyForms`) + form-scoped hybrid search over `policyforms`; `eval/policy-rag.csv` is its retrieval test set
 - `services/ai/embeddings.ts` — Vertex `gemini-embedding-2` embeddings (task prefix, one text per request, unit vectors, optional quota retries)
-- `services/claims/todos.ts` — deterministic to-do rules + incident status (pure, tested); `state.ts` loads a vehicle's claim state; `damage.ts` merges per-photo assessments
+- `services/claims/todos.ts` — deterministic to-do rules + incident status (pure, tested); `state.ts` loads a vehicle's claim state; `damage.ts` merges per-photo assessments; `claim-check.ts` checks evidence + policy behind a claim (pure, tested), `claimCheckFor()` in `state.ts` feeds it
 - `services/vehicles/context.ts` — `getVehicleContext()` for pages, `requireVehicle(vehicleId)` ownership gate for every vehicle-scoped action
 - `services/vehicles/car-models.ts` — demo car catalog (`CAR_MODELS`, `carModel(id)`), shared by the form, actions, seed and `Car3D`
 - `services/photos/seal.ts` — `sha256Hex` + `sealPhoto` (photo evidence HMAC)
@@ -362,7 +362,9 @@ Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS =
 
 **Pages** start with `PageHeader` (`components/layout/PageHeader.tsx`: eyebrow, title, description, action) inside `space-y-6`; main is `max-w-5xl`, two columns at `lg` where it helps.
 
-**Garage layout (`/garage`, top to bottom):** vehicle header → next step → garage scene with the 3D car → action buttons → photo gallery → Condition list. On `lg`+ it's two columns: car on the left, buttons + Condition on the right, then Photos full width below; the Condition card (always shown) is as tall as the car (not Photos, so collapsing Photos doesn't shrink it) and its list scrolls (tapping a part scrolls to its card).
+**Claim check** (`components/vehicle/ClaimCheck.tsx`, collapsed `<details>` on `/garage` once the open incident is `ready_to_file` or `filed`): deterministic `checkClaim()` rows marked ✓ / ! / ✕ / i. Coverage for the incident's peril (`INCIDENT_PERIL`: hail/weather → storm, other → none) from the stored coverage checklist, never "covered" without it; example Florida plan; policy period from `effectiveDates` (ISO, MM/DD/YYYY or "Mar 1, 2026"; within a day of either end → "confirm"); deductible (info); damage photos vs `MIN_DAMAGE_PHOTOS`; uploaded vs live; missing location; damage photos before the incident time (prior damage) or 3+ days after; undamaged before photos (walkaround) count in its favor; unclear photos. Verdict: any ✕ → At risk, any ! → Some gaps, else Well supported. No payout probability or dollar estimate: the app has no claim outcomes or repair costs, and the card says the insurer decides.
+
+**Garage layout (`/garage`, top to bottom):** vehicle header → next step → Claim check (only when ready to file or filed) → garage scene with the 3D car → action buttons → photo gallery → Condition list. On `lg`+ it's two columns: car on the left, buttons + Condition on the right, then Photos full width below; the Condition card (always shown) is as tall as the car (not Photos, so collapsing Photos doesn't shrink it) and its list scrolls (tapping a part scrolls to its card).
 
 Action buttons, grouped directly under the car, icon + short label:
 

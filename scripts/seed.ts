@@ -222,6 +222,8 @@ async function main() {
   user.lastVehicleId = peugeot._id;
   await user.save();
 
+  const day = (offset: number) => new Date(Date.now() + offset * 24 * HOUR).toISOString().slice(0, 10);
+  const policyPeriod = `${day(-60)} to ${day(122)}`;
   const sfKey = makeKey("policies", user._id.toString(), peugeot._id.toString(), "application/pdf");
   await putObject(
     sfKey,
@@ -231,7 +233,7 @@ async function main() {
       "Policy number: SF-DEMO-000123",
       "Named insured: Alex Rivera",
       `Vehicle: ${title(PEUGEOT)}`,
-      "Policy period: 2026-03-01 to 2026-09-01",
+      `Policy period: ${policyPeriod}`,
       "Total premium: $642.18 per 6 months",
       "Liability: $100,000 / $300,000 bodily injury; $100,000 property damage",
       "Collision: covered, $500 deductible",
@@ -254,7 +256,7 @@ async function main() {
       provider: "State Farm",
       policyNumber: "SF-DEMO-000123",
       policyType: "Personal auto",
-      effectiveDates: "2026-03-01 to 2026-09-01",
+      effectiveDates: policyPeriod,
       premium: "$642.18 per 6 months",
       coveredVehicle: title(PEUGEOT),
       collision: "Covered, $500 deductible",

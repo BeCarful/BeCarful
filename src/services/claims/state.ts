@@ -5,9 +5,12 @@ import { DamageAssessment } from "@/models/DamageAssessment";
 import { DamagePhoto } from "@/models/DamagePhoto";
 import { Incident } from "@/models/Incident";
 import { InsurancePolicy } from "@/models/InsurancePolicy";
+import type { CoverageItem } from "@/services/ai/coverage-rules";
 import { getProvider } from "@/services/insurance/providers";
+import type { PolicyExtraction } from "@/schemas/policy";
 import type { DamagedComponent } from "@/types";
-import { aggregateDamage } from "./damage";
+import { checkClaim } from "./claim-check";
+import { aggregateDamage, damagePhotoCount } from "./damage";
 import { computeTodos, nextIncidentStatus, type ClaimState } from "./todos";
 
 type Id = Types.ObjectId | string;
@@ -62,4 +65,26 @@ export async function refreshIncidentStatus(userId: Id, vehicleId: Id) {
     await incident.save();
   }
   return { state, todos };
+}
+
+/** The claim check, once the open claim is ready to file or filed. */
+export function claimCheckFor({ incident, policy, photos, assessments, damage }: Awaited<ReturnType<typeof loadClaimState>>) {
+  if (incident?.status !== "ready_to_file" && incident?.status !== "filed") return null;
+  return checkClaim({
+    incidentType: incident.type ?? null,
+    occurredAt: incident.occurredAt ?? null,
+    policy: policy && {
+      extraction: policy.status === "processed" ? (policy.extractedData as PolicyExtraction | null) : null,
+      coverage: (policy.coverageChecklist as { items: CoverageItem[] } | null)?.items ?? null,
+      examplePlan: Boolean(policy.planId),
+    },
+    photos: photos.map((p) => ({
+      showsDamage: damage.some((d) => d.photoIds.includes(p._id.toString())),
+      source: p.source,
+      capturedAt: p.source === "camera" ? (p.capturedAt ?? null) : null,
+      hasLocation: p.latitude != null && p.longitude != null,
+    })),
+    damagePhotos: damagePhotoCount(damage),
+    unclearPhotos: assessments.filter((a) => a.needsManualReview).length,
+  });
 }
