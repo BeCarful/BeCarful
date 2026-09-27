@@ -29,6 +29,7 @@ export const PROVIDERS: InsuranceProvider[] = [
     name: "GEICO",
     shortName: "GC",
     color: "#154b8b",
+    logo: "/insurers/geico.png",
     claimsUrl: "https://www.geico.com/claims/",
     phone: "1-800-841-3000",
     officialDomains: ["geico.com"],

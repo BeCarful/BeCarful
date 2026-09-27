@@ -2,9 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { RetroButton } from "@/components/retro";
 import type { PhotoView } from "@/services/photos/view";
-import { openCamera } from "./PhotoActions";
 import { PhotoThumbnail } from "./PhotoThumbnail";
 import { PhotoViewer } from "./PhotoViewer";
 
@@ -23,9 +21,6 @@ export function PhotoGallery({ vehicleId, photos }: { vehicleId: string; photos:
         </span>
       </summary>
       <div className="space-y-4 border-t border-border px-5 pt-4 pb-5">
-        <RetroButton type="button" onClick={openCamera} className="w-full sm:w-auto">
-          <span aria-hidden>+</span> Take photo
-        </RetroButton>
         {photos.length === 0 ? (
           <div className="flex items-center gap-4">
             <Image src="/scenery/car.svg" alt="" width={96} height={44} className="pixelated w-24 shrink-0" />

@@ -44,6 +44,7 @@ npm run lint
 npm run typecheck   # next typegen + tsc
 npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, 3D zones, statute search, Jev guard, coverage rules, photo seal, image prep)
 python3 scripts/tuxemon-idle.py   # regenerate public/tuxemon/*-idle.png (needs Pillow + numpy)
+python3 scripts/sample-policies.py   # regenerate public/samples/state-farm-florida-*.pdf (needs Google Chrome + Pillow)
 ```
 
 **Google Cloud** (Vertex AI for Gemini + Cloud Storage for files): `brew install --cask gcloud-cli`, then `gcloud auth application-default login --impersonate-service-account=<app service account>`. Signed upload/view URLs need a service account, so plain user ADC is not enough; you need Service Account Token Creator on it. The app service account needs Vertex AI User on the project and Storage Object Admin on the bucket. Vercel: Workload Identity Federation (Vercel OIDC, team issuer, pool/provider `vercel`, condition limited to project `be-carful`) impersonating the same service account, which also needs Token Creator on itself to sign URLs. Set `GCP_WORKLOAD_IDENTITY_PROVIDER` + `GCP_SERVICE_ACCOUNT_EMAIL` on Vercel.
@@ -132,7 +133,8 @@ src/services/          ai/ storage/ insurance/ vehicles/ claims/ law/
 src/types/             shared constants + types (component IDs, statuses, task codes)
 src/proxy.ts           optimistic auth redirect (Next 16 name for middleware)
 scripts/seed.ts        demo data
-public/                becarful-logo.png (brand logo; favicon is app/icon.png)  insurers/ (insurer logos)  scenery/ (grass, ground, pixel car SVGs)  tuxemon/ (sprite sheets, generated *-idle.png animations + ATTRIBUTION.md)  models/ (catalog GLBs lamborghini-sc18, peugeot-308, waymo-firefly, bmw-e92 + ATTRIBUTION.md)
+scripts/sample-policies.py  demo State Farm declarations PDFs → public/samples/
+public/                becarful-logo.png (brand logo; favicon is app/icon.png)  insurers/ (insurer logos: state-farm, geico)  samples/ (demo State Farm declarations PDFs)  scenery/ (grass, ground, pixel car SVGs)  tuxemon/ (sprite sheets, generated *-idle.png animations + ATTRIBUTION.md)  models/ (catalog GLBs lamborghini-sc18, peugeot-308, waymo-firefly, bmw-e92 + ATTRIBUTION.md)
 data/                  RAG source texts, one .txt per statute section (citation + source URL header): florida/ (2026 F.S.: ch. 627 Part XI, ch. 324, related sections), federal/ (2024 U.S. Code), state-farm/ (Florida OIR IRFS filing PDFs named <file log #>_<doc id>.pdf; policy wording text in 9810C-personal-car-policy.txt), source GLBs of the catalog cars (not served), becarful-logo-source.png (unedited logo art), peugeot-308/ (reference renders)
 ```
 
@@ -196,7 +198,7 @@ Deleting one (`deletePhoto`: **Delete photo** in the photo viewer with inline co
 `CoverageItem = { peril, status: "covered" | "not_covered" | "unknown", detail, law: { citation, url } | null }`, one per `PERILS` (types/index.ts: collision, liability, injury, uninsured_driver, theft, fire, flood, storm, vandalism, animal, glass, roadside).
 The newest `uploadedAt` per vehicle is the active policy (`getActivePolicy`); older ones are history.
 
-**Insurance providers:** `PROVIDERS` in `services/insurance/providers.ts`: `{ id, name, shortName, color, logo?, claimsUrl, phone, officialDomains, supportedStates }`. `ProviderMark` shows `logo` if set, else a `shortName` tile. **State Farm** (`state-farm`) is the preferred/demo insurer (hackathon sponsor; its emblem is used with that permission). `isOfficialUrl()` validates any URL against `officialDomains`.
+**Insurance providers:** `PROVIDERS` in `services/insurance/providers.ts`: `{ id, name, shortName, color, logo?, claimsUrl, phone, officialDomains, supportedStates }`. `ProviderMark` shows `logo` if set, else a `shortName` tile. **State Farm** (`state-farm`) is the preferred/demo insurer (hackathon sponsor; its emblem is used with that permission). GEICO uses `public/insurers/geico.png`; the others still show `shortName` tiles. `isOfficialUrl()` validates any URL against `officialDomains`.
 
 **Incident:** userId, vehicleId, insurancePolicyId, type (`INCIDENT_TYPES`), occurredAt, location, notes, status, filedAt. Photos/assessments reference it by `incidentId`.
 Statuses: `documenting` → `analyzing` → `action_required` → `ready_to_file` → `filed` → `closed`. The open incident is the newest non-`closed` one; the first photo creates it (`getOrCreateOpenIncident`). `filed`/`closed` are set only by explicit user actions; the rest by `refreshIncidentStatus()`.
@@ -224,7 +226,7 @@ Store stable object keys, not just URLs.
 
 **No uploads.** Only Take Photo, so users can't submit old pictures. `source: "upload"` only exists on older data and is still shown as "Uploaded", never as a live capture. There is no file picker: a blocked or missing camera shows an error with **Try again**, never a picker.
 
-**Gallery** (under the action buttons): a `<details>` dropdown ("Photos · N photos"), open by default. Open: **+ Take photo** (same camera as the Take Photo tile, `openCamera()`), then thumbnails (3-column grid on phones, horizontal scroll from `sm`) with optional badges (camera / uploaded / damage detected / location available). Tap → full-screen viewer with swipe, zoom, close, capture date, location status, the evidence seal, AI result. Don't show raw GPS coordinates prominently.
+**Gallery** (under the action buttons): a `<details>` dropdown ("Photos · N photos"), open by default. Open: thumbnails (the Take Photo tile above is the only camera button) (3-column grid on phones, horizontal scroll from `sm`) with optional badges (camera / uploaded / damage detected / location available). Tap → full-screen viewer with swipe, zoom, close, capture date, location status, the evidence seal, AI result. Don't show raw GPS coordinates prominently.
 
 Built: `actions/photos.ts`: `createPhotoUpload` (presigned POST) → browser uploads to Cloud Storage → `registerPhoto` (idempotent per key) → `analyzeDamage()` in `services/ai/damage-analysis.ts` (keep its signature). It runs `prepareImage()` first; a file that isn't the declared image type gets the `unreadable` issue without a Gemini call. The viewer draws each part's box on the photo and shows the view. Take Photo opens an in-app camera (`PhotoCapture`: `getUserMedia` rear camera, live preview, shutter draws the frame to a JPEG; needs HTTPS or localhost); `openCamera()` starts it from any entry point, and location starts at the same time. `registerPhoto` downloads the stored bytes once to hash/seal them and reuses them for `analyzeDamage`. If Gemini fails the photo is kept with `analysisStatus: "failed"` and can be retried (`retryPhotoAnalysis`); a photo stuck in `analyzing` for 3+ min shows as failed. Expired image URLs refresh once via `getPhotoViewUrl`.
 
@@ -288,6 +290,7 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 - **Coverage checklist (ADK):** after a policy is processed, `checkCoverage()` runs an ADK agent over the extraction (+ `search_insurance_law` for Florida rules) and returns one item per peril. `enforceEvidence()` then keeps "covered" only when the named policy field has a value (else "unknown", shown as "Not found") and drops statute citations we don't have. Retry: `recheckCoverage`. Creating a vehicle now lands on `/insurance`.
 - **Tuxemon attackers:** `CoverageChecklist.tsx` lists not-covered/unknown perils like the Damage list: the peril's Tuxemon on the left ("Agnidon may attack you"), details on the right; covered perils are a ✓ list. Sprites per peril in `components/insurance/peril-monsters.ts` (12 licensed Tuxemon, credits in `public/tuxemon/ATTRIBUTION.md`); the card must keep its sprite credits line.
 - **No policy on hand:** "Pick your Florida plan" (`FloridaPlanPicker`) → `chooseFloridaPlan(vehicleId, planId)`; the insurance page labels it "Example Florida plan, not your actual policy".
+- **Sample policies to upload (demo only):** `public/samples/state-farm-florida-{minimum,liability,full,full-extras}.pdf`, one per State Farm example plan, served at `/samples/…`. Built by `scripts/sample-policies.py` on State Farm's filed Florida declarations template (P1010023 FL, `data/state-farm/24-098215_619466.pdf`) with coverage symbols, limits and wording from booklet 9810C; fictional insured/vehicle/VIN (`…SAMPLE00n`)/policy number (`999000n-…`)/premiums, a SAMPLE watermark image and a "not issued by State Farm" banner + footer on every page.
 
 ## Crash mode
 
