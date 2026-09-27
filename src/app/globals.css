@@ -1,0 +1,428 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Companion theme: soft sky canvas, road sidebar, white cards, blue actions, restrained red brand, gold highlights.
+   Pixel art frames the work (scenery, scenes, sprites); it never sits behind text. Tokens are the only place colors live. */
+:root {
+  color-scheme: light;
+  --canvas: #f7f5f2;
+  --sky-top: #5fb4f5;
+  --sky-bottom: #c4e8ff;
+  --road: #3b404b;
+  --road-speck: rgb(255 255 255 / 7%);
+  --road-seam: rgb(255 255 255 / 14%);
+  --road-hover: rgb(255 255 255 / 9%);
+  --road-ink: #f4f2ec;
+  --road-ink-soft: #c3c8d2;
+  --road-line: #f5c518;
+  --road-paint: #eef0f2;
+  --road-sign: #1d6b40;
+  --road-sign-ink: #ffffff;
+
+  --panel: #ffffff;
+  --panel-shade: #efede9;
+  --ink: #202635;
+  --ink-soft: #596273;
+  --muted: #5a6478;
+  --border: #dedfe3;
+  --input: #aeb5c1;
+  --shadow: rgb(30 43 57 / 12%);
+
+  --accent: #2457b2;
+  --accent-hover: #234e96;
+  --accent-ink: #ffffff;
+  --accent-soft: #e8effa;
+  --brand: #7a2228;
+  --gold: #946000;
+  --gold-soft: #fff0c4;
+  --danger: #d32f2f;
+  --danger-soft: #fdeaea;
+  --ok: #2e7d32;
+  --ok-soft: #eaf6ea;
+  --warn: #b45309;
+  --warn-soft: #fff6da;
+
+  --pixel-sky: #d8eddf;
+  --pixel-ground: #91b57d;
+  --pixel-outline: #374153;
+  --pixel-panel: #fffdf7;
+  --pixel-shadow: rgb(55 65 83 / 30%);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #121823;
+  --sky-top: #070b1f;
+  --sky-bottom: #1d2a55;
+  --road: #151a23;
+  --road-speck: rgb(255 255 255 / 4%);
+  --road-seam: rgb(255 255 255 / 9%);
+  --road-hover: rgb(255 255 255 / 7%);
+  --road-ink: #ece8dc;
+  --road-ink-soft: #a9b1c2;
+  --road-line: #d8a928;
+  --road-paint: #c9ccd2;
+  --road-sign: #17583a;
+  --road-sign-ink: #f1f5f2;
+
+  --panel: #1b2433;
+  --panel-shade: #1f2a44;
+  --ink: #f5f1e6;
+  --ink-soft: #a9b3c9;
+  --muted: #a1adc2;
+  --border: #2a3656;
+  --input: #61708a;
+  --shadow: rgb(0 0 0 / 35%);
+
+  --accent: #6fa0f0;
+  --accent-hover: #8db4f5;
+  --accent-ink: #0b1220;
+  --accent-soft: #1c2b4a;
+  --brand: #f29b9b;
+  --gold: #f1ca67;
+  --gold-soft: #3a3216;
+  --danger: #f2645a;
+  --danger-soft: #2e1414;
+  --ok: #5ccb6a;
+  --ok-soft: #10261a;
+  --warn: #fbbf24;
+  --warn-soft: #2a2108;
+
+  --pixel-sky: #182c3b;
+  --pixel-ground: #354d46;
+  --pixel-outline: #8792a5;
+  --pixel-panel: #202b3b;
+  --pixel-shadow: rgb(0 0 0 / 45%);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-panel-shade: var(--panel-shade);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-brand: var(--brand);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-pixel-outline: var(--pixel-outline);
+  --color-pixel-panel: var(--pixel-panel);
+  --font-sans: var(--font-rubik), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-tektur), var(--font-rubik), ui-sans-serif, sans-serif;
+  --font-pixel: var(--font-display);
+}
+
+html,
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  overscroll-behavior-y: none;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(button, a, input, select, textarea, summary, [role="button"]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+:where(h1, h2, h3, p, dd, td) {
+  overflow-wrap: anywhere;
+}
+:where(input, textarea, select) {
+  font-size: 1rem;
+}
+:where(button, [role="button"]) {
+  cursor: pointer;
+}
+:where(button:disabled) {
+  cursor: not-allowed;
+}
+
+.app-sky {
+  isolation: isolate;
+}
+
+.pixel-cloud {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  box-shadow:
+    16px 0 #fff, 32px 0 #fff, 48px 0 #fff,
+    0 16px #fff, 16px 16px #fff, 32px 16px #fff, 48px 16px #fff, 64px 16px #fff,
+    -16px 32px #fff, 0 32px #fff, 16px 32px #fff, 32px 32px #fff, 48px 32px #fff, 64px 32px #fff, 80px 32px #fff;
+  opacity: 0.9;
+}
+
+/* Road sidebar: the nav is one lane, a yellow center line runs along its edge (it "drives" one dash
+   on every page change), and a sliver of the opposite lane with its white edge line overhangs the
+   content gutter. Crosswalk at the bottom. Inside, ink/border tokens are re-pointed to light-on-asphalt. */
+.road {
+  --ink: var(--road-ink);
+  --ink-soft: var(--road-ink-soft);
+  --border: var(--road-seam);
+  color: var(--road-ink);
+  background-color: var(--road);
+  background-image:
+    linear-gradient(to right, transparent 5px, var(--road-paint) 5px 8px, transparent 8px),
+    radial-gradient(var(--road-speck) 1px, transparent 1px);
+  background-size: 100% 100%, 7px 6px;
+  padding-bottom: 34px;
+}
+.road :focus-visible {
+  outline-color: var(--road-line);
+}
+.road::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: 18px;
+  pointer-events: none;
+  background-color: var(--road);
+  background-image:
+    linear-gradient(to left, transparent 3px, var(--road-paint) 3px 6px, transparent 6px),
+    radial-gradient(var(--road-speck) 1px, transparent 1px);
+  background-size: 100% 100%, 7px 6px;
+}
+.road::after {
+  content: "";
+  position: absolute;
+  inset: auto -18px 0 0;
+  height: 30px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--road-paint), var(--road-paint)) 0 0 / 100% 4px no-repeat,
+    repeating-linear-gradient(90deg, var(--road-paint) 0 12px, transparent 12px 22px) 0 10px / 100% 20px no-repeat;
+  opacity: 0.85;
+}
+@keyframes road-drive {
+  from {
+    background-position: 0 -34px;
+  }
+}
+.road-line {
+  position: absolute;
+  top: 0;
+  bottom: 34px;
+  right: -2px;
+  z-index: 1;
+  width: 4px;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, var(--road-line) 0 20px, transparent 20px 34px);
+  animation: road-drive 0.6s ease-out;
+}
+
+/* Pixel scene: dotted sky over a ground band. Scenes hold art, never body text. */
+.pixel-scene {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-color: var(--pixel-sky);
+  background-image:
+    radial-gradient(color-mix(in srgb, var(--pixel-outline) 45%, transparent) 1px, transparent 1px),
+    linear-gradient(180deg, transparent var(--horizon, 72%), var(--pixel-ground) var(--horizon, 72%));
+  background-position: 12px 10px, 0 0;
+  background-size: 34px 30px, 100% 100%;
+}
+.pixel-scene::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 28px;
+  z-index: -1;
+  background: url(/scenery/ground.svg) 0 0 / 160px 28px repeat-x;
+  opacity: 0.9;
+}
+[data-theme="dark"] .pixel-scene::after {
+  filter: brightness(0.55) saturate(0.8);
+}
+
+@utility surface-card {
+  @apply rounded-xl border border-border bg-panel shadow-[0_1px_2px_var(--shadow)];
+}
+
+/* Small outlined nameplate with a hard pixel shadow, for labels that sit on pixel scenes. */
+@utility pixel-frame {
+  @apply border-2 border-pixel-outline bg-pixel-panel text-ink shadow-[2px_2px_0_var(--pixel-shadow)];
+}
+
+/* Active lane: a green highway guide sign with an inset white border. */
+@utility road-sign {
+  @apply bg-(--road-sign) font-semibold text-(--road-sign-ink);
+  box-shadow:
+    inset 0 0 0 3px var(--road-sign),
+    inset 0 0 0 5px var(--road-sign-ink),
+    0 2px 0 rgb(0 0 0 / 35%);
+}
+
+@utility eyebrow {
+  @apply text-xs font-bold uppercase tracking-[0.08em] text-brand;
+}
+
+@utility page-title {
+  @apply font-display text-[1.75rem] leading-tight font-bold tracking-tight text-ink md:text-[2rem];
+}
+
+@utility page-description {
+  @apply mt-2 max-w-[65ch] text-base leading-relaxed text-ink-soft;
+}
+
+@utility section-title {
+  @apply font-display text-xl font-semibold text-ink;
+}
+
+@utility field-label {
+  @apply mb-1.5 block text-sm font-medium text-ink;
+}
+
+@utility field-hint {
+  @apply mt-1 block text-xs leading-relaxed text-ink-soft;
+}
+
+@utility field-input {
+  @apply block min-h-11 w-full rounded-lg border border-input bg-panel px-3 py-2.5 text-base text-ink outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/25 aria-invalid:border-danger disabled:opacity-60;
+}
+
+@utility field-select {
+  @apply field-input appearance-none bg-no-repeat pr-9;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='%2364748b' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
+  background-position: right 0.6rem center;
+}
+
+@utility task-card {
+  @apply flex flex-wrap items-center gap-4 rounded-xl border border-accent/35 border-l-4 border-l-accent bg-panel p-5 shadow-[0_1px_2px_var(--shadow)];
+}
+
+@utility skip-link {
+  @apply fixed top-2 left-2 z-[100] -translate-y-[150%] rounded-lg bg-panel p-3 text-accent focus:translate-y-0;
+}
+
+@layer components {
+  .pixel-text {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
+  .pixelated {
+    image-rendering: pixelated;
+  }
+}
+
+/* Two-frame Tuxemon menu animation. */
+@keyframes face-a {
+  0%,
+  49.9% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+@utility face-a {
+  animation: face-a 0.9s infinite;
+}
+@utility face-b {
+  animation: face-a 0.9s infinite reverse;
+}
+
+/* "A wild companion appears" slide-in. */
+@keyframes appear {
+  0% {
+    transform: translateX(40%) scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: translateX(-4%) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+  }
+}
+@utility appear {
+  animation: appear 0.6s ease-out both;
+}
+
+.tux-front {
+  background-image: var(--tux-idle);
+  background-size: 100% 100%;
+}
+@utility tux-wild {
+  animation: appear 0.6s ease-out var(--tux-delay, 0s) backwards;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@utility fade-in {
+  animation: fade-in 180ms ease-out;
+}
+
+@keyframes pulse-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 45%, transparent);
+  }
+  60% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--danger) 0%, transparent);
+  }
+}
+@utility pulse-ring {
+  animation: pulse-ring 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .face-b {
+    opacity: 0;
+  }
+  .tux-wild {
+    animation: none !important;
+  }
+  .tux-front {
+    background-image: var(--tux-sheet);
+    background-size: 200% 137.5%;
+  }
+}
+
+@utility retro-panel {
+  @apply surface-card;
+}

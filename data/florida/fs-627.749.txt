@@ -1,0 +1,19 @@
+Florida Statutes (2026) § 627.749 Autonomous vehicles; insurance requirements.
+Source: http://www.leg.state.fl.us/statutes/index.cfm?App_mode=Display_Statute&URL=0600-0699/0627/Sections/0627.749.html
+Retrieved: 2026-09-26
+
+(1) DEFINITIONS.—As used in this section, the term:
+  (a) “Automated driving system” has the same meaning as provided in s. 316.003.
+  (b) “Autonomous vehicle” has the same meaning as provided in s. 316.003(3).
+  (c) “Fully autonomous vehicle” has the same meaning as provided in s. 316.003(3).
+  (d) “On-demand autonomous vehicle network” has the same meaning as provided in s. 316.003.
+(2) INSURANCE REQUIREMENTS.—
+  (a) A fully autonomous vehicle with the automated driving system engaged while logged on to an on-demand autonomous vehicle network or engaged in a prearranged ride must be covered by a policy of automobile insurance which provides:
+    1. Primary liability coverage of at least $1 million for death, bodily injury, and property damage.
+    2. Personal injury protection benefits that meet the minimum coverage amounts required under ss. 627.730-627.7405.
+    3. Uninsured and underinsured vehicle coverage as required by s. 627.727.
+  (b) The coverage requirements of paragraph (a) may be satisfied by:
+    1. Automobile insurance maintained by the owner of a fully autonomous vehicle with the automated driving system engaged while logged on to an on-demand autonomous vehicle network or engaged in a prearranged ride;
+    2. Automobile insurance maintained by the on-demand autonomous vehicle network; or
+    3. A combination of subparagraphs 1. and 2.
+History.—s. 16, ch. 2019-101; s. 16, ch. 2024-3.

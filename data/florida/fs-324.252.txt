@@ -1,0 +1,7 @@
+Florida Statutes (2026) § 324.252 Electronic insurance verification.
+Source: http://www.leg.state.fl.us/statutes/index.cfm?App_mode=Display_Statute&URL=0300-0399/0324/Sections/0324.252.html
+Retrieved: 2026-09-26
+
+(1) In order to empower drivers in this state and reduce the incidence of automobile insurance fraud within this state, by July 1, 2023, the electronic credentialing system, as defined in s. 322.032(1), must display driver vehicle registration and insurance information, provide a driver with notification of any lapse in his or her insurance coverage needed for compliance with the financial responsibility requirements of this chapter, and allow the driver to update his or her policy information via the system.
+(2) By October 1, 2023, the department shall provide the Legislature with recommendations on the means by which the department, law enforcement agencies, and other entities authorized by the department may electronically verify a driver’s compliance with the financial responsibility requirements of this chapter.
+History.—s. 1, ch. 2022-169.
