@@ -19,6 +19,13 @@ const dent = aggregateDamage([
   },
 ]);
 
+const dent3 = aggregateDamage(
+  ["p1", "p2", "p3"].map((photoId) => ({
+    photoId,
+    damagedComponents: [{ component: "front_left_fender" as const, damageTypes: ["dent" as const], severity: "moderate" as const, confidence: 0.8, description: "" }],
+  })),
+);
+
 const codes = (s: ClaimState) => computeTodos(s).items.filter((t) => !t.done).map((t) => t.code);
 
 test("aggregate keeps worst severity, merges types and photos", () => {
@@ -49,7 +56,7 @@ test("everything present: ready to file", () => {
     policyStatus: "processed",
     providerName: "State Farm",
     photoCount: 3,
-    damage: dent,
+    damage: dent3,
     incident: { type: "collision", occurredAt: new Date(), location: "Austin, TX", status: "action_required" },
   };
   const t = computeTodos(s);
@@ -57,6 +64,12 @@ test("everything present: ready to file", () => {
   assert.equal(t.readyToFile, true);
   assert.equal(nextIncidentStatus(s, t), "ready_to_file");
   assert.equal(t.items.at(-1)?.title, "File your claim with State Farm");
+});
+
+test("walkaround photos without damage don't count as damage angles", () => {
+  const s: ClaimState = { ...base, policyStatus: "processed", photoCount: 7, damage: dent, incident: { status: "action_required" } };
+  assert.ok(codes(s).includes("ADD_DAMAGE_PHOTOS"));
+  assert.match(computeTodos(s).items.find((t) => t.code === "ADD_DAMAGE_PHOTOS")?.detail ?? "", /^2 of 3/);
 });
 
 test("filed stays filed", () => {

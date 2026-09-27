@@ -304,7 +304,7 @@ body {
 }
 
 @utility field-input {
-  @apply block min-h-11 w-full rounded-lg border border-input bg-panel px-3 py-2.5 text-base text-ink outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/25 aria-invalid:border-danger disabled:opacity-60;
+  @apply block min-h-11 w-full rounded-lg border border-input bg-panel px-3 py-2.5 text-base text-ink outline-none transition placeholder:text-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/25 aria-invalid:border-danger disabled:opacity-60;
 }
 
 @utility field-select {

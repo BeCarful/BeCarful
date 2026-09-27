@@ -23,7 +23,7 @@ type Props = {
   } | null;
 };
 
-function CallButton({ provider }: { provider: InsuranceProvider }) {
+export function CallButton({ provider }: { provider: InsuranceProvider }) {
   return (
     <a href={`tel:${provider.phone.replace(/[^\d+]/g, "")}`} className={retroButtonClass("secondary", "w-full")}>
       Call {provider.phone}
