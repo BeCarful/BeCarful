@@ -23,6 +23,11 @@ jobs:
           node-version: 22
           cache: npm
 
+      # The lockfile is written by npm 11 (what the team runs); npm 10, bundled with Node 22, reads its
+      # optional peer deps differently and fails with "Missing: gcp-metadata@7.0.1 from lock file".
+      - name: Use npm 11
+        run: npm install --global npm@11
+
       - name: Install dependencies
         run: npm ci
 
