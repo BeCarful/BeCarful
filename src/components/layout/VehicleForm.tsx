@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createVehicle, type VehicleFormState } from "@/actions/vehicles";
 import { RetroButton, RetroField } from "@/components/retro";
 import { CAR_MODELS } from "@/services/vehicles/car-models";
@@ -12,8 +12,13 @@ const FIELDS = [
   { name: "vin", label: "VIN (optional)", placeholder: "17 characters", maxLength: 17 },
 ] as const;
 
+const CARS = [...CAR_MODELS]
+  .sort((a, b) => `${a.make} ${a.model}`.localeCompare(`${b.make} ${b.model}`))
+  .map((m) => ({ id: m.id, name: `${m.year} ${m.make} ${m.model}` }));
+
 export function VehicleForm() {
   const [state, action, pending] = useActionState<VehicleFormState, FormData>(createVehicle, undefined);
+  const [modelId, setModelId] = useState(state?.values?.modelId ?? "");
   return (
     <section className="surface-card max-w-2xl overflow-hidden">
       <div aria-hidden className="pixel-scene flex h-28 items-end border-b border-border pl-[8%]">
@@ -21,37 +26,34 @@ export function VehicleForm() {
         <img src="/scenery/car.svg" alt="" width={192} height={88} className="pixelated mb-3 drop-shadow-[2px_3px_0_rgb(30_43_57/0.24)]" />
       </div>
       <form action={action} className="grid grid-cols-2 gap-4 p-5 sm:p-6">
-        <fieldset className="col-span-2">
-          <legend className="field-label">Your car</legend>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {CAR_MODELS.map((m) => (
-              <label
-                key={m.id}
-                className="flex min-h-16 cursor-pointer items-center gap-3 rounded-lg border border-border bg-panel px-4 py-3 transition hover:border-muted has-checked:border-accent has-checked:ring-2 has-checked:ring-accent"
-              >
-                <input
-                  type="radio"
-                  name="modelId"
-                  value={m.id}
-                  required
-                  defaultChecked={(state?.values?.modelId ?? CAR_MODELS[0].id) === m.id}
-                  className="size-5 shrink-0 accent-accent"
-                />
-                <span className="min-w-0">
-                  <span className="block font-semibold">
-                    {m.make} {m.model}
-                  </span>
-                  <span className="block text-sm text-ink-soft">{m.year}</span>
-                </span>
-              </label>
+        <label className="col-span-2 block">
+          <span className="field-label">Your car</span>
+          <input
+            list="car-models"
+            required
+            autoComplete="off"
+            placeholder="Start typing, e.g. Peugeot"
+            className="field-select"
+            defaultValue={CARS.find((c) => c.id === state?.values?.modelId)?.name}
+            aria-invalid={Boolean(state?.fieldErrors?.modelId) || undefined}
+            onChange={(e) => {
+              const car = CARS.find((c) => c.name.toLowerCase() === e.target.value.trim().toLowerCase());
+              setModelId(car?.id ?? "");
+              e.target.setCustomValidity(car || !e.target.value ? "" : "Pick a car from the list");
+            }}
+          />
+          <datalist id="car-models">
+            {CARS.map((c) => (
+              <option key={c.id} value={c.name} />
             ))}
-          </div>
+          </datalist>
+          <input type="hidden" name="modelId" value={modelId} />
           {state?.fieldErrors?.modelId ? (
             <span className="mt-1 block text-sm text-danger">{state.fieldErrors.modelId}</span>
           ) : (
-            <span className="field-hint">Demo: pick one of these cars. It&apos;s the 3D model you&apos;ll mark damage on.</span>
+            <span className="field-hint">Demo: pick a car from the list. Cars without their own 3D model borrow a similar one to mark damage on.</span>
           )}
-        </fieldset>
+        </label>
         {FIELDS.map((f) => (
           <RetroField
             key={f.name}

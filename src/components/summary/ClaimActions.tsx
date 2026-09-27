@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { closeIncident, markClaimFiled } from "@/actions/incidents";
+import { ProviderName } from "@/components/insurance/ProviderPicker";
 import { retroButtonClass } from "@/components/retro";
 import type { TodoList } from "@/services/claims/todos";
 import { isOfficialUrl, type InsuranceProvider } from "@/services/insurance/providers";
@@ -53,7 +54,9 @@ export function ClaimActions({ vehicleId, todos, provider, policyNumber, photoCo
   } else if (provider && todos.readyToFile) {
     body = (
       <>
-        <p className="font-display text-lg font-semibold text-ink">File your claim with {provider.name}</p>
+        <p className="font-display text-lg font-semibold text-ink">
+          File your claim with <ProviderName provider={provider} />
+        </p>
         <div className="grid gap-3">
           {isOfficialUrl(provider, provider.claimsUrl) && (
             <a href={provider.claimsUrl} target="_blank" rel="noopener noreferrer" className={retroButtonClass("primary", "w-full")}>

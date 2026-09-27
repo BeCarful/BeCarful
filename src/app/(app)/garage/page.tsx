@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { WithProviderLogo } from "@/components/insurance/ProviderPicker";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PhotoActions } from "@/components/photos/PhotoActions";
 import { RetroBadge, RetroLinkButton } from "@/components/retro";
@@ -49,7 +50,9 @@ export default async function GaragePage() {
         <section aria-label="Next step" className="task-card">
           <div className="min-w-0 flex-1">
             <p className="eyebrow">Your next step</p>
-            <h2 className="mt-1 text-lg font-semibold">{next.title}</h2>
+            <h2 className="mt-1 text-lg font-semibold">
+              <WithProviderLogo text={next.title} provider={claim.provider} />
+            </h2>
             {next.detail && <p className="mt-1 text-sm text-ink-soft">{next.detail}</p>}
           </div>
           <RetroLinkButton href={!next.href || next.href === "/garage" ? "#photo-actions" : next.href} className="w-full sm:w-auto">

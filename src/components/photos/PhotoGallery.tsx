@@ -2,9 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { RetroButton } from "@/components/retro";
 import type { PhotoView } from "@/services/photos/view";
-import { openCamera } from "./PhotoActions";
 import { PhotoThumbnail } from "./PhotoThumbnail";
 import { PhotoViewer } from "./PhotoViewer";
 
@@ -12,7 +10,7 @@ export function PhotoGallery({ vehicleId, photos }: { vehicleId: string; photos:
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <details className="group surface-card">
+    <details open className="group surface-card">
       <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-5 py-3 [&::-webkit-details-marker]:hidden">
         <h2 className="font-display text-lg font-semibold text-ink">Photos</h2>
         <span className="flex items-center gap-2 text-sm text-ink-soft">
@@ -23,9 +21,6 @@ export function PhotoGallery({ vehicleId, photos }: { vehicleId: string; photos:
         </span>
       </summary>
       <div className="space-y-4 border-t border-border px-5 pt-4 pb-5">
-        <RetroButton type="button" onClick={openCamera} className="w-full sm:w-auto">
-          <span aria-hidden>+</span> Take photo
-        </RetroButton>
         {photos.length === 0 ? (
           <div className="flex items-center gap-4">
             <Image src="/scenery/car.svg" alt="" width={96} height={44} className="pixelated w-24 shrink-0" />

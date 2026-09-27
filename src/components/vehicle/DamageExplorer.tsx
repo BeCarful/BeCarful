@@ -76,7 +76,7 @@ export function DamageExplorer({
     ) : null;
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[1.3fr_1fr] lg:grid-rows-[auto_auto_1fr]">
+    <div className="grid items-start gap-6 lg:grid-cols-[1.3fr_1fr] lg:grid-rows-[auto_1fr_auto]">
       <div ref={stage} className="scroll-mt-24 space-y-4 lg:col-start-1 lg:row-span-2 lg:row-start-1">
         <Garage
           badge={badge}
@@ -140,13 +140,13 @@ export function DamageExplorer({
 
       <div className="lg:col-start-2 lg:row-start-1">{children}</div>
 
-      <div className="min-w-0 lg:col-start-1 lg:row-start-3">
+      <div className="min-w-0 lg:col-span-2 lg:row-start-3">
         <PhotoGallery vehicleId={vehicleId} photos={photos} />
       </div>
 
       {incidentPhotoCount > 0 && (
-        // lg+: the card fills the space beside the car + Photos and its list scrolls, instead of stretching the page.
-        <div className="lg:relative lg:col-start-2 lg:row-span-2 lg:row-start-2 lg:min-h-96 lg:self-stretch">
+        // lg+: the card fills the space beside the car and its list scrolls, instead of stretching the page.
+        <div className="lg:relative lg:col-start-2 lg:row-start-2 lg:min-h-96 lg:self-stretch">
           <RetroCard
             title="Damage"
             className="lg:absolute lg:inset-0 lg:flex lg:flex-col"
