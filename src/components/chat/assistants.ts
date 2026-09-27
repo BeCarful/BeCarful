@@ -30,7 +30,6 @@ export const VOICES: Record<string, Voice> = {
   bigfin: { name: "Roger", id: "CwhRBWXzGAHq8TQ4Fs17", speed: 0.92 },
   eaglace: { name: "Daniel", id: "onwK4e9ZLuTAKqWW03F9", speed: 1 },
   chillimp: { name: "Liam", id: "TX3LPaxmHKxFdv7VOQHJ", speed: 1.1 },
-  aardorn: { name: "Custom", id: "DQ8CB9z7rFwBueh4OO32", speed: 1.05 },
   cateye: { name: "Alice", id: "Xb7hH8MSUJpSbSDYk0k2", speed: 1 },
   nut: { name: "River", id: "SAz9YHcvj6GT2YYXdXww", speed: 0.95 },
 };
@@ -38,7 +37,7 @@ export const VOICES: Record<string, Voice> = {
 export const ASSISTANTS: Assistant[] = [PROPELLERCAT, ...Object.values(PERIL_MONSTERS)].map((m) => {
   const id = m.name.toLowerCase();
   return { id, ...m, voice: VOICES[id] ?? VOICES.propellercat };
-});
+}).filter((a) => a.id !== "aardorn");
 
 export const DEFAULT_ASSISTANT = ASSISTANTS[0];
 

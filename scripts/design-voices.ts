@@ -18,7 +18,6 @@ const LOOKS: Record<string, string> = {
   bigfin: "A big friendly whale with a deep, round, booming but gentle voice. Relaxed, slow and jolly.",
   eaglace: "A regal ice griffin with a clear, crisp, noble voice. Confident and composed, measured pace, refined British accent.",
   chillimp: "A mischievous little ice imp with a quick, cheeky, playful voice. Bright, a bit nasal, always grinning.",
-  aardorn: "A small, shy woodland critter with a soft, sweet, youthful voice. Warm and curious, moderate pace. Young adult cartoon character.",
   cateye: "A curious one-eyed cat creature with a smooth, clear, slightly mysterious female voice. Observant and calm.",
   nut: "A small boxy robot with a friendly, even, slightly robotic voice. Precise and helpful with a light mechanical texture.",
   shybulb: "A shy little plant bulb sprite with a soft, gentle, youthful voice. Quiet and sweet, a little hesitant, very warm. Young adult cartoon character.",
