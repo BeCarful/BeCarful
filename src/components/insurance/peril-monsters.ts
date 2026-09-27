@@ -77,12 +77,11 @@ export const PERIL_MONSTERS: Record<Peril, PerilMonster> = {
     ...CC_BY_SA_4,
   },
   animal: {
-    name: "Aardorn",
-    sheet: "/tuxemon/aardorn-sheet.png",
-    author: "Magic-Purple-Hermit",
-    authorUrl: "https://wiki.tuxemon.org/index.php?title=Magic-Purple-Hermit",
-    license: "CC BY-SA 3.0",
-    licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/",
+    name: "Hampotamos",
+    sheet: "/tuxemon/hampotamos-sheet.png",
+    author: "Catch Challenger",
+    authorUrl: "https://wiki.tuxemon.org/index.php?title=Catch_Challenger",
+    ...CC_BY_SA_4,
   },
   glass: {
     name: "Cateye",
