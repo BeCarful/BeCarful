@@ -15,7 +15,7 @@ export function PixelCar({ className, windows }: { className: string; windows: s
 }
 
 export function BrandMark({ className = "size-9" }: { className?: string }) {
-  return <Image src="/logo.png" alt="" width={72} height={72} loading="eager" className={`shrink-0 rounded-xl ${className}`} />;
+  return <Image src="/becarful-logo.png" alt="" width={72} height={72} loading="eager" className={`shrink-0 rounded-xl ${className}`} />;
 }
 
 export function Wordmark({ tagline = false, className = "" }: { tagline?: boolean; className?: string }) {
