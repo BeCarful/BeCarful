@@ -122,7 +122,7 @@ export default async function SummaryPage() {
             <p className="-mt-1 mb-4 text-sm text-ink-soft">
               Send your photos and incident details to an adjuster or the police. Anyone with the link can view them until it expires.
             </p>
-            <ShareEvidence vehicleId={vehicleId} vehicleTitle={vehicleTitle(selected)} links={shareLinks} />
+            <ShareEvidence vehicleId={vehicleId} vehicleTitle={vehicleModel(selected)} links={shareLinks} />
           </RetroCard>
         )}
       </div>

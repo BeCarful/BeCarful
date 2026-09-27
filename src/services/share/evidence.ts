@@ -9,7 +9,7 @@ import { User } from "@/models/User";
 import { Vehicle } from "@/models/Vehicle";
 import { aggregateDamage } from "@/services/claims/damage";
 import { getViewUrl } from "@/services/storage/gcs";
-import { vehicleTitle } from "@/services/vehicles/context";
+import { vehicleModel } from "@/services/vehicles/context";
 import type { DamagedComponent } from "@/types";
 import { hashShareToken, isLive } from "./token";
 
@@ -48,7 +48,7 @@ export async function loadSharedEvidence(token: string) {
     sharedBy: user.name,
     expiresAt: share.expiresAt.toISOString(),
     vehicle: {
-      title: vehicleTitle(vehicle),
+      title: vehicleModel(vehicle),
       color: vehicle.color,
       plate: `${vehicle.licensePlate} (${vehicle.state})`,
       vinLast4: vehicle.vin ? vehicle.vin.slice(-4) : null,

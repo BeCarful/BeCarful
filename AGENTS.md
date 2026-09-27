@@ -38,7 +38,7 @@ npm install
 cp .env.example .env.local        # fill in values
 docker run -d --name becarful-mongo -p 27017:27017 mongo:7   # or use Atlas
 npm run seed        # demo@becarful.app / demo1234 (needs Mongo + Cloud Storage)
-npm run seed -- --peugeot   # redo only the demo Peugeot's seeded photos (fills missing incident details), keeps the rest of the account
+npm run seed -- --peugeot   # redo only the demo Peugeot's seeded walkaround photos, keeps the rest of the account
 npm run ingest      # load statutes (data/florida, data/federal) + insurer policy forms (data/<providerId>/*.txt, with Vertex embeddings; waits out the embedding quota) into Mongo; rerun after editing them
 npm run eval:rag    # policy RAG test set (eval/policy-rag.csv) against Mongo: hit@4 for keyword, vector and hybrid (needs a prior ingest)
 npm run dev         # http://localhost:3000
@@ -414,7 +414,7 @@ Each state tells the user what to do next: camera denied, GPS denied, upload fai
 ## Demo data
 
 Fictional seed user with:
-- **2021 Peugeot 308** "Daily Pug" (`peugeot-308`, plate BCF2021): State Farm policy, a clean front/rear/left/right walkaround two weeks before the crash (`data/peugeot-308/normal`) and 3 front-left crash photos (`data/peugeot-308/crashed`, one a headlight close-up crop), all sealed with fake time + GPS, existing chat history. The seed stores the true views, not Gemini's, and re-encodes the renders to 1080px JPEG because `prepareImage` flags anything under 720px as low resolution.
+- **2021 Peugeot 308** "Daily Pug" (`peugeot-308`, plate BCF2021): State Farm policy with a coverage checklist and a clean walkaround from two days ago: all 7 photos in `data/peugeot-308/normal` (front, rear, the four side halves, top), sealed with fake time + GPS, in a `documenting` incident with no damage, so it shows as **Protected** on the Dashboard. No crash photos. Existing chat history. The seed stores the true views, not Gemini's, and re-encodes the renders to 1080px JPEG because `prepareImage` flags anything under 720px as low resolution. Reseeding deletes the old demo account's Cloud Storage objects and share links first.
 - **2019 Lamborghini SC18 Alston** "The Bull" (`lamborghini-sc18`): different insurer, no incident, no damage.
 
 Switching between them must visibly change the 3D damage state, photos, insurance, chat, summary and to-dos.
