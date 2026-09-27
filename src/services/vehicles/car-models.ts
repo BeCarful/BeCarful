@@ -46,6 +46,23 @@ export const CAR_MODELS = [
       licenseUrl: "https://creativecommons.org/licenses/by/4.0/",
     },
   },
+  {
+    id: "waymo-firefly",
+    year: 2015,
+    make: "Waymo",
+    model: "Firefly",
+    url: "/models/waymo-firefly.glb",
+    forward: "+z",
+    left: "+x",
+    credit: {
+      title: "Google unmanned car Waymo",
+      author: "Freecreat creator",
+      authorUrl: "https://www.freecreat.com/detail/10408.html",
+      sourceUrl: "https://www.freecreat.com/detail/10408.html",
+      license: "Freecreat purchase",
+      licenseUrl: "https://www.freecreat.com/terms.html",
+    },
+  },
 ] as const satisfies readonly CarModel[];
 
 export type CarModelId = (typeof CAR_MODELS)[number]["id"];

@@ -64,3 +64,6 @@ next-env.d.ts
 /cv-module/**/node_modules/
 /cv-module/**/.next/
 /cv-module/**/*.tsbuildinfo
+
+# purchased model source, license forbids redistribution (see public/models/ATTRIBUTION.md)
+/data/waymo_organized.glb

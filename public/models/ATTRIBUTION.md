@@ -11,3 +11,9 @@ Modified: regrouped into named part collections (team edit, `3d_model_update/pub
 License: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), as stated in the file's metadata.
 
 Modified: re-exported from Blender (`3d_model_update/public/peugeot.glb`), geometry meshopt-compressed, textures resized to 1024px and converted to WebP (`@gltf-transform/cli optimize`).
+
+`waymo-firefly.glb` is "Google unmanned car Waymo" (谷歌无人汽车Waymo) by a Freecreat creator, bought on [Freecreat](https://www.freecreat.com/detail/10408.html) (1 Creat Coin).
+
+License: Freecreat purchase. The model stays its creator's property; Freecreat's page says not to redistribute, resell or use it commercially without permission.
+
+Modified: split into named parts (source `waymo_organized.glb`, kept out of git because of the license), Left/Right swapped in the node names (they were named from the front view, so "Left" sat on the car's right), geometry meshopt-compressed, textures resized to 1024px and converted to WebP (`@gltf-transform/cli optimize`).

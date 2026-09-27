@@ -18,6 +18,9 @@ test("partKind reads node and material names", () => {
   assert.equal(partKind(["skel_mesh_043_001_vehicle_detail2_002_0", "SUSP_LF"], "vehicle_detail2_002"), "body");
   assert.equal(partKind(["_mesh_001_001_vehicle_tire_002_0", "WHEEL_LF"], "vehicle_tire"), "wheel");
   assert.equal(partKind(["lowbeam_vehicle_lightsemissive_001_0", "lowbeam"], "vehicle_lightsemissive_001"), "light");
+  assert.equal(partKind(["Wheel_Front_Left_-_Tire", "Waymo_Car_Root"], "tayer_"), "wheel");
+  assert.equal(partKind(["Fender_Left_-_Wheel_Arch_Panel", "Waymo_Car_Root"], "balck_"), "body");
+  assert.equal(partKind(["Door_Left_-_Handle_Detail", "Waymo_Car_Root"], "silver"), "body");
 });
 
 test("classifyPoint maps positions to component IDs", () => {
@@ -56,12 +59,16 @@ test("namedPart reads part collections, else defers to zones", () => {
   assert.equal(namedPart(["Front_Body_and_Hood_|_Painted_Panel", "Front_Body_and_Hood"]), null);
   assert.equal(namedPart(["left_f_turn_0_vehicle_lightsemissive_002_0", "left_f_turn_0"]), null);
   assert.equal(namedPart(["skel_mesh_012", "_08_2021", "WHEEL_LF"]), null);
+  assert.equal(namedPart(["Door_Left_-_Outer_Panel", "Waymo_Car_Root"]), "front_left_door");
+  assert.equal(namedPart(["Wheel_Rear_Right_-_Tire", "Waymo_Car_Root"]), null);
 });
 
 test("isInterior spots cabin parts without catching paint", () => {
   assert.equal(isInterior(["Interior_|_Upholstery", "Interior"], "InteriorA_Material1"), true);
   assert.equal(isInterior(["Left_Door_|_Interior_Trim", "Left_Door"], "int_Color_1"), true);
   assert.equal(isInterior(["skel_mesh_020", "COCKPIT_HR"], "vehicle_interior2"), true);
+  assert.equal(isInterior(["Cabin_Lining_-_Headliner_and_Cabin_Trim", "Waymo_Car_Root"], "in_cloth_"), true);
+  assert.equal(isInterior(["Dashboard_-_Dashboard_and_Front_Lining", "Waymo_Car_Root"], "balck_"), true);
   assert.equal(isInterior(["Left_Door_|_Painted_Panel", "Left_Door"], "Paint"), false);
   assert.equal(isInterior(["skel_mesh_001", "_08_2021"], "vehicle_paint1"), false);
 });
