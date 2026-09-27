@@ -43,6 +43,14 @@ export const DAMAGE_TYPES = [
 ] as const;
 export type DamageType = (typeof DAMAGE_TYPES)[number];
 
+export const VEHICLE_VIEWS = ["front", "rear", "left", "right", "front_left", "front_right", "rear_left", "rear_right", "unknown"] as const;
+export type VehicleView = (typeof VEHICLE_VIEWS)[number];
+
+export const PHOTO_ISSUES = ["unreadable", "low_resolution", "too_dark", "too_bright", "possibly_blurry"] as const;
+export type PhotoIssue = (typeof PHOTO_ISSUES)[number];
+
+export type Box = { xMin: number; yMin: number; xMax: number; yMax: number };
+
 export const INCIDENT_TYPES = ["collision", "flood", "theft", "vandalism", "hail", "fire", "weather", "other"] as const;
 export type IncidentType = (typeof INCIDENT_TYPES)[number];
 
@@ -82,6 +90,7 @@ export type DamagedComponent = {
   severity: Severity;
   confidence: number;
   description: string;
+  box?: Box;
 };
 
 /** One entry per damaged component across every assessment of the current incident. */

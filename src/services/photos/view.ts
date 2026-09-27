@@ -4,26 +4,33 @@ import { DamageAssessment } from "@/models/DamageAssessment";
 import { DamagePhoto } from "@/models/DamagePhoto";
 import type { DamageAnalysis } from "@/schemas/damage";
 import { getViewUrl } from "@/services/storage/gcs";
-import type { AnalysisStatus, DamagedComponent, PhotoSource } from "@/types";
+import type { AnalysisStatus, Box, DamagedComponent, PhotoIssue, PhotoSource, VehicleView } from "@/types";
 
 type Id = Types.ObjectId | string;
 
 // ponytail: an analysis cut off by the function timeout stays "analyzing"; after this long, show it as failed so Retry appears.
 const STALE_ANALYSIS_MS = 3 * 60_000;
 
-type AssessmentLike = Pick<DamageAnalysis, "summary" | "needsManualReview"> & { damagedComponents: DamagedComponent[] };
+type AssessmentLike = Pick<DamageAnalysis, "summary" | "needsManualReview"> & {
+  view?: VehicleView | null;
+  photoIssues?: PhotoIssue[] | null;
+  damagedComponents: (Omit<DamagedComponent, "box"> & { box?: Box | null })[];
+};
 
 /** Plain, client-safe copy of a stored assessment. */
 export function toAnalysis(a: AssessmentLike): DamageAnalysis {
   return {
+    view: a.view ?? "unknown",
     summary: a.summary,
     needsManualReview: a.needsManualReview,
+    photoIssues: [...(a.photoIssues ?? [])],
     damagedComponents: a.damagedComponents.map((c) => ({
       component: c.component,
       damageTypes: [...c.damageTypes],
       severity: c.severity,
       confidence: c.confidence,
       description: c.description,
+      ...(c.box && { box: { xMin: c.box.xMin, yMin: c.box.yMin, xMax: c.box.xMax, yMax: c.box.yMax } }),
     })),
   };
 }
