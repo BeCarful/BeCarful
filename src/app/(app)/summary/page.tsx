@@ -14,6 +14,7 @@ import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
 import { NOT_FOUND_IN_POLICY, componentLabel, type PolicyStatus, type Severity } from "@/types";
 
 export const metadata: Metadata = { title: "Summary · BeCarful" };
+export const maxDuration = 60;
 
 type Tone = "neutral" | "warn" | "danger" | "ok";
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ChatPet } from "@/components/chat/ChatPet";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { SceneBackground } from "@/components/layout/SceneBackground";
@@ -41,6 +42,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </main>
       <BottomNav />
       <VehicleMenu vehicles={options} selectedId={selectedId} />
+      {selected && <ChatPet key={selected._id.toString()} vehicleId={selected._id.toString()} vehicleName={vehicleTitle(selected)} />}
     </div>
   );
 }

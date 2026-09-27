@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { VehicleForm } from "@/components/layout/VehicleForm";
 
+export const maxDuration = 60;
+
 export default function NewVehiclePage() {
   return (
     <div className="space-y-6">

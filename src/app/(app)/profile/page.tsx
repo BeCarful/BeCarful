@@ -5,6 +5,8 @@ import { RetroBadge, RetroButton, RetroCard, RetroLinkButton } from "@/component
 import { DeleteVehicleButton } from "@/components/vehicle/DeleteVehicleButton";
 import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
 
+export const maxDuration = 60;
+
 export default async function ProfilePage() {
   const { user, vehicles, selected } = await getVehicleContext();
   return (

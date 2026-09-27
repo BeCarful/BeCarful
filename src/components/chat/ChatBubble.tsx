@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ASSISTANT_NAME, TuxemonFace } from "./TuxemonAssistant";
 
 /** Plain text only: paragraphs plus "- " bullet lists. Never renders HTML from the model. */
-function AssistantText({ text }: { text: string }) {
+export function AssistantText({ text }: { text: string }) {
   const lines = text
     .replace(/\*\*(.+?)\*\*/g, "$1")
     .split("\n")

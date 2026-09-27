@@ -5,6 +5,7 @@ import { recentMessages } from "@/services/ai/chat";
 import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
 
 export const metadata: Metadata = { title: "Chat · BeCarful" };
+export const maxDuration = 60;
 
 export default async function ChatPage() {
   const { user, selected } = await getVehicleContext();
