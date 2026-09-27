@@ -35,6 +35,13 @@ export function aggregateDamage(assessments: AssessmentLike[]): AggregatedDamage
   return [...byComponent.values()].sort((a, b) => rank(b.severity) - rank(a.severity) || b.confidence - a.confidence);
 }
 
+export const SIDES = ["front", "rear", "left", "right"] as const;
+export type Side = (typeof SIDES)[number];
+
+const SIDE_PATTERN: Record<Side, RegExp> = { front: /front|hood|windshield|headlight/, rear: /rear|trunk|taillight/, left: /left/, right: /right/ };
+
+export const sidesOf = (idOrView: string): Side[] => SIDES.filter((s) => SIDE_PATTERN[s].test(idOrView));
+
 /** "front-left side", "rear", "roof"... for human copy. */
 export function areaLabel(component: ComponentId): string {
   const side = component.includes("left") ? "left" : component.includes("right") ? "right" : "";
