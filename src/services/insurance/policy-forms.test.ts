@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildIndex, search } from "@/services/law/statutes";
 import { chunkPolicyForm, definitionsFor, fuseRankings, matchForms, readPolicyForms, splitSections, type PolicyFormChunk } from "./policy-forms";
-import { RETRIEVAL_CASES, matches } from "./policy-forms.cases";
+import { matches, readCases } from "../../../eval/cases";
 
 const chunks = readPolicyForms();
 const index = buildIndex(chunks);
+const cases = readCases();
 const inProduct = (product: PolicyFormChunk["product"]) => (c: PolicyFormChunk) => c.providerId === "state-farm" && c.product === product;
 
 test("chunkPolicyForm reads the header", () => {
@@ -77,9 +78,9 @@ test("fuseRankings favors passages both searches agree on", () => {
 
 test("keyword search keeps its hit rate on the retrieval test set", () => {
   let hits = 0;
-  for (const c of RETRIEVAL_CASES) {
+  for (const c of cases) {
     assert.ok(chunks.some((ch) => ch.product === c.product && matches(c, ch)), `no evidence in the corpus for: ${c.q}`);
     hits += Number(search(index, c.q, { limit: 4, filter: inProduct(c.product) }).some((h) => matches(c, h)));
   }
-  assert.ok(hits >= 23, `hit@4 fell to ${hits}/${RETRIEVAL_CASES.length}`);
+  assert.ok(hits >= 23, `hit@4 fell to ${hits}/${cases.length}`);
 });

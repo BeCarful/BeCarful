@@ -1,15 +1,16 @@
 import mongoose from "mongoose";
 import { embed } from "@/services/ai/embeddings";
 import { fuseRankings, keywordRank, policyFormIndex, rankByVector, type PolicyFormChunk } from "@/services/insurance/policy-forms";
-import { RETRIEVAL_CASES, matches } from "@/services/insurance/policy-forms.cases";
+import { matches, readCases } from "./cases";
 
 const K = 4;
 
 async function main() {
+  const cases = readCases();
   const index = await policyFormIndex();
-  const vectors = await embed(RETRIEVAL_CASES.map((c) => c.q), "RETRIEVAL_QUERY", { quotaRetries: 10 });
+  const vectors = await embed(cases.map((c) => c.q), "RETRIEVAL_QUERY", { quotaRetries: 10 });
   const score = { keyword: 0, vector: 0, hybrid: 0 };
-  RETRIEVAL_CASES.forEach((c, i) => {
+  cases.forEach((c, i) => {
     const inScope = (ch: PolicyFormChunk) => ch.providerId === "state-farm" && ch.product === c.product;
     const keyword = keywordRank(index, c.q, inScope);
     const vector = rankByVector(index.chunks.filter(inScope), vectors[i]);
@@ -21,7 +22,7 @@ async function main() {
     score.hybrid += Number(h);
     if (!k || !v || !h) console.log(`${k ? "✓" : "✗"} keyword  ${v ? "✓" : "✗"} vector  ${h ? "✓" : "✗"} hybrid  ${c.q}`);
   });
-  const n = RETRIEVAL_CASES.length;
+  const n = cases.length;
   console.log(`hit@${K}: keyword ${score.keyword}/${n}, vector ${score.vector}/${n}, hybrid ${score.hybrid}/${n}`);
 }
 
