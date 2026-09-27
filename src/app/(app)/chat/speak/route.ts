@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const msg = await ChatMessage.findOne({ _id: id, userId: user._id, role: "assistant" }).select("content").lean<{ content: string }>();
   if (!msg) notFound();
   try {
-    return new Response(await speak(msg.content, assistantById(user.assistantId).voiceId), { headers: { "content-type": "audio/mpeg", "cache-control": "private, max-age=86400" } });
+    return new Response(await speak(msg.content, assistantById(user.assistantId).voice), { headers: { "content-type": "audio/mpeg", "cache-control": "private, max-age=86400" } });
   } catch (err) {
     console.error("speak", err);
     return new Response("Voice is unavailable right now.", { status: 503 });

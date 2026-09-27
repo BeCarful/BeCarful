@@ -33,11 +33,11 @@ export async function transcribe(audio: Blob): Promise<string> {
   return z.object({ text: z.string() }).parse(await res.json()).text.trim();
 }
 
-export async function speak(text: string, voiceId: string): Promise<ReadableStream<Uint8Array>> {
-  const res = await fetch(`${API}/text-to-speech/${encodeURIComponent(voiceId)}/stream?output_format=mp3_44100_64`, {
+export async function speak(text: string, voice: { id: string; speed: number }): Promise<ReadableStream<Uint8Array>> {
+  const res = await fetch(`${API}/text-to-speech/${encodeURIComponent(voice.id)}/stream?output_format=mp3_44100_64`, {
     method: "POST",
     headers: { "xi-api-key": apiKey(), "content-type": "application/json" },
-    body: JSON.stringify({ text: speechText(text), model_id: "eleven_flash_v2_5" }),
+    body: JSON.stringify({ text: speechText(text), model_id: "eleven_flash_v2_5", voice_settings: { speed: voice.speed } }),
   });
   if (!res.ok || !res.body) throw new Error(`ElevenLabs text-to-speech ${res.status}: ${await res.text()}`);
   return res.body;
