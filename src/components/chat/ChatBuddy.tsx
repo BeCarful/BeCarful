@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { loadChat } from "@/actions/chat";
 import { isActive } from "@/components/layout/BottomNav";
 import { RetroButton } from "@/components/retro";
@@ -11,6 +11,17 @@ import type { Assistant } from "./assistants";
 import { TuxemonAvatar } from "./TuxemonAssistant";
 
 type Loaded = { vehicleId: string; messages: ChatMessageView[]; subjects: ChatSubject[] };
+type Spot = { x: number; y: number };
+
+const SPOT_KEY = "becarful:buddy-spot";
+const DRAG_THRESHOLD = 6;
+
+function moveTo(el: HTMLElement, x: number, y: number): Spot {
+  const { width, height } = el.getBoundingClientRect();
+  const spot = { x: Math.min(Math.max(x, 0), innerWidth - width), y: Math.min(Math.max(y, 0), innerHeight - height) };
+  Object.assign(el.style, { left: `${spot.x}px`, top: `${spot.y}px`, right: "auto", bottom: "auto" });
+  return spot;
+}
 
 export function ChatBuddy({ vehicleId, assistant, voice }: { vehicleId: string | null; assistant: Assistant; voice: boolean }) {
   const path = usePathname();
@@ -20,6 +31,9 @@ export function ChatBuddy({ vehicleId, assistant, voice }: { vehicleId: string |
   const [attempt, setAttempt] = useState(0);
   const buddy = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  const spot = useRef<Spot | null>(null);
+  const drag = useRef<{ dx: number; dy: number; x0: number; y0: number; moved: boolean } | null>(null);
+  const dragged = useRef(false);
   const hidden = !vehicleId || isActive(path, "/chat");
 
   if (hidden && open) setOpen(false);
@@ -44,6 +58,48 @@ export function ChatBuddy({ vehicleId, assistant, voice }: { vehicleId: string |
     if (open) panel.current?.focus();
   }, [open]);
 
+  useEffect(() => {
+    const el = buddy.current;
+    if (!el) return;
+    if (!spot.current) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(SPOT_KEY) ?? "null");
+        if (Number.isFinite(saved?.x) && Number.isFinite(saved?.y)) spot.current = saved;
+      } catch {}
+    }
+    const fit = () => {
+      if (spot.current) spot.current = moveTo(el, spot.current.x, spot.current.y);
+    };
+    fit();
+    addEventListener("resize", fit);
+    return () => removeEventListener("resize", fit);
+  }, [open, hidden]);
+
+  function onPointerDown(e: PointerEvent<HTMLButtonElement>) {
+    dragged.current = false;
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect();
+    drag.current = { dx: e.clientX - r.left, dy: e.clientY - r.top, x0: e.clientX, y0: e.clientY, moved: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function onPointerMove(e: PointerEvent<HTMLButtonElement>) {
+    const d = drag.current;
+    if (!d || (!d.moved && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < DRAG_THRESHOLD)) return;
+    d.moved = true;
+    spot.current = moveTo(e.currentTarget, e.clientX - d.dx, e.clientY - d.dy);
+  }
+
+  function onPointerUp() {
+    dragged.current = drag.current?.moved ?? false;
+    drag.current = null;
+    if (!dragged.current) return;
+    try {
+      localStorage.setItem(SPOT_KEY, JSON.stringify(spot.current));
+    } catch {}
+  }
+
   function close() {
     setOpen(false);
     setLoaded(null);
@@ -58,11 +114,18 @@ export function ChatBuddy({ vehicleId, assistant, voice }: { vehicleId: string |
       <button
         ref={buddy}
         type="button"
-        onClick={() => setOpen(true)}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={() => (drag.current = null)}
+        onClick={() => {
+          if (dragged.current) dragged.current = false;
+          else setOpen(true);
+        }}
         aria-label={`Talk to ${assistant.name}`}
         aria-haspopup="dialog"
-        title={`Talk to ${assistant.name} · sprite by ${assistant.author} (Tuxemon), ${assistant.license}`}
-        className="fixed right-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 rounded-full md:right-8 md:bottom-8"
+        title={`Talk to ${assistant.name} (drag to move) · sprite by ${assistant.author} (Tuxemon), ${assistant.license}`}
+        className="fixed right-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[45] cursor-grab touch-none rounded-full select-none active:cursor-grabbing md:right-8 md:bottom-8"
       >
         <span className="buddy-bob relative block drop-shadow-[0_6px_4px_var(--shadow)]">
           <TuxemonAvatar frame="front" scale={1} sheet={assistant.sheet} decorative />
