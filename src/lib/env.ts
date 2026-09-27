@@ -10,7 +10,6 @@ const EnvSchema = z.object({
   GCP_SERVICE_ACCOUNT_EMAIL: z.string().min(1).optional(),
   TYPESAFE_API_KEY: z.string().min(1).optional(),
   ELEVENLABS_API_KEY: z.string().min(1).optional(),
-  ELEVENLABS_VOICE_ID: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

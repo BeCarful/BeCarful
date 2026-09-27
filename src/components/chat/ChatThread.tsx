@@ -187,7 +187,7 @@ function ChatThread({
       const stale = (x: ChatMessageView): ChatMessageView => (x.action?.status === "pending" ? { ...x, action: { ...x.action, status: "cancelled" } } : x);
       setMessages((m) => [...m.map(stale), res.data.user, res.data.reply]);
       setOutbox(null);
-      if (spoken) speech.play(res.data.reply.id);
+      if (spoken) speech.play(res.data.reply.id, assistant.id);
       if (res.data.navigate) router.push(res.data.navigate);
     } else {
       setOutbox({ text, error: res.error });
@@ -266,7 +266,7 @@ function ChatThread({
             {voice && m.role === "assistant" && (
               <button
                 type="button"
-                onClick={() => (speech.playing === m.id ? speech.stopPlaying() : speech.play(m.id))}
+                onClick={() => (speech.playing === m.id ? speech.stopPlaying() : speech.play(m.id, assistant.id))}
                 className="-mb-2 flex min-h-11 items-center gap-1 text-xs font-semibold text-accent hover:underline"
               >
                 <NavIcon paths={speech.playing === m.id ? STOP_ICON : SPEAKER_ICON} active={false} />

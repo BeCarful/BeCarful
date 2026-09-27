@@ -3,7 +3,6 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 
 const API = "https://api.elevenlabs.io/v1";
-const DEFAULT_VOICE_ID = "cgSgspJ2msm6clMCkdW9";
 const MAX_SPOKEN_CHARS = 1500;
 
 export const MAX_SPEECH_BYTES = 900_000;
@@ -34,9 +33,8 @@ export async function transcribe(audio: Blob): Promise<string> {
   return z.object({ text: z.string() }).parse(await res.json()).text.trim();
 }
 
-export async function speak(text: string): Promise<ReadableStream<Uint8Array>> {
-  const voice = env().ELEVENLABS_VOICE_ID ?? DEFAULT_VOICE_ID;
-  const res = await fetch(`${API}/text-to-speech/${encodeURIComponent(voice)}/stream?output_format=mp3_44100_64`, {
+export async function speak(text: string, voiceId: string): Promise<ReadableStream<Uint8Array>> {
+  const res = await fetch(`${API}/text-to-speech/${encodeURIComponent(voiceId)}/stream?output_format=mp3_44100_64`, {
     method: "POST",
     headers: { "xi-api-key": apiKey(), "content-type": "application/json" },
     body: JSON.stringify({ text: speechText(text), model_id: "eleven_flash_v2_5" }),

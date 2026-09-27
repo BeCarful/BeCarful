@@ -48,9 +48,9 @@ export function useVoice() {
     setPlayError(null);
   }
 
-  function play(messageId: string) {
+  function play(messageId: string, assistantId: string) {
     const a = audio();
-    a.src = `/chat/speak?id=${encodeURIComponent(messageId)}`;
+    a.src = `/chat/speak?id=${encodeURIComponent(messageId)}&v=${encodeURIComponent(assistantId)}`;
     setPlaying(messageId);
     setPlayError(null);
     a.play().catch(() => setPlaying(null));

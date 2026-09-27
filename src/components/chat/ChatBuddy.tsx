@@ -241,7 +241,7 @@ export function ChatBuddy({ vehicleId, assistant, voice }: { vehicleId: string |
       if (stale()) return;
       if (!res.ok) return setTalk({ status: "error", heard: heard.data, error: res.error });
       setTalk({ status: "done", heard: heard.data, reply: res.data.reply });
-      speech.play(res.data.reply.id);
+      speech.play(res.data.reply.id, assistant.id);
       if (res.data.navigate) router.push(res.data.navigate);
     });
     if (error && !stale()) setTalk({ status: "error", error });
@@ -359,7 +359,7 @@ export function ChatBuddy({ vehicleId, assistant, voice }: { vehicleId: string |
               )}
               <button
                 type="button"
-                onClick={() => (speech.playing === reply.id ? speech.stopPlaying() : speech.play(reply.id))}
+                onClick={() => (speech.playing === reply.id ? speech.stopPlaying() : speech.play(reply.id, assistant.id))}
                 className="mt-1 flex min-h-11 items-center gap-1 self-start text-xs font-semibold text-accent hover:underline"
               >
                 <NavIcon paths={speech.playing === reply.id ? STOP_ICON : ["M8 5v14l11-7L8 5Z"]} active={false} />
