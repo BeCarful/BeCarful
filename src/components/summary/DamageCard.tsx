@@ -64,8 +64,11 @@ export function DamageCard({ vehicleId, damage, photos, photoCount, analyzing, n
         )}
         {photos.length > 0 && (
           <div>
-            <p className="mb-1.5 text-xs font-medium text-ink-soft">Latest of {plural(photoCount, "photo")}</p>
-            <Link href="/garage" aria-label={`See all ${plural(photoCount, "photo")} in your garage`} className="grid grid-cols-4 gap-2">
+            <p className="mb-1.5 text-xs font-medium text-ink-soft">
+              Latest of {plural(photoCount, "photo")}
+              {damage.length > 0 && " showing damage"}
+            </p>
+            <Link href="/garage" aria-label="See your photos in the garage" className="grid grid-cols-4 gap-2">
               {photos.map((p) => (
                 <PhotoImage key={p.id} vehicleId={vehicleId} photoId={p.id} src={p.url} alt="" className="aspect-square w-full rounded-lg object-cover" />
               ))}

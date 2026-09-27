@@ -10,6 +10,7 @@ import { StatusPanel } from "@/components/summary/StatusPanel";
 import { TodoCard } from "@/components/summary/TodoCard";
 import type { PolicyExtraction } from "@/schemas/policy";
 import type { CoverageItem } from "@/services/ai/coverage-rules";
+import { damagePhotoCount } from "@/services/claims/damage";
 import { loadClaimState } from "@/services/claims/state";
 import { isOfficialUrl } from "@/services/insurance/providers";
 import { getViewUrl } from "@/services/storage/gcs";
@@ -25,7 +26,9 @@ export default async function SummaryPage() {
   const vehicleId = selected._id.toString();
   const extracted = policy?.extractedData as PolicyExtraction | null | undefined;
   const checklist = (policy?.coverageChecklist as { items?: CoverageItem[] } | null)?.items ?? null;
-  const recentPhotos = await Promise.all(photos.slice(0, 4).map(async (p) => ({ id: p._id.toString(), url: await getViewUrl(p.s3Key) })));
+  const damageIds = new Set(damage.flatMap((d) => d.photoIds));
+  const cardPhotos = damage.length ? photos.filter((p) => damageIds.has(p._id.toString())) : photos;
+  const recentPhotos = await Promise.all(cardPhotos.slice(0, 4).map(async (p) => ({ id: p._id.toString(), url: await getViewUrl(p.s3Key) })));
 
   return (
     <div className="space-y-6">
@@ -40,7 +43,7 @@ export default async function SummaryPage() {
               vehicleId={vehicleId}
               damage={damage}
               photos={recentPhotos}
-              photoCount={photos.length}
+              photoCount={cardPhotos.length}
               analyzing={photos.filter((p) => p.analysisStatus === "pending" || p.analysisStatus === "analyzing").length}
               needsReview={assessments.some((a) => a.needsManualReview)}
             />
@@ -73,7 +76,7 @@ export default async function SummaryPage() {
             todos={todos}
             provider={provider}
             policyNumber={extracted?.policyNumber}
-            photoCount={photos.length}
+            photoCount={damagePhotoCount(damage)}
             incident={incident}
           />
         </TodoCard>
