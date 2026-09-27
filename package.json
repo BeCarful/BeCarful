@@ -9,7 +9,9 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "tsx --conditions=react-server --test \"**/*.test.ts\"",
-    "seed": "tsx --conditions=react-server --env-file=.env.local scripts/seed.ts"
+    "seed": "tsx --conditions=react-server --env-file=.env.local scripts/seed.ts",
+    "ingest": "tsx --conditions=react-server --env-file=.env.local scripts/ingest.ts",
+    "eval:rag": "tsx --conditions=react-server --env-file=.env.local scripts/eval-policy-rag.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.22.0",
