@@ -42,7 +42,7 @@ npm run dev         # http://localhost:3000
 npm run build
 npm run lint
 npm run typecheck   # next typegen + tsc
-npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, 3D zones, statute search, Jev guard, coverage rules, photo seal, image prep)
+npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, 3D zones, statute search, Jev guard, coverage rules, photo seal, image prep, speech text)
 python3 scripts/tuxemon-idle.py   # regenerate public/tuxemon/*-idle.png (needs Pillow + numpy)
 ```
 
@@ -68,6 +68,7 @@ python3 scripts/tuxemon-idle.py   # regenerate public/tuxemon/*-idle.png (needs 
 | 3D car | R3F + drei GLB viewer (`Car3D.tsx`) behind `CarDamageView`, one GLB per catalog model. Parts come from named collections where the GLB has them (`namedPart`: "Left Door", "Headlight - Right", "Windshield"…), else position zones (`car-zones.ts`). The team's prototype (`3d_model_update/`) was folded in and removed: its collection highlight, "damage skips glass/interior" rule, transparency toggle (now **X-ray**) and per-part photo panel (now **+ Take a close-up**, camera only). 2D map (`CarDamageMap2D.tsx`) is the toggle + error fallback. |
 | Design system | HouseToClaim-style tokens + Tailwind v4 `@utility` classes in `globals.css`; no component library. Fonts: Rubik (body) + Tektur (display) via `next/font`. |
 | Agents | Google ADK for TypeScript (`@google/adk`): chat (`services/ai/chat-agent.ts`) and coverage checklist (`services/ai/coverage.ts`) are `LlmAgent`s with `FunctionTool`s. `runAgent()` (`services/ai/adk.ts`) rebuilds an in-memory ADK session per request from MongoDB history. `serverExternalPackages: ["@google/adk"]` (its optional peer deps break bundling). |
+| Voice | ElevenLabs over plain `fetch` (`services/ai/voice.ts`), not its Conversational AI agents, so voice goes through the same ADK agent and per-vehicle thread as typed chat. Speech-to-text: `transcribeSpeech` action → Scribe `scribe_v2` (browser `MediaRecorder`, 30 s max, ≤ 900 KB). Text-to-speech: owner-checked `GET /chat/speak?id=<assistant message id>` streams `eleven_flash_v2_5` MP3, so only the user's own replies can be spoken. No `ELEVENLABS_API_KEY` → voice UI hidden. The default voice (Jessica) retires with ElevenLabs' default voices on 2026-12-31: set `ELEVENLABS_VOICE_ID` before then. |
 | Agent write guard | Jev (TypeSafe AI, `POST /v1/systemone`) classifies each non-read tool call in `beforeToolCallback`; code decides via `decide()` (`services/ai/guard.ts`, tested): reads run, `destructive` tools always wait for a Confirm tap, writes run alone only when Jev says benign + requested, confident "suspicious" is blocked, no key/outage → Confirm. A waiting write is stored as `ChatMessage.action` and run once by `resolveChatAction`. |
 | Law RAG | In-memory BM25 over `data/florida` + `data/federal` (`services/law/statutes.ts`, tool `search_insurance_law`); files traced with `outputFileTracingIncludes`. Swap for embeddings if recall suffers. |
 | Storage | Google Cloud Storage (`@google-cloud/storage`, `services/storage/gcs.ts`), replacing AWS S3. Same functions as before; the `s3Key` field name stays (it's the object key). It is in `serverExternalPackages`: bundled, its `node-fetch@2` `url.parse()` ran from `.next/` and Node 24 printed DEP0169 on every Storage call. |
@@ -141,7 +142,7 @@ Key service files:
 - `services/storage/gcs.ts` — all Cloud Storage access (signed POST uploads, `isOwnedKey`, signed view URLs, key generation)
 - `services/ai/gemini.ts` — shared client + `generateJson()` (structured output validated by Zod)
 - `services/ai/damage-analysis.ts`, `policy-analysis.ts`, `chat.ts` — one Gemini service per responsibility, never one giant prompt
-- `services/ai/adk.ts` (ADK model + `runAgent`), `chat-agent.ts` (chat agent + guard), `agent-tools.ts` (every tool the agent can call, with `kind`: read / write / destructive), `coverage.ts` + `coverage-rules.ts` (coverage agent + deterministic evidence check), `guard.ts` (Jev + `decide`)
+- `services/ai/adk.ts` (ADK model + `runAgent`), `chat-agent.ts` (chat agent + guard), `agent-tools.ts` (every tool the agent can call, with `kind`: read / write / destructive), `coverage.ts` + `coverage-rules.ts` (coverage agent + deterministic evidence check), `guard.ts` (Jev + `decide`), `voice.ts` (ElevenLabs speech-to-text + text-to-speech)
 - `services/law/statutes.ts` — statute chunking + BM25 search over `data/`
 - `services/claims/todos.ts` — deterministic to-do rules + incident status (pure, tested); `state.ts` loads a vehicle's claim state; `damage.ts` merges per-photo assessments
 - `services/vehicles/context.ts` — `getVehicleContext()` for pages, `requireVehicle(vehicleId)` ownership gate for every vehicle-scoped action
@@ -160,6 +161,8 @@ GCS_BUCKET_NAME=
 GCP_WORKLOAD_IDENTITY_PROVIDER=  # Vercel only: projects/<number>/locations/global/workloadIdentityPools/vercel/providers/vercel
 GCP_SERVICE_ACCOUNT_EMAIL=       # Vercel only: the app service account
 TYPESAFE_API_KEY=      # optional, Jev classifier; without it every agent write asks the user to confirm
+ELEVENLABS_API_KEY=    # optional, assistant voice (speech-to-text + text-to-speech); without it chat is text only
+ELEVENLABS_VOICE_ID=   # optional, ElevenLabs voice id; blank = default voice
 ```
 
 ---
@@ -302,6 +305,9 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 - Built: the assistant is **Propellercat** (Tuxemon, by tamashihoshi, CC BY-SA 4.0; credits in `public/tuxemon/ATTRIBUTION.md`). The chat page must keep showing `<TuxemonAttribution />`.
 - `sendChatMessage(vehicleId, text)`; retry = resend the same text (the server reuses an unanswered identical last message). Gemini context comes from `buildVehicleContext()` in `services/ai/chat.ts` (`loadClaimState` + Vehicle, VIN last 4 only, claim link/phone only from `providers.ts`).
 - The reply comes from the ADK agent (`runChatAgent`). Tools (`services/ai/agent-tools.ts`): read `list_vehicles`, `get_vehicle_status`, `list_photos`, `list_florida_plans`, `search_insurance_law`; write `update_incident_details`, `switch_vehicle`, `choose_florida_plan`, `set_insurer`; destructive `mark_claim_filed`, `close_incident`, `delete_photo`. Writes reuse the existing server actions, so their validation and state rules still apply. A write that needs the user's OK shows a Confirm/Cancel card under the reply (`resolveChatAction`).
+- `Chat` in `components/chat/ChatThread.tsx` is used by both the chat page and the floating buddy. Under the suggestions, an **About** row lists each vehicle as a car chip plus its active policy's insurer chip (`chatSubjects()`), current vehicle first. Picking another vehicle calls `selectVehicle` (switches the whole app); the insurer chip switches the suggestions to insurance questions. The topic only changes suggestions and copy, not what the agent sees.
+- **Voice** (when `ELEVENLABS_API_KEY` is set): mic button next to Send (tap to talk, tap to stop) and **Tap to talk** on an empty thread; a spoken question gets its reply read aloud, and every reply has **Listen**. `useVoice` plays one shared `Audio` element, unlocked with a silent clip on the mic tap so iOS lets the reply play after the wait.
+- **Chat buddy** (`ChatBuddy`, in the app layout): Propellercat hovers along the bottom of every authed page except `/chat` (`buddy-wander` + `buddy-bob`, still under reduced motion). Tapping it opens the same chat as a panel (bottom sheet on phones, bottom-right on `md`+) loaded by `loadChat(vehicleId)`: same thread, voice, About chips and Confirm cards; ↗ opens `/chat`, Esc/✕ closes.
 
 ## Summary tab and to-do list
 

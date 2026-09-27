@@ -3,15 +3,42 @@
 import { isValidObjectId } from "mongoose";
 import { z } from "zod";
 import { ChatMessage } from "@/models/ChatMessage";
+import { requireUser } from "@/lib/auth";
 import { agentTool } from "@/services/ai/agent-tools";
-import { toChatView, type ChatMessageView } from "@/services/ai/chat";
+import { chatSubjects, recentMessages, toChatView, type ChatMessageView, type ChatSubject } from "@/services/ai/chat";
 import { runChatAgent } from "@/services/ai/chat-agent";
+import { MAX_SPEECH_BYTES, transcribe } from "@/services/ai/voice";
 import { requireVehicle } from "@/services/vehicles/context";
 import type { ActionResult } from "@/types";
 
 const MessageText = z.string().trim().min(1, "Type a question first.").max(1000, "Keep your message under 1000 characters.");
 
 export type ChatExchange = { user: ChatMessageView; reply: ChatMessageView };
+
+export async function loadChat(vehicleId: string): Promise<ActionResult<{ messages: ChatMessageView[]; subjects: ChatSubject[] }>> {
+  const { user, vehicle } = await requireVehicle(vehicleId);
+  try {
+    const [messages, subjects] = await Promise.all([recentMessages(user._id, vehicle._id, 50), chatSubjects(user._id)]);
+    return { ok: true, data: { messages, subjects } };
+  } catch (err) {
+    console.error("loadChat", err);
+    return { ok: false, error: "Couldn't load the chat. Check your connection and try again." };
+  }
+}
+
+export async function transcribeSpeech(form: FormData): Promise<ActionResult<string>> {
+  await requireUser();
+  const audio = form.get("audio");
+  if (!(audio instanceof Blob) || !audio.type.startsWith("audio/")) return { ok: false, error: "I didn't catch that. Tap the mic and try again." };
+  if (audio.size > MAX_SPEECH_BYTES) return { ok: false, error: "That was a bit long for me. Try a shorter question." };
+  try {
+    const text = (await transcribe(audio)).slice(0, 1000);
+    return text ? { ok: true, data: text } : { ok: false, error: "I didn't catch that. Tap the mic and try again." };
+  } catch (err) {
+    console.error("transcribeSpeech", err);
+    return { ok: false, error: "Voice isn't working right now. Type your question instead." };
+  }
+}
 
 /** Retry = call again with the same text: an unanswered identical last message is reused, not duplicated. */
 export async function sendChatMessage(vehicleId: string, text: string): Promise<ActionResult<ChatExchange>> {

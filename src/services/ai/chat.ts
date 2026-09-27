@@ -2,10 +2,12 @@ import "server-only";
 import type { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
 import { ChatMessage } from "@/models/ChatMessage";
+import { InsurancePolicy } from "@/models/InsurancePolicy";
 import { Vehicle } from "@/models/Vehicle";
 import { PolicyExtractionSchema } from "@/schemas/policy";
 import { loadClaimState } from "@/services/claims/state";
 import { MIN_DAMAGE_PHOTOS } from "@/services/claims/todos";
+import { getProvider } from "@/services/insurance/providers";
 import { vehicleTitle } from "@/services/vehicles/context";
 import { NOT_FOUND_IN_POLICY, componentLabel, type ChatActionStatus } from "@/types";
 import { ASSISTANT_NAME } from "@/components/chat/TuxemonAssistant";
@@ -34,6 +36,19 @@ export async function recentMessages(userId: Id, vehicleId: Id, limit: number): 
   await connectDB();
   const docs = await ChatMessage.find({ userId, vehicleId }).sort({ createdAt: -1, _id: -1 }).limit(limit).lean<MessageLike[]>();
   return docs.reverse().map(toChatView);
+}
+
+export type ChatSubject = { id: string; title: string; insurer: string | null };
+
+export async function chatSubjects(userId: Id): Promise<ChatSubject[]> {
+  await connectDB();
+  const [vehicles, policies] = await Promise.all([
+    Vehicle.find({ userId }).sort({ createdAt: -1 }),
+    InsurancePolicy.find({ userId }).sort({ uploadedAt: -1 }).select("vehicleId providerId").lean(),
+  ]);
+  const insurer = new Map<string, string | null>();
+  for (const p of policies) if (!insurer.has(String(p.vehicleId))) insurer.set(String(p.vehicleId), getProvider(p.providerId)?.name ?? null);
+  return vehicles.map((v) => ({ id: v._id.toString(), title: vehicleTitle(v), insurer: insurer.get(v._id.toString()) ?? null }));
 }
 
 const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "not recorded");
