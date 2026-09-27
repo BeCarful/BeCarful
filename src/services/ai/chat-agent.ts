@@ -13,9 +13,10 @@ import { classifyWithJev, decide } from "./guard";
 
 const HISTORY_FOR_MODEL = 20;
 
-const Page = z.enum(["summary", "garage", "insurance", "chat", "profile", "add_vehicle", "crash_mode"]);
+const Page = z.enum(["dashboard", "summary", "garage", "insurance", "chat", "profile", "add_vehicle", "crash_mode"]);
 const PAGE_HREF: Record<z.infer<typeof Page>, string> = {
-  summary: "/",
+  dashboard: "/",
+  summary: "/summary",
   garage: "/garage",
   insurance: "/insurance",
   chat: "/chat",
@@ -72,7 +73,7 @@ export async function runChatAgent(
   const openPage = new FunctionTool({
     name: "open_page",
     description:
-      "Opens a BeCarful page for the user right after your reply. summary: the start page with progress, to-dos and the claim link. garage: the 3D car, Take Photo, photos and the damage list. insurance: the policy, coverage checklist, add or replace a policy. chat: the full chat screen. profile: account, chat buddy, day/night, remove a vehicle. add_vehicle: add another car. crash_mode: what to do at the scene of a crash.",
+      "Opens a BeCarful page for the user right after your reply. dashboard: the start page with every car, which are insured and protected, and open cases. summary: the selected car's progress, to-dos and claim link. garage: the 3D car, Take Photo, photos and the damage list. insurance: the policy, coverage checklist, add or replace a policy. chat: the full chat screen. profile: account, chat buddy, day/night, remove a vehicle. add_vehicle: add another car. crash_mode: what to do at the scene of a crash.",
     parameters: z.object({ page: Page }),
     execute: async ({ page }) => {
       navigate = PAGE_HREF[page];
