@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { IdleCar } from "@/components/auth/IdleCar";
 import { TuxemonAttribution, TuxemonAvatar } from "@/components/chat/TuxemonAssistant";
 import { SceneBackground } from "@/components/layout/SceneBackground";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
@@ -27,8 +28,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
             </p>
           </div>
           <div className="pixel-scene hidden h-60 items-end rounded-xl pl-[5%] border border-border sm:flex">
-            {/* eslint-disable-next-line @next/next/no-img-element -- pixel art scaled with nearest-neighbour */}
-            <img src="/scenery/car.svg" alt="" width={384} height={176} className="pixelated mb-5 w-[58%] drop-shadow-[3px_5px_0_rgb(30_43_57/0.24)]" />
+            <IdleCar className="mb-5 h-auto w-[58%] drop-shadow-[3px_5px_0_rgb(30_43_57/0.24)]" />
             <div className="pixel-frame absolute right-[6%] bottom-[18%] flex flex-col items-center px-2 py-1">
               <TuxemonAvatar frame="front" scale={1} />
               <span className="font-display text-sm font-semibold">Propellercat</span>
