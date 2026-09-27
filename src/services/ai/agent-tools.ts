@@ -8,9 +8,11 @@ import { selectVehicle } from "@/actions/vehicles";
 import { Vehicle } from "@/models/Vehicle";
 import { getActivePolicy, getOpenIncident, loadClaimState } from "@/services/claims/state";
 import { FLORIDA_PLANS, getFloridaPlan } from "@/services/insurance/florida-plans";
+import { searchPolicyForms } from "@/services/insurance/policy-forms";
+import { PolicyExtractionSchema } from "@/schemas/policy";
 import { PROVIDERS, getProvider } from "@/services/insurance/providers";
 import { vehicleTitle } from "@/services/vehicles/context";
-import { INCIDENT_TYPES, PERIL_LABELS } from "@/types";
+import { INCIDENT_TYPES, PERIL_LABELS, POLICY_PRODUCTS } from "@/types";
 import { buildVehicleContext } from "./chat";
 import type { CoverageItem } from "./coverage-rules";
 import type { ToolKind } from "./guard";
@@ -119,6 +121,45 @@ export const AGENT_TOOLS: AgentTool[] = [
         coverage: p.coverage,
       })),
     }),
+  }),
+  tool({
+    name: "search_policy_forms",
+    description:
+      "Searches the standard policy wording filed by the vehicle's insurer (State Farm for now: Florida car policy booklet 9810C with its endorsements, and the Classic+ collector-car policy). Searches only the forms listed on the vehicle's policy when they are known. Returns the section each passage is from and the definitions of terms it uses. This is the insurer's general form language, not the user's declarations or limits.",
+    kind: "read",
+    parameters: z.object({
+      query: z.string().min(2).max(300).describe("Policy terms, e.g. 'rental reimbursement', 'comprehensive exclusions flood', 'duties after a loss'"),
+      product: z
+        .enum(POLICY_PRODUCTS)
+        .optional()
+        .describe("Only used when the policy's form numbers are unknown: personal_car (default, everyday cars) or classic_plus (State Farm Classic+ collector vehicles)"),
+      vehicleId: vehicleArg,
+    }),
+    run: async (scope, { query, product, vehicleId }) => {
+      const v = await target(scope, vehicleId);
+      if (!v) return NO_VEHICLE;
+      const policy = await getActivePolicy(scope.userId, v._id);
+      if (!policy?.providerId) return { ok: false, error: "This vehicle has no insurer yet." };
+      const insurer = getProvider(policy.providerId)?.name ?? policy.providerId;
+      const formNumbers = PolicyExtractionSchema.safeParse(policy.extractedData).data?.formNumbers ?? [];
+      const found = await searchPolicyForms(query, { providerId: policy.providerId, formNumbers, product: product ?? "personal_car", limit: 4 });
+      if (!found) return { ok: false, error: `BeCarful has no standard policy forms saved for ${insurer}.` };
+      return {
+        insurer,
+        searched:
+          found.scope === "policy_forms"
+            ? `The forms listed on this policy: ${found.matched.join(", ")}`
+            : `${insurer}'s current standard forms, because this policy's form numbers ${formNumbers.length ? "aren't in BeCarful's copies" : "weren't found in the uploaded document"}. The user's policy wording may differ.`,
+        formsListedButNotSaved: found.missing.length ? found.missing : undefined,
+        results: found.hits.map((h) => ({
+          form: h.citation,
+          section: h.section,
+          source: h.source,
+          text: h.text,
+          definitions: h.definitions.length ? h.definitions : undefined,
+        })),
+      };
+    },
   }),
   tool({
     name: "update_incident_details",

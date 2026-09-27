@@ -1,0 +1,32 @@
+State Farm Classic+ endorsement SC 101 07 21: Business Use Endorsement
+Form: SC 101
+Insurers: State Farm Classic Insurance Company (collector vehicles, administered by Hagerty)
+Product: classic_plus
+Source: Florida OIR IRFS filing 25-056482 (approved 01/15/2026), document 554602
+Extraction: pdftotext; OIR approval stamp and page numbers removed
+Retrieved: 2026-09-26
+
+SC 101 07 21
+PLEASE READ THIS ENDORSEMENT CAREFULLY AS IT CHANGES
+YOUR
+POLICY
+BUSINESS USE ENDORSEMENT
+For “your covered auto” listed in the Declarations or Schedule with the Business Use Endorsement, this policy
+is amended as follows.
+PART A – LIABILITY COVERAGE
+Under Exclusions, Exclusion G. is replaced by the following:
+We do not provide Liability Coverage for any “insured”:
+G. Maintaining or using “your covered auto” while that “insured” is employed or otherwise engaged in any
+“business” (other than farming or ranching), including but not limited to the selling, repairing, servicing,
+storing, parking, road testing, or delivery of any vehicle. However, this exclusion does not apply when the
+vehicle is used at the described event for the stipulated time period.
+PART B – MEDICAL PAYMENTS COVERAGE
+Under Exclusions, Exclusion F. is replaced by the following:
+We do not provide Medical Payments Coverage for any “insured” for “bodily injury”:
+F. Sustained while “occupying” “your covered auto” when it is being used in the “business” of an “insured”.
+However, this exclusion does not apply when the vehicle is used at the described event for the stipulated
+time period.
+A minimum earned premium of $50 applies to this coverage.
+All other policy provisions apply.
+SC 101 07 21
+State Farm Classic Insurance Company

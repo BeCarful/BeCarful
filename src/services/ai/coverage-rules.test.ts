@@ -19,6 +19,7 @@ const extraction: PolicyExtraction = {
   roadsideAssistance: null,
   otherCoverage: ["Personal injury protection (PIP): $10,000"],
   exclusions: ["Flood damage is excluded"],
+  formNumbers: [],
 };
 
 const statutes = [

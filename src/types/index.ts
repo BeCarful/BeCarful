@@ -142,3 +142,9 @@ export type CoverageStatus = (typeof COVERAGE_STATUSES)[number];
 
 export const CHAT_ACTION_STATUSES = ["pending", "running", "done", "failed", "cancelled"] as const;
 export type ChatActionStatus = (typeof CHAT_ACTION_STATUSES)[number];
+
+export const JURISDICTIONS = ["florida", "federal"] as const;
+export type Jurisdiction = (typeof JURISDICTIONS)[number];
+
+export const POLICY_PRODUCTS = ["personal_car", "classic_plus"] as const;
+export type PolicyProduct = (typeof POLICY_PRODUCTS)[number];

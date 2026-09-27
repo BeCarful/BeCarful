@@ -21,6 +21,7 @@ export const DETAIL_FIELDS: Field[] = [
   ["effectiveDates", "Effective dates"],
   ["premium", "Premium"],
   ["coveredVehicle", "Covered vehicle"],
+  ["formNumbers", "Policy forms"],
 ];
 
 export function PolicyFields({ data, fields }: { data: PolicyExtraction; fields: Field[] }) {

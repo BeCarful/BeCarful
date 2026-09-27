@@ -18,6 +18,7 @@ export const PolicyExtractionSchema = z.object({
   roadsideAssistance: field,
   otherCoverage: z.array(z.string()),
   exclusions: z.array(z.string()),
+  formNumbers: z.array(z.string()).default([]),
 });
 export type PolicyExtraction = z.infer<typeof PolicyExtractionSchema>;
 

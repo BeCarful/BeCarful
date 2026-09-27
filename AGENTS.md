@@ -38,11 +38,13 @@ npm install
 cp .env.example .env.local        # fill in values
 docker run -d --name becarful-mongo -p 27017:27017 mongo:7   # or use Atlas
 npm run seed        # demo@becarful.app / demo1234 (needs Mongo + Cloud Storage)
+npm run ingest      # load statutes (data/florida, data/federal) + insurer policy forms (data/<providerId>/*.txt, with Vertex embeddings; waits out the embedding quota) into Mongo; rerun after editing them
+npm run eval:rag    # policy RAG test set (eval/policy-rag.csv) against Mongo: hit@4 for keyword, vector and hybrid (needs a prior ingest)
 npm run dev         # http://localhost:3000
 npm run build
 npm run lint
 npm run typecheck   # next typegen + tsc
-npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, 3D zones, statute search, Jev guard, coverage rules, photo seal, image prep)
+npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, 3D zones, statute search, policy form search, Jev guard, coverage rules, photo seal, image prep)
 python3 scripts/tuxemon-idle.py   # regenerate public/tuxemon/*-idle.png (needs Pillow + numpy)
 python3 scripts/sample-policies.py   # regenerate public/samples/state-farm-florida-*.pdf (needs Google Chrome + Pillow)
 ```
@@ -70,7 +72,8 @@ python3 scripts/sample-policies.py   # regenerate public/samples/state-farm-flor
 | Design system | HouseToClaim-style tokens + Tailwind v4 `@utility` classes in `globals.css`; no component library. Fonts: Rubik (body) + Tektur (display) via `next/font`. |
 | Agents | Google ADK for TypeScript (`@google/adk`): chat (`services/ai/chat-agent.ts`) and coverage checklist (`services/ai/coverage.ts`) are `LlmAgent`s with `FunctionTool`s. `runAgent()` (`services/ai/adk.ts`) rebuilds an in-memory ADK session per request from MongoDB history. `serverExternalPackages: ["@google/adk"]` (its optional peer deps break bundling). |
 | Agent write guard | Jev (TypeSafe AI, `POST /v1/systemone`) classifies each non-read tool call in `beforeToolCallback`; code decides via `decide()` (`services/ai/guard.ts`, tested): reads run, `destructive` tools always wait for a Confirm tap, writes run alone only when Jev says benign + requested, confident "suspicious" is blocked, no key/outage → Confirm. A waiting write is stored as `ChatMessage.action` and run once by `resolveChatAction`. |
-| Law RAG | In-memory BM25 over `data/florida` + `data/federal` (`services/law/statutes.ts`, tool `search_insurance_law`); files traced with `outputFileTracingIncludes`. Swap for embeddings if recall suffers. |
+| Law RAG | Statute chunks live in the `statutes` collection (`Statute` model, filled from `data/florida` + `data/federal` by `npm run ingest`); `statuteIndex()` loads them once per server instance into an in-memory BM25 index (`services/law/statutes.ts`, tool `search_insurance_law`). Empty collection → the tool throws "Run npm run ingest". Tests index the files directly. Swap for embeddings if recall suffers. |
+| Policy RAG | Insurer policy wording (State Farm only: booklet 9810C + endorsements as `personal_car`, Classic+ collector forms as `classic_plus`) lives in `policyforms` (`PolicyForm`), filled by `npm run ingest` from `data/<providerId>/*.txt` (title + `Form:`/`Product:`/`Source:` header). Chunks follow the form's own sections (`splitSections` in `services/insurance/policy-forms.ts`: part › subsection › numbered coverage, one chunk per definition, ≤2500 chars; State Farm part titles are a whitelist) and carry `section` + defined `term`. Search = BM25 + `gemini-embedding-2` (768-d, stored per chunk, cosine in memory) fused by reciprocal rank; a query-embedding failure falls back to BM25 (60 s pause after a 429). Scope: the forms on the user's declarations (`PolicyExtraction.formNumbers`), else the insurer's `personal_car`/`classic_plus` forms, labeled as standard wording. Results attach definitions of the terms they use. Test set in `eval/policy-rag.csv` (2026-09-27 with `gemini-embedding-2`: keyword 23/32, vector 32/32, hybrid 28/32; `gemini-embedding-001` had vector 31, hybrid 30; `npm test` guards keyword ≥ 23). Why `gemini-embedding-2`: the project's `gemini-embedding` quota is 5 requests/min and an increase was auto-denied (not enough usage history), while `gemini-embedding-2` allows 300k/min. It ignores `taskType` (the task goes in the text as a prefix, `PREFIX` in `embeddings.ts`) and merges several texts in one request into one vector, so `embed()` sends one text per request, 8 at a time. Changing the model means rerunning `npm run ingest`. Not used by the coverage checklist. |
 | Storage | Google Cloud Storage (`@google-cloud/storage`, `services/storage/gcs.ts`), replacing AWS S3. Same functions as before; the `s3Key` field name stays (it's the object key). It is in `serverExternalPackages`: bundled, its `node-fetch@2` `url.parse()` ran from `.next/` and Node 24 printed DEP0169 on every Storage call. |
 | Gemini auth | Vertex AI only: `genaiAuth()` in `services/ai/gemini.ts` (`GOOGLE_CLOUD_PROJECT`, location `global`, model `GEMINI_MODEL` constant), Application Default Credentials locally; on Vercel `googleAuthOptions()` (`lib/gcp.ts`) swaps in a Vercel OIDC external-account credential for both Storage and GenAI. ADK reuses the shared `gemini()` client (`adkModel()` overrides `apiClient`) because its `Gemini` class takes no auth options. |
 | Florida plans | Static, sourced `services/insurance/florida-plans.ts` (4 example configurations per insurer, retrieved 2026-09-26, no premiums). Picking one stores its text as the policy original, sets `planId` and skips Gemini extraction. |
@@ -118,7 +121,7 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS · MongoDB 
 
 ## Project structure
 
-Feature-oriented. All application code lives in `src/` (Next.js `src` folder; `@/*` → `./src/*`). File paths elsewhere in this doc are relative to `src/` unless they start with `public/`, `data/` or `scripts/`. Config files, `public/`, `data/`, `scripts/` and `.env*` stay at the repo root.
+Feature-oriented. All application code lives in `src/` (Next.js `src` folder; `@/*` → `./src/*`). File paths elsewhere in this doc are relative to `src/` unless they start with `public/`, `data/`, `scripts/` or `eval/`. Config files, `public/`, `data/`, `scripts/`, `eval/` and `.env*` stay at the repo root.
 
 ```
 src/app/(auth)/        login, signup
@@ -127,15 +130,17 @@ src/app/(app)/         authed shell (layout: sky, road sidebar md+ with the Vehi
 src/actions/           server actions per feature: auth vehicles photos insurance chat incidents
 src/components/        retro/ layout/ auth/ vehicle/ photos/ insurance/ chat/ summary/ crash/
 src/lib/               env (zod, lazy), gcp (Vercel WIF credentials), db (cached mongoose), session (jose), auth, upload-client
-src/models/            User Vehicle InsurancePolicy Incident DamagePhoto DamageAssessment ChatMessage
+src/models/            User Vehicle InsurancePolicy Incident DamagePhoto DamageAssessment ChatMessage Statute PolicyForm
 src/schemas/           zod: damage, policy, vehicle
 src/services/          ai/ storage/ insurance/ vehicles/ claims/ law/
 src/types/             shared constants + types (component IDs, statuses, task codes)
 src/proxy.ts           optimistic auth redirect (Next 16 name for middleware)
 scripts/seed.ts        demo data
+scripts/ingest.ts      statute + policy form chunks (with embeddings) → Mongo
+eval/                  policy-rag.csv (retrieval test set: question, product, form/section/text regexes, case-insensitive, empty = any; a hit = a top-4 chunk matching all three), cases.ts (CSV loader, also used by npm test), policy-rag.ts (hit@4 report)
 scripts/sample-policies.py  demo State Farm declarations PDFs → public/samples/
 public/                becarful-logo.png (brand logo; favicon is app/icon.png)  logo/ (square insurer icons: statefarm, geico, allstate; Allstate's is the hands emblem cropped from its wordmark)  samples/ (demo State Farm declarations PDFs)  scenery/ (grass, ground, pixel car SVGs)  tuxemon/ (sprite sheets, generated *-idle.png animations + ATTRIBUTION.md)  models/ (catalog GLBs lamborghini-sc18, peugeot-308, waymo-firefly, bmw-e92 + ATTRIBUTION.md)
-data/                  RAG source texts, one .txt per statute section (citation + source URL header): florida/ (2026 F.S.: ch. 627 Part XI, ch. 324, related sections), federal/ (2024 U.S. Code), state-farm/ (Florida OIR IRFS filing PDFs named <file log #>_<doc id>.pdf; policy wording text in 9810C-personal-car-policy.txt), source GLBs of the catalog cars (not served), becarful-logo-source.png (unedited logo art), peugeot-308/ (reference renders)
+data/                  RAG source texts, one .txt per statute section (citation + source URL header): florida/ (2026 F.S.: ch. 627 Part XI, ch. 324, related sections), federal/ (2024 U.S. Code), state-farm/ (Florida OIR IRFS filing PDFs named <file log #>_<doc id>.pdf; policy wording extracted to one .txt per form: 9810C-personal-car-policy.txt, 2281A/2289F/2835AR/2030AR/1012826 (filing 24-098215) and the approved Classic+ SC-*.txt forms (filing 25-056482); memos, letters, emails, sample declarations and REPLACED versions are left out), source GLBs of the catalog cars (not served), becarful-logo-source.png (unedited logo art), peugeot-308/ (reference renders)
 ```
 
 Key service files:
@@ -144,7 +149,9 @@ Key service files:
 - `services/ai/gemini.ts` — shared client + `generateJson()` (structured output validated by Zod)
 - `services/ai/damage-analysis.ts`, `policy-analysis.ts`, `chat.ts` — one Gemini service per responsibility, never one giant prompt
 - `services/ai/adk.ts` (ADK model + `runAgent`), `chat-agent.ts` (chat agent + guard), `agent-tools.ts` (every tool the agent can call, with `kind`: read / write / destructive), `coverage.ts` + `coverage-rules.ts` (coverage agent + deterministic evidence check), `guard.ts` (Jev + `decide`)
-- `services/law/statutes.ts` — statute chunking + BM25 search over `data/`
+- `services/law/statutes.ts` — statute chunking (`readStatuteFiles`) + BM25 search over the `statutes` collection (the BM25 helpers are generic)
+- `services/insurance/policy-forms.ts` — section-aware policy form chunking (`readPolicyForms`) + form-scoped hybrid search over `policyforms`; `eval/policy-rag.csv` is its retrieval test set
+- `services/ai/embeddings.ts` — Vertex `gemini-embedding-2` embeddings (task prefix, one text per request, unit vectors, optional quota retries)
 - `services/claims/todos.ts` — deterministic to-do rules + incident status (pure, tested); `state.ts` loads a vehicle's claim state; `damage.ts` merges per-photo assessments
 - `services/vehicles/context.ts` — `getVehicleContext()` for pages, `requireVehicle(vehicleId)` ownership gate for every vehicle-scoped action
 - `services/vehicles/car-models.ts` — demo car catalog (`CAR_MODELS`, `carModel(id)`), shared by the form, actions, seed and `Car3D`
@@ -168,7 +175,7 @@ TYPESAFE_API_KEY=      # optional, Jev classifier; without it every agent write 
 
 ## Data model
 
-Mongoose models in `models/`: `User`, `Vehicle`, `InsurancePolicy`, `Incident`, `DamagePhoto`, `DamageAssessment`, `ChatMessage`. Insurer metadata is code (`services/insurance/providers.ts`), to-dos are computed (no `TodoState`), chat is one thread per vehicle (no `ChatSession`).
+Mongoose models in `models/`: `User`, `Vehicle`, `InsurancePolicy`, `Incident`, `DamagePhoto`, `DamageAssessment`, `ChatMessage`, plus `Statute` (shared law text, not user data: `{ citation, url, jurisdiction, text }`) and `PolicyForm` (insurer standard wording, not user data: `{ providerId, product, form, citation, section, term?, source, text, embedding }`). Insurer metadata is code (`services/insurance/providers.ts`), to-dos are computed (no `TodoState`), chat is one thread per vehicle (no `ChatSession`).
 
 - Every vehicle-related query enforces **both `userId` ownership and `vehicleId`**. A vehicle's data must never leak into another vehicle's context (especially chat). Every child doc stores `userId` + `vehicleId`; actions get both from `requireVehicle(vehicleId)`.
 - Use references, not duplicated data. Add indexes (e.g. `{ userId, vehicleId }`).
@@ -282,7 +289,7 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 - Screen shows provider, policy info, uploaded PDF, upload/replace, AI summary, relevant coverage.
 - PDF → private Cloud Storage → reference in MongoDB → Gemini extraction → structured data → simple summary.
 - Users can also paste policy text instead of a PDF (`analyzePolicy({ text })` in `services/ai/policy-analysis.ts`, 200–60k chars). Store the pasted text in Cloud Storage as the original, same as a PDF.
-- Extract when present: provider, policy type, premium, covered vehicle, collision, comprehensive, liability, deductibles, rental reimbursement, roadside assistance, other coverage, key exclusions/limitations.
+- Extract when present: provider, policy type, premium, covered vehicle, collision, comprehensive, liability, deductibles, rental reimbursement, roadside assistance, other coverage, key exclusions/limitations, policy form numbers (`formNumbers`, e.g. `9810C`; scopes the policy RAG).
 - Missing fields say **"Not found in the uploaded policy"**. Never guess.
 - Built: `/insurance` (no policy → pick insurer, then upload PDF or paste text; with policy → provider card, status, Retry/Replace, AI summary, coverage list; on `lg` insurer + policy | plain words + details side by side, then the checklist (two-column cards) and Coverage full width). `actions/insurance.ts` runs `analyzePolicy()` then `summarizePolicy()` on the extraction only (never the raw doc). Unrelated documents throw `NotAPolicyError`.
 - Originals open via `/insurance/original?vehicleId=` (owner-checked route that redirects to a fresh presigned URL), never a stored or pre-rendered URL.
@@ -304,7 +311,7 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 - Example questions: "What does my insurance cover?", "What's my deductible?", "Which parts look damaged?", "Do I need more photos?", "Where do I file my claim?", "Summarize everything that happened."
 - Built: the assistant is **Propellercat** (Tuxemon, by tamashihoshi, CC BY-SA 4.0; credits in `public/tuxemon/ATTRIBUTION.md`). The chat page must keep showing `<TuxemonAttribution />`.
 - `sendChatMessage(vehicleId, text)`; retry = resend the same text (the server reuses an unanswered identical last message). Gemini context comes from `buildVehicleContext()` in `services/ai/chat.ts` (`loadClaimState` + Vehicle, VIN last 4 only, claim link/phone only from `providers.ts`).
-- The reply comes from the ADK agent (`runChatAgent`). Tools (`services/ai/agent-tools.ts`): read `list_vehicles`, `get_vehicle_status`, `list_photos`, `list_florida_plans`, `search_insurance_law`; write `update_incident_details`, `switch_vehicle`, `choose_florida_plan`, `set_insurer`; destructive `mark_claim_filed`, `close_incident`, `delete_photo`. Writes reuse the existing server actions, so their validation and state rules still apply. A write that needs the user's OK shows a Confirm/Cancel card under the reply (`resolveChatAction`).
+- The reply comes from the ADK agent (`runChatAgent`). Tools (`services/ai/agent-tools.ts`): read `list_vehicles`, `get_vehicle_status`, `list_photos`, `list_florida_plans`, `search_insurance_law`, `search_policy_forms`; write `update_incident_details`, `switch_vehicle`, `choose_florida_plan`, `set_insurer`; destructive `mark_claim_filed`, `close_incident`, `delete_photo`. Writes reuse the existing server actions, so their validation and state rules still apply. A write that needs the user's OK shows a Confirm/Cancel card under the reply (`resolveChatAction`).
 
 ## Summary tab and to-do list
 
