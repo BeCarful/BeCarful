@@ -303,7 +303,7 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 
 ## Crash mode
 
-`/crash` (red **Crash mode** button in the phone header). Step 1: Florida at-the-scene duties, most urgent first, each linking its statute: anyone hurt → Call 911 (`tel:911`, § 316.062), stay at the scene / clear the lanes (§ 316.061), call police if hurt or ≥ $2,000 damage (§ 316.065(1)), swap info (§ 316.062), no police report → own written report within 10 days (§ 316.066(1)(e)). Step 2 (`?step=photos`, `CrashPhotos`): a `<select>` of the user's vehicles (`selectVehicle`) + **Add photos**, which runs the normal `PhotoCapture` flow (seal, analysis, first photo opens the incident); "See my car" goes to `/garage`, **Exit to home** to `/` (Summary). Not in the `md`+ sidebar yet.
+`/crash` (red **Crash mode** button in the phone header). Step 1: Florida at-the-scene duties, most urgent first, each linking its statute: anyone hurt → Call 911 (`tel:911`, § 316.062), stay at the scene / clear the lanes (§ 316.061), call police if hurt or ≥ $2,000 damage (§ 316.065(1)), swap info (§ 316.062), no police report → own written report within 10 days (§ 316.066(1)(e)). Step 2 (`?step=photos`, `CrashPhotos`): a `<select>` of the user's vehicles (`selectVehicle`) + **Add photos**, which runs the normal `PhotoCapture` flow (seal, analysis, first photo opens the incident); "See my car" goes to `/garage`, **Exit to home** to `/` (Summary). Not in the `md`+ sidebar; on desktop it's reached from the Summary's **If something happens** card.
 
 ## Chat
 
@@ -317,7 +317,9 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 
 ## Summary tab and to-do list
 
-Short cards, no long paragraphs: **Your Car**, **Damage**, **Insurance** (provider, coverage found, deductible), **Current Status**. The user should understand the situation in seconds.
+Short cards, no long paragraphs. The user should understand the situation in seconds. Header = the car (name, color, plate), then **Current status** (`StatusPanel`: status, a "What happened" recap of type · time · place, claim-step progress only while an incident is open, Next step). Then two cards that depend on the open incident:
+- **Incident open:** **Damage** (`DamageCard`: non-interactive `CarDamageMap2D`, damaged parts with severity + damage types, latest 4 photos showing damage → `/garage`) and **Am I covered?** (`InsuranceCard`: the incident type's `INCIDENT_PERIL` row from the policy's `coverageChecklist`, plus deductible and policy number; no type yet → link to `#incident`; `other` → no single peril).
+- **No incident:** **Your policy** (`InsuranceCard`: deductible, policy number, effective dates, top 3 uncovered/unknown perils with their Tuxemon + credits) and **If something happens** (Crash mode, call insurer, verified claims page).
 
 **To-do list** recalculates automatically (no manual regenerate) when: vehicle created, policy uploaded/analyzed, photo captured/uploaded, damage assessment completed, incident info added, claim status changes.
 

@@ -71,19 +71,20 @@ export function CarDamageMap2D({
   damage,
   focused = null,
   onSelect,
+  className = "h-[240px] md:h-[300px]",
 }: {
   damage: AggregatedDamage[];
   focused?: ComponentId | null;
   onSelect?: (id: ComponentId) => void;
+  className?: string;
 }) {
   const byId = new Map(damage.map((d) => [d.component, d]));
   return (
     <svg
       viewBox="0 -4 240 396"
-      role="group"
-      aria-label="Car damage map"
+      {...(onSelect ? { role: "group", "aria-label": "Car damage map" } : { "aria-hidden": true })}
       shapeRendering="crispEdges"
-      className={`mx-auto block h-[240px] w-auto max-w-full md:h-[300px] ${PALETTE}`}
+      className={`mx-auto block w-auto max-w-full ${className} ${PALETTE}`}
     >
       <rect x={56} y={16} width={138} height={368} style={{ fill: "var(--shadow)" }} />
       <path d={left("mirror")} style={{ fill: "var(--car-body)" }} className="stroke-border [stroke-width:2]" />
@@ -95,19 +96,21 @@ export function CarDamageMap2D({
           <path
             key={id}
             d={REGIONS[id]}
-            role="button"
-            tabIndex={0}
-            aria-label={label}
-            aria-pressed={focused === id}
-            onClick={() => onSelect?.(id)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onSelect?.(id);
-              }
-            }}
+            {...(onSelect && {
+              role: "button",
+              tabIndex: 0,
+              "aria-label": label,
+              "aria-pressed": focused === id,
+              onClick: () => onSelect(id),
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(id);
+                }
+              },
+            })}
             style={{ fill: d ? DAMAGE_FILL[d.severity] : baseFill(id) }}
-            className="cursor-pointer stroke-border outline-none transition-[fill] duration-700 [stroke-width:2] hover:brightness-110 focus-visible:stroke-accent focus-visible:[stroke-width:4]"
+            className={`${onSelect ? "cursor-pointer hover:brightness-110" : ""} stroke-border outline-none transition-[fill] duration-700 [stroke-width:2] focus-visible:stroke-accent focus-visible:[stroke-width:4]`}
           >
             <title>{d ? `${label}: ${d.severity} damage` : label}</title>
           </path>
