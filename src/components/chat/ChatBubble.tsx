@@ -39,12 +39,14 @@ export function ChatBubble({
   text,
   assistant,
   compact = false,
+  talking = false,
   children,
 }: {
   role: "user" | "assistant";
   text?: string;
   assistant: Assistant;
   compact?: boolean;
+  talking?: boolean;
   children?: ReactNode;
 }) {
   const size = compact ? "px-3 py-2 text-sm" : "px-3.5 py-2.5 text-[15px]";
@@ -53,7 +55,7 @@ export function ChatBubble({
       <div className={`fade-in flex items-end gap-2 ${compact ? "" : "pr-6"}`}>
         {!compact && (
           <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-accent-soft">
-            <TuxemonFace scale={1} assistant={assistant} />
+            <TuxemonFace scale={1} assistant={assistant} talking={talking} />
           </span>
         )}
         <div className={`min-w-0 rounded-2xl rounded-bl-sm bg-panel-shade leading-relaxed text-ink ${compact ? "max-w-[90%]" : "max-w-[85%]"} ${size}`}>
@@ -79,7 +81,7 @@ export function ChatBubble({
 
 export function TypingBubble({ assistant, compact }: { assistant: Assistant; compact?: boolean }) {
   return (
-    <ChatBubble role="assistant" assistant={assistant} compact={compact}>
+    <ChatBubble role="assistant" assistant={assistant} compact={compact} talking>
       <span className="flex gap-1 py-1.5" aria-hidden>
         <span className="size-2 animate-bounce rounded-full bg-ink-soft [animation-delay:-0.3s]" />
         <span className="size-2 animate-bounce rounded-full bg-ink-soft [animation-delay:-0.15s]" />

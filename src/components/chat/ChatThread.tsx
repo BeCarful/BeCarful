@@ -283,7 +283,7 @@ function ChatThread({
             {outbox.error && <span className="mt-1 text-xs font-medium text-ink-soft">Not answered yet</span>}
           </ChatBubble>
         )}
-        {sending && (streamed ? <ChatBubble role="assistant" text={streamed} assistant={assistant} /> : <TypingBubble assistant={assistant} />)}
+        {sending && (streamed ? <ChatBubble role="assistant" text={streamed} assistant={assistant} talking /> : <TypingBubble assistant={assistant} />)}
         {outbox?.error && (
           <div role="alert" className="flex items-center gap-3 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2">
             <p className="flex-1 text-sm text-danger">{outbox.error}</p>
