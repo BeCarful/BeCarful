@@ -35,6 +35,8 @@ export function aggregateDamage(assessments: AssessmentLike[]): AggregatedDamage
   return [...byComponent.values()].sort((a, b) => rank(b.severity) - rank(a.severity) || b.confidence - a.confidence);
 }
 
+export const damagePhotoCount = (damage: AggregatedDamage[]) => new Set(damage.flatMap((d) => d.photoIds)).size;
+
 export const SIDES = ["front", "rear", "left", "right"] as const;
 export type Side = (typeof SIDES)[number];
 

@@ -1,5 +1,5 @@
 import type { AggregatedDamage, IncidentStatus, IncidentType, PolicyStatus, TodoItem } from "@/types";
-import { areaLabel } from "./damage";
+import { areaLabel, damagePhotoCount } from "./damage";
 
 export const MIN_DAMAGE_PHOTOS = 3;
 
@@ -49,11 +49,12 @@ export function computeTodos(s: ClaimState): TodoList {
   });
 
   if (hasDamage) {
-    const enough = s.photoCount >= MIN_DAMAGE_PHOTOS;
+    const shots = damagePhotoCount(s.damage);
+    const enough = shots >= MIN_DAMAGE_PHOTOS;
     items.push({
       code: "ADD_DAMAGE_PHOTOS",
       title: enough ? "Damage documented from several angles" : `Add more photos of the damaged ${areaLabel(s.damage[0].component)}`,
-      detail: enough ? undefined : `${s.photoCount} of ${MIN_DAMAGE_PHOTOS} photos. Try a wide shot and a close-up.`,
+      detail: enough ? undefined : `${shots} of ${MIN_DAMAGE_PHOTOS} photos. Try a wide shot and a close-up.`,
       done: enough,
       href: "/garage",
     });

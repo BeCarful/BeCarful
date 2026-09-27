@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db";
 import { ChatMessage } from "@/models/ChatMessage";
 import { Vehicle } from "@/models/Vehicle";
 import { PolicyExtractionSchema } from "@/schemas/policy";
+import { damagePhotoCount } from "@/services/claims/damage";
 import { loadClaimState } from "@/services/claims/state";
 import { MIN_DAMAGE_PHOTOS } from "@/services/claims/todos";
 import { vehicleTitle } from "@/services/vehicles/context";
@@ -70,6 +71,7 @@ export async function buildVehicleContext(userId: Id, vehicleId: Id): Promise<st
       : "No policy uploaded yet",
     photosForCurrentIncident: {
       total: photos.length,
+      showingDamage: damagePhotoCount(damage),
       takenWithCamera: photos.filter((p) => p.source === "camera").length,
       uploadedFromDevice: photos.filter((p) => p.source === "upload").length,
       withLocationRecorded: photos.filter((p) => p.latitude != null && p.longitude != null).length,

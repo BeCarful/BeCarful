@@ -9,7 +9,7 @@ import { IncidentForm } from "@/components/summary/IncidentForm";
 import { StatusPanel } from "@/components/summary/StatusPanel";
 import { TodoCard } from "@/components/summary/TodoCard";
 import type { PolicyExtraction } from "@/schemas/policy";
-import { areaLabel } from "@/services/claims/damage";
+import { areaLabel, damagePhotoCount } from "@/services/claims/damage";
 import { loadClaimState } from "@/services/claims/state";
 import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
 import { NOT_FOUND_IN_POLICY, componentLabel, type PolicyStatus, type Severity } from "@/types";
@@ -77,7 +77,7 @@ export default async function SummaryPage() {
                     <RetroBadge tone={SEVERITY_TONE[top.severity]}>{top.severity}</RetroBadge>
                   </p>
                   <p className="text-sm text-ink-soft">
-                    Around the {areaLabel(top.component)} · {plural(photos.length, "photo")}
+                    Around the {areaLabel(top.component)} · {plural(damagePhotoCount(damage), "photo")}
                   </p>
                   {analyzing > 0 && <p className="text-sm text-ink-soft">Checking {plural(analyzing, "more photo")}…</p>}
                 </>
@@ -154,7 +154,7 @@ export default async function SummaryPage() {
             todos={todos}
             provider={provider}
             policyNumber={extracted?.policyNumber}
-            photoCount={photos.length}
+            photoCount={damagePhotoCount(damage)}
             incident={incident}
           />
         </TodoCard>

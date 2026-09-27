@@ -38,6 +38,7 @@ npm install
 cp .env.example .env.local        # fill in values
 docker run -d --name becarful-mongo -p 27017:27017 mongo:7   # or use Atlas
 npm run seed        # demo@becarful.app / demo1234 (needs Mongo + Cloud Storage)
+npm run seed -- --peugeot   # redo only the demo Peugeot's seeded photos (fills missing incident details), keeps the rest of the account
 npm run ingest      # load statutes (data/florida, data/federal) + insurer policy forms (data/<providerId>/*.txt, with Vertex embeddings; waits out the embedding quota) into Mongo; rerun after editing them
 npm run eval:rag    # policy RAG test set (eval/policy-rag.csv) against Mongo: hit@4 for keyword, vector and hybrid (needs a prior ingest)
 npm run dev         # http://localhost:3000
@@ -140,7 +141,7 @@ scripts/ingest.ts      statute + policy form chunks (with embeddings) → Mongo
 eval/                  policy-rag.csv (retrieval test set: question, product, form/section/text regexes, case-insensitive, empty = any; a hit = a top-4 chunk matching all three), cases.ts (CSV loader, also used by npm test), policy-rag.ts (hit@4 report)
 scripts/sample-policies.py  demo State Farm declarations PDFs → public/samples/
 public/                becarful-logo.png (brand logo; favicon is app/icon.png)  logo/ (square insurer icons: statefarm, geico, allstate; Allstate's is the hands emblem cropped from its wordmark)  samples/ (demo State Farm declarations PDFs)  scenery/ (grass, ground, pixel car SVGs)  tuxemon/ (sprite sheets, generated *-idle.png animations + ATTRIBUTION.md)  models/ (catalog GLBs lamborghini-sc18, peugeot-308, waymo-firefly, bmw-e92 + ATTRIBUTION.md)
-data/                  RAG source texts, one .txt per statute section (citation + source URL header): florida/ (2026 F.S.: ch. 627 Part XI, ch. 324, related sections), federal/ (2024 U.S. Code), state-farm/ (Florida OIR IRFS filing PDFs named <file log #>_<doc id>.pdf; policy wording extracted to one .txt per form: 9810C-personal-car-policy.txt, 2281A/2289F/2835AR/2030AR/1012826 (filing 24-098215) and the approved Classic+ SC-*.txt forms (filing 25-056482); memos, letters, emails, sample declarations and REPLACED versions are left out), source GLBs of the catalog cars (not served), becarful-logo-source.png (unedited logo art), peugeot-308/ (reference renders)
+data/                  RAG source texts, one .txt per statute section (citation + source URL header): florida/ (2026 F.S.: ch. 627 Part XI, ch. 324, related sections), federal/ (2024 U.S. Code), state-farm/ (Florida OIR IRFS filing PDFs named <file log #>_<doc id>.pdf; policy wording extracted to one .txt per form: 9810C-personal-car-policy.txt, 2281A/2289F/2835AR/2030AR/1012826 (filing 24-098215) and the approved Classic+ SC-*.txt forms (filing 25-056482); memos, letters, emails, sample declarations and REPLACED versions are left out), source GLBs of the catalog cars (not served), becarful-logo-source.png (unedited logo art), peugeot-308/ (normal/ clean and crashed/ photos, seeded as the demo Peugeot's walkaround and crash photos)
 ```
 
 Key service files:
@@ -279,6 +280,7 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 - Models: one GLB per `CAR_MODELS` entry, credit line in the viewer + `public/models/ATTRIBUTION.md`. `lamborghini-sc18.glb` ("2019 Lamborghini SC18 Alston", Ddiaz Design, **CC BY-NC-SA 4.0: non-commercial only**, the team's part-grouped version, 9.4 → 2.5 MB), `peugeot-308.glb` (2021 Peugeot 308, CC BY 4.0 per its Sketchfab metadata, 22 → 4.9 MB) and `waymo-firefly.glb` (2015 Waymo Firefly, bought on Freecreat: **no redistribution**, part-named `waymo_organized.glb` with Left/Right swapped because it was named from the front view, 10.5 → 1.9 MB) and `bmw-e92.glb` (2011 BMW M3 E92, fvrenbld, CC BY 4.0, the team's part-grouped version, 8.6 → 2.5 MB). Sources in `data/` (`2019_lamborghini_sc18_alston_fixed.glb`, `peugeot-308.glb`, `bmw_e92_organized.glb`; the Waymo source is gitignored, ask the team for it); optimized with `npx @gltf-transform/cli optimize in.glb out.glb --compress meshopt --texture-compress webp --texture-size 1024 --flatten false --join false --palette false --instance false --simplify false` (keeps node/material names, which `partKind` reads). All face +z with their left at +x.
 - Garage background is a plain `bg-panel-shade` (no sky/grass behind the car).
 - Meshes under a named part collection (`namedPart`, e.g. the Lambo's "Left Door", "Headlight - Left", "Windshield") map to that component exactly; everything else, `car-zones.ts` maps per vertex/tap to a component ID by its normalized position (front/back, left/right, height; thresholds in `ZONE`, orientation + credits per model in `CAR_MODELS`). `partKind` reads node + material names; its regexes skip "Trim", "Highlights", "detail" and "Wheel Arch" so they aren't taken for rims, lights, taillights or wheels. Damaged zones are tinted per vertex by severity, except interior meshes (`isInterior`) and door glass, which stay clear (glass is never treated as interior: the BMW's BeamNG names use `_int` for intact glass); taps classify the hit point; selecting a part eases the camera to it. **X-ray** (a shared shader uniform) makes untinted surfaces see-through so damage stands out.
+- Gemini's left/right on side-profile shots is unreliable: on `data/peugeot-308/normal` it swapped 3 of 4 side shots; the prompt's image-orientation rule (front points image-left → left side) brought it to 2–3 of 4, and it flags half-car crops for review. A sturdier fix is to ask which way the nose points and derive left/right in code.
 - Next step: name the remaining big parts in the GLBs (hood, trunk, bumpers, fenders, quarters) so `namedPart` covers them and zones are only a fallback.
 
 **Processing UX:** retro step sequence, not an endless spinner, e.g. *Uploading evidence… → Inspecting vehicle… → Identifying visible damage… → Mapping vehicle components… → Updating your car…*
@@ -326,7 +328,7 @@ Core tasks come from deterministic rules on app state:
 | No policy | `UPLOAD_INSURANCE` |
 | Policy not processed | `PROCESS_POLICY` |
 | No photos | `ADD_PHOTOS` |
-| Damage found, not enough angles | `ADD_DAMAGE_PHOTOS` |
+| Damage found, fewer than 3 photos showing it | `ADD_DAMAGE_PHOTOS` |
 | Required incident details missing | `COMPLETE_INCIDENT_INFO` |
 | Everything required is present | `FILE_CLAIM` |
 
@@ -338,7 +340,7 @@ Examples:
 - Insurance + damage documented → *Review detected damage*, *Confirm your deductible*, *Start your insurance claim*
 - Ready → checklist all ✓, then **"File your claim with State Farm"** + **[Start Claim]** opening the verified `claimsUrl`
 
-Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS = 3`; `FILE_CLAIM` also needs a processed policy). AI-reworded to-dos are **not** built; the fixed copy is what users see. Claim status changes are user actions only: `markClaimFiled` requires the computed `readyToFile` → `filed`; `closeIncident` requires `filed` → `closed`; the next photo starts a new incident. Incident times go to the server as ISO strings; dates render with `components/summary/LocalTime` (user's timezone). There is no separate "Your claim" card: `ClaimActions` (Start Claim, Call, Have ready, I've filed, Close incident; anchor `#claim`) renders inside the To-do card only when ready to file or filed, and Incident details sits beside the To-do card on `lg`.
+Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS = 3` counts photos that show damage (`damagePhotoCount`), so walkaround photos in the same incident don't count; the claim box, Summary and chat use the same count; `FILE_CLAIM` also needs a processed policy). AI-reworded to-dos are **not** built; the fixed copy is what users see. Claim status changes are user actions only: `markClaimFiled` requires the computed `readyToFile` → `filed`; `closeIncident` requires `filed` → `closed`; the next photo starts a new incident. Incident times go to the server as ISO strings; dates render with `components/summary/LocalTime` (user's timezone). There is no separate "Your claim" card: `ClaimActions` (Start Claim, Call, Have ready, I've filed, Close incident; anchor `#claim`) renders inside the To-do card only when ready to file or filed, and Incident details sits beside the To-do card on `lg`.
 
 ---
 
@@ -387,7 +389,7 @@ Each state tells the user what to do next: camera denied, GPS denied, upload fai
 ## Demo data
 
 Fictional seed user with:
-- **2021 Peugeot 308** (`peugeot-308`): State Farm policy, front-left damage, several sealed camera photos, existing chat history.
+- **2021 Peugeot 308** (`peugeot-308`, plate BCF2021): State Farm policy, a clean front/rear/left/right walkaround two weeks before the crash (`data/peugeot-308/normal`) and 3 front-left crash photos (`data/peugeot-308/crashed`, one a headlight close-up crop), all sealed with fake time + GPS, existing chat history. The seed stores the true views, not Gemini's, and re-encodes the renders to 1080px JPEG because `prepareImage` flags anything under 720px as low resolution.
 - **2019 Lamborghini SC18 Alston** (`lamborghini-sc18`): different insurer, no incident, no damage.
 
 Switching between them must visibly change the 3D damage state, photos, insurance, chat, summary and to-dos.
