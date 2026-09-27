@@ -342,12 +342,6 @@ body {
     opacity: 0;
   }
 }
-@utility face-a {
-  animation: face-a 0.9s infinite;
-}
-@utility face-b {
-  animation: face-a 0.9s infinite reverse;
-}
 
 /* Idling login car (IdleCar): body hops one pixel, hubs swap + / × frames. */
 @keyframes car-idle {
@@ -388,7 +382,7 @@ body {
   animation: appear 0.6s ease-out both;
 }
 
-.tux-front {
+.tux-anim {
   background-image: var(--tux-idle);
   background-size: 100% 100%;
 }
@@ -445,7 +439,6 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  .face-b,
   .wheel-b {
     opacity: 0;
   }
@@ -453,9 +446,13 @@ body {
   .buddy-bob {
     animation: none !important;
   }
-  .tux-front {
+  .tux-anim {
     background-image: var(--tux-sheet);
     background-size: 200% 137.5%;
+  }
+  .tux-face {
+    background-size: 533.333% 366.667%;
+    background-position: 0 100%;
   }
 }
 

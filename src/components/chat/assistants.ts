@@ -35,7 +35,24 @@ export const VOICES: Record<string, Voice> = {
   nut: { name: "River", id: "SAz9YHcvj6GT2YYXdXww", speed: 0.95 },
 };
 
-export const ASSISTANTS: Assistant[] = [PROPELLERCAT, ...Object.values(PERIL_MONSTERS)].map((m) => {
+const CC_BY_SA_4 = { license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/" };
+
+const COMPANIONS: PerilMonster[] = [
+  { name: "Shybulb", sheet: "/tuxemon/shybulb-sheet.png", author: "Spalding004 and Sanglorian", authorUrl: "https://wiki.tuxemon.org/Shybulb", ...CC_BY_SA_4 },
+  { name: "Rockitten", sheet: "/tuxemon/rockitten-sheet.png", author: "ShadowApex and Leo", authorUrl: "https://wiki.tuxemon.org/Rockitten", ...CC_BY_SA_4 },
+  { name: "Budaye", sheet: "/tuxemon/budaye-sheet.png", author: "Leo, Levaine and Sanglorian", authorUrl: "https://wiki.tuxemon.org/Budaye", ...CC_BY_SA_4 },
+  { name: "Anoleaf", sheet: "/tuxemon/anoleaf-sheet.png", author: "Spalding004 and Sanglorian", authorUrl: "https://wiki.tuxemon.org/Anoleaf", ...CC_BY_SA_4 },
+  { name: "Hatchling", sheet: "/tuxemon/hatchling-sheet.png", author: "tamashihoshi", authorUrl: "https://wiki.tuxemon.org/Hatchling", ...CC_BY_SA_4 },
+  {
+    name: "Tumbleworm",
+    sheet: "/tuxemon/tumbleworm-sheet.png",
+    author: "josepharaoh99, Cavalcadeur, Sanglorian and tamashihoshi",
+    authorUrl: "https://wiki.tuxemon.org/Tumbleworm",
+    ...CC_BY_SA_4,
+  },
+];
+
+export const ASSISTANTS: Assistant[] = [PROPELLERCAT, ...COMPANIONS, ...Object.values(PERIL_MONSTERS)].map((m) => {
   const id = m.name.toLowerCase();
   return { id, ...m, voice: VOICES[id] ?? VOICES.propellercat };
 });

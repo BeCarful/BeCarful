@@ -8,7 +8,6 @@ from PIL import Image
 
 DIR = Path(__file__).resolve().parent.parent / "public" / "tuxemon"
 STEP = 20
-N = 64
 
 
 def rgba(h):
@@ -21,13 +20,13 @@ def rnd(v):
 
 def region(img, rect):
     x0, y0, x1, y1 = rect
-    m = np.zeros((N, N), bool)
+    m = np.zeros(img.shape[:2], bool)
     m[y0 : y1 + 1, x0 : x1 + 1] = True
     return m & (img[..., 3] > 0)
 
 
 def colored(img, colors):
-    m = np.zeros((N, N), bool)
+    m = np.zeros(img.shape[:2], bool)
     for c in colors:
         m |= np.all(img == rgba(c), axis=2)
     return m
@@ -35,11 +34,12 @@ def colored(img, colors):
 
 def component(img, seed):
     op = img[..., 3] > 0
-    m = np.zeros((N, N), bool)
+    h, w = op.shape
+    m = np.zeros((h, w), bool)
     stack = [seed[::-1]]
     while stack:
         y, x = stack.pop()
-        if 0 <= y < N and 0 <= x < N and op[y, x] and not m[y, x]:
+        if 0 <= y < h and 0 <= x < w and op[y, x] and not m[y, x]:
             m[y, x] = True
             stack += [(y + dy, x + dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1)]
     return m
@@ -48,9 +48,10 @@ def component(img, seed):
 def remap(img, mask, fn):
     out = img.copy()
     out[mask] = 0
+    h, w = mask.shape
     for y, x in zip(*np.nonzero(mask)):
         ny, nx = fn(y, x)
-        if 0 <= ny < N and 0 <= nx < N:
+        if 0 <= ny < h and 0 <= nx < w:
             out[ny, nx] = img[y, x]
     return out
 
@@ -125,6 +126,28 @@ def spin(img, op, v):
     return out
 
 
+def paste(img, op, v):
+    if not v:
+        return img
+    out = img.copy()
+    x, y = op["to"]
+    h, w = op["pixels"].shape[:2]
+    out[y : y + h, x : x + w] = op["pixels"]
+    return out
+
+
+def draw(img, op, v):
+    if not v:
+        return img
+    out = img.copy()
+    x0, y0 = op["at"]
+    for dy, row in enumerate(op["rows"]):
+        for dx, ch in enumerate(row):
+            if ch != ".":
+                out[y0 + dy, x0 + dx] = rgba(op["colors"][ch])
+    return out
+
+
 def blink(img, eyes, state):
     if not state:
         return img
@@ -152,6 +175,9 @@ def blink(img, eyes, state):
                 out[y, x] = line
             elif y < e or state == 2:
                 out[y, x] = lid
+        if eye.get("solid") and state == 2:
+            for x in np.unique(xs):
+                out[edge + bend(x), x] = line
     return out
 
 
@@ -160,13 +186,13 @@ def breathe(img, spec, v):
         return img
     if spec.get("float"):
         out = np.zeros_like(img)
-        out[v:] = img[: N - v]
+        out[v:] = img[:-v]
         return out
     kept = np.delete(img, sorted(spec["rows"][:v]), axis=0)
-    return np.concatenate([np.zeros((v, N, 4), np.uint8), kept])
+    return np.concatenate([np.zeros((v, img.shape[1], 4), np.uint8), kept])
 
 
-OPS = {"shear": shear, "bob": bob, "lift": lift, "flicker": flicker, "spin": spin}
+OPS = {"shear": shear, "bob": bob, "lift": lift, "flicker": flicker, "spin": spin, "paste": paste, "draw": draw}
 
 
 def at(track, t):
@@ -180,10 +206,10 @@ def at(track, t):
 
 def render(base, spec, t):
     img = base
-    for op in spec.get("moves", []):
-        img = OPS[op["op"]](img, op, at(op["track"], t))
     if "eyes" in spec:
         img = blink(img, spec["eyes"], at(spec["blink"], t))
+    for op in spec.get("moves", []):
+        img = OPS[op["op"]](img, op, at(op["track"], t))
     return breathe(img, spec["breath"], at(spec["breath"]["track"], t))
 
 
@@ -195,8 +221,18 @@ def tracks(spec):
         yield op["track"]
 
 
+def resolve(op, sheet):
+    if op["op"] != "paste":
+        return op
+    x0, y0, x1, y1 = op["from"]
+    return dict(op, pixels=sheet[y0 : y1 + 1, x0 : x1 + 1])
+
+
 def frames(name, spec):
-    base = np.array(Image.open(DIR / f"{name}-sheet.png").convert("RGBA"))[:N, :N]
+    sheet = np.array(Image.open(DIR / f"{spec.get('sheet', name)}-sheet.png").convert("RGBA"))
+    cx, cy, cw, ch = spec.get("crop", (0, 0, 64, 64))
+    base = sheet[cy : cy + ch, cx : cx + cw]
+    spec = dict(spec, moves=[resolve(op, sheet) for op in spec.get("moves", [])])
     loop = spec["loop"]
     for tr in tracks(spec):
         total = sum(d for _, d in tr)
@@ -214,8 +250,9 @@ def frames(name, spec):
 def save(name, spec):
     fs = frames(name, spec)
     imgs = [Image.fromarray(f) for f, _ in fs]
+    path = DIR / (f"{name}.png" if "sheet" in spec else f"{name}-idle.png")
     imgs[0].save(
-        DIR / f"{name}-idle.png",
+        path,
         save_all=True,
         append_images=imgs[1:],
         duration=[d for _, d in fs],
@@ -223,7 +260,7 @@ def save(name, spec):
         disposal=0,
         blend=0,
     )
-    return len(fs)
+    return path.name, len(fs)
 
 
 def breath(rows, *track):
@@ -240,6 +277,13 @@ def eyes_closed_at(t, loop, double=False):
         seq += [(0, 160), (1, 40), (2, 80), (1, 40)]
     return seq + [(0, loop - sum(d for _, d in seq))]
 
+
+FACE_EYE_COLORS = ["#00c000", "#ffffff", "#000000", "#008000", "#c0ffc0"]
+FACE_EYES = [
+    {"rect": (6, 10, 8, 12), "colors": FACE_EYE_COLORS, "include": [(6, 10, 6, 10), (8, 12, 8, 12)], "lid": "#808080", "line": "#202020", "lift": 0.5},
+    {"rect": (13, 10, 15, 12), "colors": FACE_EYE_COLORS, "include": [(13, 10, 13, 10), (15, 12, 15, 12)], "lid": "#808080", "line": "#202020", "lift": 0.5},
+]
+MOUTH = [(1, 140), (0, 100), (1, 180), (0, 120), (1, 120), (0, 100), (1, 200), (0, 340)]
 
 SPRITES = {
     "propellercat": {
@@ -445,8 +489,139 @@ SPRITES = {
         ],
         "blink": eyes_closed_at(2300, 3600),
     },
+    "propellercat-face": {
+        "sheet": "propellercat",
+        "crop": (0, 64, 24, 24),
+        "loop": 6000,
+        "breath": hover((0, 1000), (1, 1000)),
+        "moves": [{"op": "shear", "axis": "x", "rect": (2, 2, 7, 6), "root": 6, "tip": 3, "track": [(0, 3800), (1, 80), (0, 80), (1, 80), (0, 1960)]}],
+        "eyes": FACE_EYES,
+        "blink": eyes_closed_at(1400, 6000),
+    },
+    "propellercat-talk": {
+        "sheet": "propellercat",
+        "crop": (0, 64, 24, 24),
+        "loop": 2600,
+        "breath": hover((0, 660), (1, 640)),
+        "moves": [
+            {"op": "paste", "from": (33, 78, 37, 78), "to": (9, 15), "track": MOUTH},
+            {"op": "paste", "from": (33, 80, 37, 81), "to": (9, 16), "track": MOUTH},
+        ],
+        "eyes": FACE_EYES,
+        "blink": eyes_closed_at(2300, 2600),
+    },
+    "shybulb": {
+        "loop": 6000,
+        "breath": hover((0, 600), (1, 400), (2, 600), (1, 400)),
+        "moves": [{"op": "shear", "axis": "y", "rect": (18, 45, 28, 52), "root": 28, "tip": 19, "track": [(0, 500), (-1, 500), (0, 500), (1, 500)]}],
+        "eyes": [{"rect": (35, 40, 36, 42), "colors": ["#a349a2", "#ffffff", "#000000"], "lid": "#ece82d", "line": "#000000", "lift": 0.5}],
+        "blink": eyes_closed_at(3000, 6000),
+    },
+    "rockitten": {
+        "loop": 4800,
+        "breath": breath([36], (0, 800), (1, 800)),
+        "moves": [{"op": "lift", "cols": (16, 19), "pivot": 25, "track": [(0, 4000), (1, 80), (0, 80), (1, 80), (0, 560)]}],
+        "eyes": [
+            {"rect": (21, 29, 22, 31), "lid": "#b0b7ac", "line": "#292626", "lift": 0.5},
+            {"rect": (30, 30, 31, 32), "lid": "#b0b7ac", "line": "#292626", "lift": 0.5},
+        ],
+        "blink": eyes_closed_at(2600, 4800),
+    },
+    "budaye": {
+        "loop": 5600,
+        "breath": breath([38, 29], (0, 500), (1, 120), (2, 660), (1, 120)),
+        "moves": [{"op": "shear", "axis": "x", "rect": (43, 32, 55, 47), "root": 47, "tip": 33, "track": [(0, 700), (1, 700), (0, 700), (-1, 700)]}],
+        "eyes": [
+            {"rect": (12, 17, 19, 23), "colors": ["#201f1d", "#6b5242", "#ffffff"], "lid": "#ffe1aa", "line": "#201f1d", "lift": 0.3, "curve": 1, "solid": True},
+            {"rect": (22, 16, 31, 23), "colors": ["#201f1d", "#6b5242", "#ffffff"], "lid": "#ffe1aa", "line": "#201f1d", "lift": 0.3, "curve": 1, "solid": True},
+        ],
+        "blink": eyes_closed_at(3500, 5600),
+    },
+    "anoleaf": {
+        "loop": 4800,
+        "breath": breath([43, 45], (0, 600), (1, 120), (2, 640), (1, 120), (0, 120)),
+        "moves": [{"op": "shear", "axis": "y", "rect": (38, 36, 48, 50), "root": 38, "tip": 47, "track": [(0, 600), (-1, 600), (0, 600), (1, 600)]}],
+        "eyes": [{"rect": (28, 29, 32, 33), "colors": ["#000000", "#00a2e8", "#f0f9e8"], "lid": "#64d792", "line": "#000000", "lift": 0.4}],
+        "blink": eyes_closed_at(1900, 4800, double=True),
+    },
+    "hatchling": {
+        "loop": 4800,
+        "breath": breath([], (0, 4800)),
+        "moves": [
+            {"op": "shear", "axis": "y", "rect": (24, 31, 42, 43), "root": 23, "tip": 24, "track": [(0, 500), (1, 300), (0, 400), (1, 300), (0, 700), (1, 300), (0, 2300)]},
+            {"op": "shear", "axis": "x", "rect": (23, 30, 43, 58), "root": 57, "tip": 32, "track": [(0, 3000), (1, 120), (0, 120), (-1, 120), (0, 120), (1, 120), (0, 1200)]},
+        ],
+        "eyes": [{"rect": (32, 36, 33, 37), "colors": ["#e6e6e6", "#ffffff", "#000540"], "lid": "#6d9c00", "line": "#000540"}],
+        "blink": eyes_closed_at(2200, 4800),
+    },
+    "tumbleworm": {
+        "loop": 4800,
+        "breath": breath([], (0, 4800)),
+        "moves": [
+            {"op": "shear", "axis": "x", "rect": (24, 20, 40, 42), "root": 42, "tip": 22, "track": [(0, 600), (1, 600), (0, 600), (-1, 600)]},
+            {"op": "shear", "axis": "y", "rect": (46, 44, 56, 53), "root": 46, "tip": 55, "track": [(0, 1200), (-1, 300), (0, 300), (-1, 300), (0, 300)]},
+        ],
+        "eyes": [
+            {"rect": (28, 28, 29, 30), "colors": ["#ffffff", "#000000"], "lid": "#ffcd4a", "line": "#000000", "lift": 0.5},
+            {"rect": (32, 28, 33, 30), "colors": ["#ffffff", "#000000"], "lid": "#ffcd4a", "line": "#000000", "lift": 0.5},
+        ],
+        "blink": eyes_closed_at(3300, 4800),
+    },
 }
+
+
+def face_specs(name, eyes=(), talk=None):
+    base = {"sheet": name, "crop": (0, 64, 24, 24)}
+    second = {"op": "paste", "from": (24, 64, 47, 87), "to": (0, 0)}
+    idle = base | {"loop": 6000, "breath": hover((0, 1000), (1, 1000)), "moves": [second | {"track": [(0, 4200), (1, 360), (0, 1440)]}]}
+    speak = base | {"loop": 2600, "breath": hover((0, 660), (1, 640)), "moves": [(talk or second) | {"track": MOUTH}]}
+    if eyes:
+        idle |= {"eyes": eyes, "blink": eyes_closed_at(1600, 6000)}
+        speak |= {"eyes": eyes, "blink": eyes_closed_at(2300, 2600)}
+    return {f"{name}-face": idle, f"{name}-talk": speak}
+
+
+def face_eye(rect, colors, lid, line, **kw):
+    return {"rect": rect, "colors": colors, "lid": lid, "line": line} | kw
+
+
+for n in ["selmatek", "moloch", "vamporm", "noctalo", "possessun", "agnidon", "bigfin", "eaglace", "chillimp", "hampotamos", "cateye", "nut"]:
+    SPRITES |= face_specs(n)
+
+
+SPRITES |= face_specs("shybulb", [face_eye((15, 12, 16, 14), ["#a349a2", "#ffffff", "#000000"], "#ece82d", "#000000", lift=0.5)])
+SPRITES |= face_specs(
+    "rockitten",
+    [
+        face_eye((6, 10, 9, 13), ["#030303", "#050505", "#ffffff"], "#bababa", "#242424", lift=0.34),
+        face_eye((14, 10, 17, 13), ["#030303", "#050505", "#ffffff"], "#bababa", "#242424", lift=0.34),
+    ],
+)
+SPRITES |= face_specs(
+    "budaye",
+    [
+        face_eye((1, 10, 7, 16), ["#201f1d", "#6b5242", "#ffffff"], "#ffe1aa", "#201f1d", lift=0.3, curve=1, solid=True),
+        face_eye((12, 10, 20, 16), ["#201f1d", "#6b5242", "#ffffff"], "#ffe1aa", "#201f1d", lift=0.3, curve=1, solid=True),
+    ],
+    talk={"op": "draw", "at": (8, 17), "rows": ["eee", "efe", ".e."], "colors": {"e": "#201f1d", "f": "#6b5242"}},
+)
+SPRITES |= face_specs("anoleaf", [face_eye((11, 6, 15, 10), ["#000000", "#00a2e8", "#f0f9e8"], "#64d792", "#000000", lift=0.4)])
+SPRITES |= face_specs(
+    "hatchling",
+    [
+        face_eye((8, 11, 9, 12), ["#e6e6e6", "#000540", "#ffffff"], "#6d9c00", "#000540"),
+        face_eye((14, 11, 15, 12), ["#e6e6e6", "#000540", "#ffffff"], "#6d9c00", "#000540"),
+    ],
+)
+SPRITES |= face_specs(
+    "tumbleworm",
+    [
+        face_eye((8, 7, 10, 11), ["#ffffff", "#000000"], "#ffcd4a", "#000000", lift=0.4),
+        face_eye((14, 7, 16, 11), ["#ffffff", "#000000"], "#ffcd4a", "#000000", lift=0.4),
+    ],
+)
 
 if __name__ == "__main__":
     for name in sys.argv[1:] or SPRITES:
-        print(f"{name}-idle.png: {save(name, SPRITES[name])} frames")
+        file, count = save(name, SPRITES[name])
+        print(f"{file}: {count} frames")

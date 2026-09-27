@@ -95,7 +95,7 @@ function MiniChat({ vehicleId, assistant, style, onClose }: { vehicleId: string;
   return (
     <div role="dialog" aria-label={`Chat with ${assistant.name}`} style={style} className={popClass}>
       <header className="flex items-center gap-2 border-b border-border py-1 pr-1 pl-3">
-        <TuxemonFace scale={1} assistant={assistant} />
+        <TuxemonFace scale={1} assistant={assistant} talking={sending} />
         <p className="min-w-0 flex-1 truncate text-sm font-semibold">{assistant.name}</p>
         <Link href="/chat" onClick={onClose} aria-label="Open full chat" className={iconButton}>
           <NavIcon paths={["M9 5h10v10", "M19 5 5 19"]} active={false} />
@@ -125,7 +125,7 @@ function MiniChat({ vehicleId, assistant, style, onClose }: { vehicleId: string;
           </ChatBubble>
         ))}
         {outbox && <ChatBubble role="user" text={outbox.text} assistant={assistant} compact />}
-        {sending && (streamed ? <ChatBubble role="assistant" text={streamed} assistant={assistant} compact /> : <TypingBubble assistant={assistant} compact />)}
+        {sending && (streamed ? <ChatBubble role="assistant" text={streamed} assistant={assistant} compact talking /> : <TypingBubble assistant={assistant} compact />)}
         {outbox?.error && (
           <div role="alert" className="flex items-center gap-2 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
             <span className="flex-1">{outbox.error}</span>

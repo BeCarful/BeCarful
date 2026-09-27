@@ -29,7 +29,7 @@ export function TuxemonAvatar({
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : label}
       aria-hidden={decorative || undefined}
-      className={`pixelated inline-block shrink-0 bg-no-repeat ${front ? "tux-front" : ""} ${className}`}
+      className={`pixelated inline-block shrink-0 bg-no-repeat ${front ? "tux-anim" : ""} ${className}`}
       style={
         front
           ? ({ ...box, "--tux-sheet": `url(${sheet})`, "--tux-idle": `url(${sheet.replace(/-sheet\.png$/, "-idle.png")})` } as CSSProperties)
@@ -45,12 +45,31 @@ export function TuxemonAvatar({
 }
 
 /** The sheet's two menu frames alternating; reduced motion keeps the first. */
-export function TuxemonFace({ scale = 2, className = "", assistant = DEFAULT_ASSISTANT }: { scale?: 1 | 2 | 3; className?: string; assistant?: Assistant }) {
+export function TuxemonFace({
+  scale = 2,
+  className = "",
+  assistant = DEFAULT_ASSISTANT,
+  talking = false,
+}: {
+  scale?: 1 | 2 | 3;
+  className?: string;
+  assistant?: Assistant;
+  talking?: boolean;
+}) {
   return (
-    <span role="img" aria-label={assistant.name} className={`relative inline-block shrink-0 ${className}`} style={{ width: 24 * scale, height: 24 * scale }}>
-      <TuxemonAvatar frame="icon" scale={scale} sheet={assistant.sheet} decorative className="face-a absolute inset-0" />
-      <TuxemonAvatar frame="icon2" scale={scale} sheet={assistant.sheet} decorative className="face-b absolute inset-0" />
-    </span>
+    <span
+      role="img"
+      aria-label={assistant.name}
+      className={`pixelated tux-anim tux-face inline-block shrink-0 bg-no-repeat ${className}`}
+      style={
+        {
+          width: 24 * scale,
+          height: 24 * scale,
+          "--tux-sheet": `url(${assistant.sheet})`,
+          "--tux-idle": `url(${assistant.sheet.replace(/-sheet\.png$/, talking ? "-talk.png" : "-face.png")})`,
+        } as CSSProperties
+      }
+    />
   );
 }
 
