@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { logout } from "@/actions/auth";
-import { NAV, NavIcon, isActive } from "./BottomNav";
+import { CAR_ICON, NAV, NavIcon, isActive } from "./BottomNav";
 import { ThemeToggle } from "./ThemeToggle";
 import { VehicleSelector, type VehicleOption } from "./VehicleSelector";
 import { PixelCar, Wordmark } from "./Wordmark";
@@ -15,6 +16,9 @@ const current = "road-sign";
 /** Desktop navigation (md and up). Phones use BottomNav. */
 export function AppSidebar({ email, vehicles, selectedId }: { email: string; vehicles: VehicleOption[]; selectedId: string | null }) {
   const path = usePathname();
+  const [showAll, setShowAll] = useState(false);
+  const selected = vehicles.find((v) => v.id === selectedId);
+  const onGarage = isActive(path, "/garage");
   return (
     <aside className="road fixed inset-y-0 left-0 z-30 hidden w-60 flex-col md:flex">
       <span key={`${path}:${selectedId}`} aria-hidden className="road-line" />
@@ -23,7 +27,41 @@ export function AppSidebar({ email, vehicles, selectedId }: { email: string; veh
       </div>
       <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-4">
         <p className="px-3 pb-2 text-xs font-semibold text-ink-soft">Vehicles</p>
-        <VehicleSelector vehicles={vehicles} selectedId={selectedId} item={item} current={current} idle={idle} />
+        {selected ? (
+          <>
+            <div className="flex items-center gap-0.5">
+              <Link href="/garage" title={selected.title} aria-current={onGarage ? "page" : undefined} className={`${item} min-w-0 ${onGarage ? current : idle}`}>
+                <NavIcon paths={CAR_ICON} active={onGarage} />
+                <span className="min-w-0 truncate">{selected.title}</span>
+              </Link>
+              <button
+                type="button"
+                aria-expanded={showAll}
+                aria-controls="sidebar-vehicles"
+                onClick={() => setShowAll(!showAll)}
+                className={`grid h-11 w-8 shrink-0 place-items-center rounded-lg transition ${idle}`}
+              >
+                <span className="sr-only">{showAll ? "Hide other vehicles" : "Show all vehicles"}</span>
+                <svg viewBox="0 0 24 24" className={`size-5 transition-transform ${showAll ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+            <div id="sidebar-vehicles" hidden={!showAll} className="mt-1">
+              <VehicleSelector
+                vehicles={vehicles.filter((v) => v.id !== selected.id)}
+                selectedId={selectedId}
+                item={item}
+                current={current}
+                idle={idle}
+                list="max-h-54 overflow-y-auto overscroll-contain [scrollbar-width:thin]"
+                onDone={() => setShowAll(false)}
+              />
+            </div>
+          </>
+        ) : (
+          <VehicleSelector vehicles={vehicles} selectedId={selectedId} item={item} current={current} idle={idle} />
+        )}
         <p className="px-3 pt-5 pb-2 text-xs font-semibold text-ink-soft">Your car</p>
         <ul className="space-y-1">
           {NAV.map((t) => {
