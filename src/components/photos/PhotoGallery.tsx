@@ -12,7 +12,7 @@ export function PhotoGallery({ vehicleId, photos }: { vehicleId: string; photos:
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <details className="group surface-card">
+    <details open className="group surface-card">
       <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-5 py-3 [&::-webkit-details-marker]:hidden">
         <h2 className="font-display text-lg font-semibold text-ink">Photos</h2>
         <span className="flex items-center gap-2 text-sm text-ink-soft">

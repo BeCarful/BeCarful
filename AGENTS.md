@@ -224,7 +224,7 @@ Store stable object keys, not just URLs.
 
 **No uploads.** Only Take Photo, so users can't submit old pictures. `source: "upload"` only exists on older data and is still shown as "Uploaded", never as a live capture. There is no file picker: a blocked or missing camera shows an error with **Try again**, never a picker.
 
-**Gallery** (under the action buttons): a `<details>` dropdown ("Photos · N photos"), closed by default. Open: **+ Take photo** (same camera as the Take Photo tile, `openCamera()`), then thumbnails (3-column grid on phones, horizontal scroll from `sm`) with optional badges (camera / uploaded / damage detected / location available). Tap → full-screen viewer with swipe, zoom, close, capture date, location status, the evidence seal, AI result. Don't show raw GPS coordinates prominently.
+**Gallery** (under the action buttons): a `<details>` dropdown ("Photos · N photos"), open by default. Open: **+ Take photo** (same camera as the Take Photo tile, `openCamera()`), then thumbnails (3-column grid on phones, horizontal scroll from `sm`) with optional badges (camera / uploaded / damage detected / location available). Tap → full-screen viewer with swipe, zoom, close, capture date, location status, the evidence seal, AI result. Don't show raw GPS coordinates prominently.
 
 Built: `actions/photos.ts`: `createPhotoUpload` (presigned POST) → browser uploads to Cloud Storage → `registerPhoto` (idempotent per key) → `analyzeDamage()` in `services/ai/damage-analysis.ts` (keep its signature). It runs `prepareImage()` first; a file that isn't the declared image type gets the `unreadable` issue without a Gemini call. The viewer draws each part's box on the photo and shows the view. Take Photo opens an in-app camera (`PhotoCapture`: `getUserMedia` rear camera, live preview, shutter draws the frame to a JPEG; needs HTTPS or localhost); `openCamera()` starts it from any entry point, and location starts at the same time. `registerPhoto` downloads the stored bytes once to hash/seal them and reuses them for `analyzeDamage`. If Gemini fails the photo is kept with `analysisStatus: "failed"` and can be retried (`retryPhotoAnalysis`); a photo stuck in `analyzing` for 3+ min shows as failed. Expired image URLs refresh once via `getPhotoViewUrl`.
 
@@ -350,7 +350,7 @@ Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS =
 
 **Pages** start with `PageHeader` (`components/layout/PageHeader.tsx`: eyebrow, title, description, action) inside `space-y-6`; main is `max-w-5xl`, two columns at `lg` where it helps.
 
-**Garage layout (`/garage`, top to bottom):** vehicle header → next step → garage scene with the 3D car → action buttons → photo gallery → damage list. On `lg`+ it's two columns: car + Photos on the left, buttons + Damage on the right; the Damage card is as tall as the left column and its list scrolls (tapping a part scrolls to its card).
+**Garage layout (`/garage`, top to bottom):** vehicle header → next step → garage scene with the 3D car → action buttons → photo gallery → damage list. On `lg`+ it's two columns: car on the left, buttons + Damage on the right, then Photos full width below; the Damage card is as tall as the car (not Photos, so collapsing Photos doesn't shrink it) and its list scrolls (tapping a part scrolls to its card).
 
 Action buttons, grouped directly under the car, icon + short label:
 
