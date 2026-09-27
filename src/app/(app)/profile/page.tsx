@@ -1,9 +1,9 @@
 import { logout } from "@/actions/auth";
+import { deleteVehicle } from "@/actions/vehicles";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
-import { RetroBadge, RetroButton, RetroCard, RetroLinkButton } from "@/components/retro";
-import { DeleteVehicleButton } from "@/components/vehicle/DeleteVehicleButton";
-import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
+import { RemoveButton, RetroBadge, RetroButton, RetroCard, RetroLinkButton } from "@/components/retro";
+import { getVehicleContext, vehicleModel, vehicleTitle } from "@/services/vehicles/context";
 
 export default async function ProfilePage() {
   const { user, vehicles, selected } = await getVehicleContext();
@@ -31,11 +31,16 @@ export default async function ProfilePage() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold">{vehicleTitle(v)}</span>
                   <span className="block truncate text-sm text-ink-soft">
+                    {v.nickname && `${vehicleModel(v)} · `}
                     {v.color} · {v.licensePlate} ({v.state})
                   </span>
                 </span>
                 {selected?._id.equals(v._id) && <RetroBadge tone="ok">Selected</RetroBadge>}
-                <DeleteVehicleButton vehicleId={v._id.toString()} title={vehicleTitle(v)} />
+                <RemoveButton
+                  action={deleteVehicle.bind(null, v._id.toString())}
+                  title={vehicleTitle(v)}
+                  warning="Its photos, policies, damage results and chat are deleted for good."
+                />
               </li>
             ))}
           </ul>

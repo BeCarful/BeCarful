@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { removePolicy } from "@/actions/insurance";
 import type { HydratedDocument } from "mongoose";
 import { ChangeProvider } from "@/components/insurance/ChangeProvider";
 import { CoverageChecklist } from "@/components/insurance/CoverageChecklist";
@@ -8,11 +10,11 @@ import { PolicyUpload } from "@/components/insurance/PolicyUpload";
 import { ProviderMark, ProviderName } from "@/components/insurance/ProviderPicker";
 import { TuxemonAttribution, TuxemonAvatar } from "@/components/chat/TuxemonAssistant";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { RetroBadge, RetroCard, RetroDialog, retroButtonClass } from "@/components/retro";
+import { RemoveButton, RetroBadge, RetroCard, RetroDialog, retroButtonClass } from "@/components/retro";
 import type { InsurancePolicyDoc } from "@/models/InsurancePolicy";
 import { PolicyExtractionSchema } from "@/schemas/policy";
-import type { CoverageItem } from "@/services/ai/coverage-rules";
-import { getActivePolicy } from "@/services/claims/state";
+import { checklistOf } from "@/services/claims/policies";
+import { getPolicies } from "@/services/claims/state";
 import { getProvider, isOfficialUrl } from "@/services/insurance/providers";
 import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
 
@@ -25,44 +27,83 @@ const STATUS = {
   failed: { tone: "danger", label: "Failed" },
 } as const;
 
-export default async function InsurancePage() {
+type Policy = HydratedDocument<InsurancePolicyDoc>;
+
+export default async function InsurancePage({ searchParams }: { searchParams: Promise<{ policy?: string; add?: string }> }) {
   const { user, selected } = await getVehicleContext();
   if (!selected) redirect("/vehicles/new");
   const vehicleId = String(selected._id);
-  const policy = await getActivePolicy(user._id, selected._id);
+  const [params, policies] = await Promise.all([searchParams, getPolicies(user._id, selected._id)]);
+  const policy = params.add === undefined ? (policies.find((p) => String(p._id) === params.policy) ?? policies[0]) : undefined;
   const provider = policy ? getProvider(policy.providerId) : undefined;
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Insurance"
-        title={policy ? provider ? <ProviderName provider={provider} /> : "Your policy" : "Add your insurance"}
+        title={policy ? provider ? <ProviderName provider={provider} /> : "Your policy" : policies.length ? "Add another policy" : "Add your insurance"}
         description={
           policy
-            ? `${vehicleTitle(selected)}: what your policy covers, in plain words.`
-            : "Pick your insurer and add your policy. We'll explain what it covers in plain words."
+            ? `${vehicleTitle(selected)}: what this policy covers, in plain words.`
+            : policies.length
+              ? `${vehicleTitle(selected)} can have several active policies, like a car policy plus roadside or gap cover.`
+              : "Pick your insurer and add your policy. We'll explain what it covers in plain words."
         }
         action={
           policy && (
-            <a href={`/insurance/original?vehicleId=${vehicleId}`} target="_blank" rel="noopener" className={retroButtonClass("secondary")}>
+            <a href={`/insurance/original?vehicleId=${vehicleId}&policyId=${policy._id}`} target="_blank" rel="noopener" className={retroButtonClass("secondary")}>
               {policy.s3Key.endsWith(".txt") ? "View original" : "View PDF"}
             </a>
           )
         }
       />
-      {policy ? <PolicyScreen vehicleId={vehicleId} policy={policy} /> : <InsuranceSetup vehicleId={vehicleId} />}
+      {policies.length > 0 && <PolicyTabs policies={policies} currentId={policy ? String(policy._id) : null} />}
+      {policy ? <PolicyScreen key={String(policy._id)} vehicleId={vehicleId} policy={policy} /> : <InsuranceSetup vehicleId={vehicleId} />}
     </div>
   );
 }
 
-function PolicyScreen({ vehicleId, policy }: { vehicleId: string; policy: HydratedDocument<InsurancePolicyDoc> }) {
+const tab = "flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-semibold transition";
+
+function PolicyTabs({ policies, currentId }: { policies: Policy[]; currentId: string | null }) {
+  return (
+    <nav aria-label="Policies" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+      {policies.map((p) => {
+        const id = String(p._id);
+        const provider = getProvider(p.providerId);
+        const shared = policies.some((o) => o !== p && o.providerId === p.providerId);
+        const active = id === currentId;
+        return (
+          <Link
+            key={id}
+            href={`/insurance?policy=${id}`}
+            aria-current={active ? "page" : undefined}
+            className={`${tab} ${active ? "border-accent bg-accent-soft text-accent" : "border-border bg-panel text-ink hover:bg-panel-shade"}`}
+          >
+            {provider && <ProviderMark provider={provider} className="size-6 text-[9px]" />}
+            <span className="max-w-48 truncate">
+              {provider?.name ?? "Policy"}
+              {shared && ` · ${p.fileName ?? "policy"}`}
+            </span>
+            {p.status !== "processed" && <RetroBadge tone={STATUS[p.status].tone}>{STATUS[p.status].label}</RetroBadge>}
+          </Link>
+        );
+      })}
+      <Link href="/insurance?add=1" aria-current={currentId ? undefined : "page"} className={`${tab} ${currentId ? "border-dashed border-border text-accent hover:bg-panel-shade" : "border-accent bg-accent-soft text-accent"}`}>
+        + Add policy
+      </Link>
+    </nav>
+  );
+}
+
+function PolicyScreen({ vehicleId, policy }: { vehicleId: string; policy: Policy }) {
   const policyId = String(policy._id);
   const provider = getProvider(policy.providerId);
   const status = STATUS[policy.status] ?? STATUS.processing;
   const parsed = PolicyExtractionSchema.safeParse(policy.extractedData);
   const data = policy.status === "processed" && parsed.success ? parsed.data : null;
   const isText = policy.s3Key.endsWith(".txt");
-  const checklist = (policy.coverageChecklist as { items?: CoverageItem[] } | null)?.items ?? null;
+  const checklist = checklistOf(policy);
 
   return (
     // lg+: short cards side by side up top; the checklist and Coverage (both long) get the full width below.
@@ -133,6 +174,11 @@ function PolicyScreen({ vehicleId, policy }: { vehicleId: string; policy: Hydrat
                 canRetry={policy.status !== "processed"}
                 uploadLabel="Replace PDF"
               />
+              <RemoveButton
+                action={removePolicy.bind(null, vehicleId, policyId)}
+                title={`${provider?.name ?? "this"} policy`}
+                warning="Its file, summary and coverage check are deleted. Your other policies stay."
+              />
             </div>
           </RetroCard>
         </div>
@@ -155,7 +201,7 @@ function PolicyScreen({ vehicleId, policy }: { vehicleId: string; policy: Hydrat
 
       {data && (
         <>
-          <CoverageChecklist vehicleId={vehicleId} items={checklist} />
+          <CoverageChecklist vehicleId={vehicleId} policyId={policyId} items={checklist} />
           <RetroCard title="Coverage">
             <PolicyFields data={data} fields={COVERAGE_FIELDS} />
             <p className="mt-4 rounded-lg bg-panel-shade px-3 py-2 text-xs text-ink-soft">

@@ -44,6 +44,11 @@ const SIDE_PATTERN: Record<Side, RegExp> = { front: /front|hood|windshield|headl
 
 export const sidesOf = (idOrView: string): Side[] => SIDES.filter((s) => SIDE_PATTERN[s].test(idOrView));
 
+export const documentedSides = (assessments: { view?: string | null; damagedComponents: { component: string }[] }[]): Side[] =>
+  SIDES.filter((s) =>
+    assessments.some((a) => sidesOf(a.view && a.view !== "unknown" ? a.view : a.damagedComponents.map((c) => c.component).join(" ")).includes(s)),
+  );
+
 /** "front-left side", "rear", "roof"... for human copy. */
 export function areaLabel(component: ComponentId): string {
   const side = component.includes("left") ? "left" : component.includes("right") ? "right" : "";

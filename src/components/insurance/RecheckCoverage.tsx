@@ -4,13 +4,13 @@ import { useState, useTransition } from "react";
 import { recheckCoverage } from "@/actions/insurance";
 import { RetroButton } from "@/components/retro";
 
-export function RecheckCoverage({ vehicleId, label, subtle = false }: { vehicleId: string; label: string; subtle?: boolean }) {
+export function RecheckCoverage({ vehicleId, policyId, label, subtle = false }: { vehicleId: string; policyId: string; label: string; subtle?: boolean }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const run = () =>
     start(async () => {
       setError(null);
-      const res = await recheckCoverage(vehicleId).catch(() => null);
+      const res = await recheckCoverage(vehicleId, policyId).catch(() => null);
       if (!res?.ok) setError(res?.error ?? "Couldn't reach BeCarful. Check your connection and try again.");
     });
   return (

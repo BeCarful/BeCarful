@@ -45,12 +45,12 @@ export function MonsterCredits({ items }: { items: CoverageItem[] }) {
 }
 
 /** Uncovered risks as Tuxemon that "may attack", covered ones as a short checklist. */
-export function CoverageChecklist({ vehicleId, items }: { vehicleId: string; items: CoverageItem[] | null }) {
+export function CoverageChecklist({ vehicleId, policyId, items }: { vehicleId: string; policyId: string; items: CoverageItem[] | null }) {
   if (!items) {
     return (
       <RetroCard title="What could attack?">
         <p className="mb-4 text-sm text-ink-soft">We haven&apos;t checked which risks your policy covers yet.</p>
-        <RecheckCoverage vehicleId={vehicleId} label="Check my coverage" />
+        <RecheckCoverage vehicleId={vehicleId} policyId={policyId} label="Check my coverage" />
       </RetroCard>
     );
   }
@@ -120,7 +120,7 @@ export function CoverageChecklist({ vehicleId, items }: { vehicleId: string; ite
 
       <div className="flex flex-wrap items-center gap-3 text-xs text-ink">
         <span className="flex-1">Checked by AI against your policy and Florida/federal law. Your policy document is the final word.</span>
-        <RecheckCoverage vehicleId={vehicleId} label="Check again" subtle />
+        <RecheckCoverage vehicleId={vehicleId} policyId={policyId} label="Check again" subtle />
       </div>
     </div>
   );

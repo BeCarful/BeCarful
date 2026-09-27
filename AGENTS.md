@@ -45,7 +45,7 @@ npm run dev         # http://localhost:3000
 npm run build
 npm run lint
 npm run typecheck   # next typegen + tsc
-npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, car sides, 3D zones, statute search, policy form search, Jev guard, coverage rules, photo seal, image prep)
+npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, car sides, dashboard readiness, multi-policy claim/coverage, 3D zones, statute search, policy form search, Jev guard, coverage rules, photo seal, image prep)
 python3 scripts/tuxemon-idle.py   # regenerate public/tuxemon/*-idle.png (needs Pillow + numpy)
 python3 scripts/sample-policies.py   # regenerate public/samples/state-farm-florida-*.pdf (needs Google Chrome + Pillow)
 ```
@@ -66,7 +66,9 @@ python3 scripts/sample-policies.py   # regenerate public/samples/state-farm-flor
 | Presigned URLs | Never stored; `getViewUrl(key)` on read (1 h). DB stores `s3Key` only (no `imageUrl`/`documentUrl` fields). |
 | Insurer metadata | Static `services/insurance/providers.ts` (not a DB collection); `InsurancePolicy.providerId` is its string id. |
 | To-dos | Computed on read by `computeTodos()` (pure, tested); no stored `TodoState`. Incident status synced by `refreshIncidentStatus()`. |
-| Selected vehicle | `User.lastVehicleId`, changed by `selectVehicle()`; pages read it via `getVehicleContext()`. Switched from the "Vehicles" list (`VehicleSelector`): on `md`+ a sidebar section that shows the selected car (link to /garage) with a chevron that expands the other cars in a scrolling list (4½ rows) plus Add vehicle; on phones a bottom-nav tab that opens a native `popover` (`VehicleMenu`). Tapping a car selects it and opens `/garage` (the only way to the 3D car). |
+| Selected vehicle | `User.lastVehicleId`, changed by `selectVehicle()`; pages read it via `getVehicleContext()`. Switched from the "Vehicles" list (`VehicleSelector`): on `md`+ a sidebar section that shows the selected car (link to /garage) with a chevron that expands the other cars in a scrolling list (4½ rows) plus Add vehicle; on phones a bottom-nav tab that opens a native `popover` (`VehicleMenu`). Tapping a car selects it and opens `/garage` (the only way to the 3D car). Summary also has a row of car chips (`CarSwitcher`: nickname + plate) that switches cars in place, and dashboard cards use `OpenCar` (select, then open a page). |
+| Car name | `Vehicle.nickname` (required in `VehicleForm`, max 30) is the display name everywhere: `vehicleTitle()` returns it, falling back to year/make/model for cars added before nicknames. `vehicleModel()` is year/make/model, shown under the name and sent to chat/agent tools as `model`. |
+| Multiple policies | A car can have any number of active `InsurancePolicy` docs; none is "main". **Replace** updates that doc in place (new file, old object deleted), **Remove** deletes it + its object. The claim insurer is `claimPolicy()` (`services/claims/policies.ts`, tested): the processed policy whose checklist covers the incident's peril, else the first processed one. To-dos use the best status any policy reached (`policiesStatus`); coverage gaps use `combinedCoverage` (covered by any policy wins). |
 | Car models | Static demo catalog `services/vehicles/car-models.ts` (`CAR_MODELS`: id, year/make/model, GLB url, axes, credit), not a DB collection. New vehicles must pick one (`Vehicle.modelId`, year/make/model copied from the catalog) in `VehicleForm`'s type-to-filter picker (`CarPicker`: a custom ARIA combobox, since `<datalist>` can't be styled; words match in any order, arrows/Enter/Esc, a hidden `modelId` holds the matched id); vehicles without `modelId` show the first model. Besides the 4 cars with their own GLB, `STAND_INS` adds ~20 demo cars (Corolla, Mustang, 911…) that borrow the closest real model's GLB + credit so the picker looks full. |
 | Photo evidence | Camera only: in-app `getUserMedia` camera (`PhotoCapture`), no file input anywhere, and `registerPhoto` rejects `source: "upload"`. On receipt the server stores `sha256` of the stored bytes and `seal` = HMAC-SHA256 (`AUTH_SECRET`) over vehicleId + sha256 + capturedAt + serverReceivedAt + location (`services/photos/seal.ts`, tested). It proves the bytes and metadata are unchanged since BeCarful received them, not that the device clock/GPS were true. No verify UI yet. |
 | 3D car | R3F + drei GLB viewer (`Car3D.tsx`) behind `CarDamageView`, one GLB per catalog model. Parts come from named collections where the GLB has them (`namedPart`: "Left Door", "Headlight - Right", "Windshield"…), else position zones (`car-zones.ts`). The team's prototype (`3d_model_update/`) was folded in and removed: its collection highlight, "damage skips glass/interior" rule, transparency toggle (now **X-ray**) and per-part photo panel (now **+ Take a close-up**, camera only). 2D map (`CarDamageMap2D.tsx`) is the toggle + error fallback. |
@@ -127,7 +129,7 @@ Feature-oriented. All application code lives in `src/` (Next.js `src` folder; `@
 ```
 src/app/(auth)/        login, signup
 src/app/(app)/         authed shell (layout: sky, road sidebar md+ with the Vehicles list, frosted header on phones, bottom nav + Vehicles popover on phones)
-  page.tsx             Summary (landing)   garage/ (3D car)  chat/  insurance/  profile/  vehicles/new/  crash/
+  page.tsx             Dashboard (landing)   summary/   garage/ (3D car)  chat/  insurance/  profile/  vehicles/new/  crash/
 src/actions/           server actions per feature: auth vehicles photos insurance chat incidents
 src/components/        retro/ layout/ auth/ vehicle/ photos/ insurance/ chat/ summary/ crash/
 src/lib/               env (zod, lazy), gcp (Vercel WIF credentials), db (cached mongoose), session (jose), auth, upload-client
@@ -184,7 +186,7 @@ Mongoose models in `models/`: `User`, `Vehicle`, `InsurancePolicy`, `Incident`, 
 
 **User:** email (unique), name, passwordHash (`select: false`), lastVehicleId.
 
-**Vehicle:** userId, modelId (catalog id), year, make, model, trim?, color, vin?, licensePlate, state.
+**Vehicle:** userId, modelId (catalog id), nickname (display name), year, make, model, trim?, color, vin?, licensePlate, state.
 Deleting one (`deleteVehicle`, **Remove** on Profile → Garage, inline confirm) removes its Cloud Storage prefix `users/<userId>/vehicles/<vehicleId>/` first, then its photos, assessments, incidents, policies and chat, then the vehicle; `lastVehicleId` moves to the newest remaining vehicle (or null). No cascade in Mongo itself, and no transaction (works on a standalone `mongo:7`); a failed delete can simply be retried.
 
 **DamagePhoto:**
@@ -204,11 +206,11 @@ Deleting one (`deletePhoto`: **Delete photo** in the photo viewer with inline co
   coverageChecklist: { items: CoverageItem[], generatedAt } | null, planId? }
 ```
 `CoverageItem = { peril, status: "covered" | "not_covered" | "unknown", detail, law: { citation, url } | null }`, one per `PERILS` (types/index.ts: collision, liability, injury, uninsured_driver, theft, fire, flood, storm, vandalism, animal, glass, roadside).
-The newest `uploadedAt` per vehicle is the active policy (`getActivePolicy`); older ones are history.
+Every policy of a vehicle is active (`getPolicies`, oldest first); see **Multiple policies** in the decisions log.
 
 **Insurance providers:** `PROVIDERS` in `services/insurance/providers.ts`: `{ id, name, shortName, color, logo?, claimsUrl, phone, officialDomains, supportedStates }`. `ProviderMark` shows `logo` (full-bleed square icon) if set, else a `shortName` tile. Wherever the app shows an insurer's name it shows the icon too: `ProviderName` (icon + name) on the Summary Insurance card, claim box and Insurance title; `WithProviderLogo` swaps the name inside to-do / next-step text. Chat text stays plain. **State Farm** (`state-farm`) is the preferred/demo insurer (hackathon sponsor; its emblem is used with that permission). State Farm, GEICO and Allstate have icons in `public/logo/`; the others still show `shortName` tiles. `isOfficialUrl()` validates any URL against `officialDomains`.
 
-**Incident:** userId, vehicleId, insurancePolicyId, type (`INCIDENT_TYPES`), occurredAt, location, notes, status, filedAt. Photos/assessments reference it by `incidentId`.
+**Incident:** userId, vehicleId, insurancePolicyId (legacy, no longer written), type (`INCIDENT_TYPES`), occurredAt, location, notes, status, filedAt. Photos/assessments reference it by `incidentId`.
 Statuses: `documenting` → `analyzing` → `action_required` → `ready_to_file` → `filed` → `closed`. The open incident is the newest non-`closed` one; the first photo creates it (`getOrCreateOpenIncident`). `filed`/`closed` are set only by explicit user actions; the rest by `refreshIncidentStatus()`.
 
 **ChatMessage:** `{ userId, vehicleId, role: "user" | "assistant", content, action? }`, survives refreshes and new sessions. `action = { tool, args, label, status: pending | running | done | failed | cancelled, result? }` is a guarded write waiting for the user's tap; a new user message cancels pending ones.
@@ -293,21 +295,21 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 - Users can also paste policy text instead of a PDF (`analyzePolicy({ text })` in `services/ai/policy-analysis.ts`, 200–60k chars). Store the pasted text in Cloud Storage as the original, same as a PDF.
 - Extract when present: provider, policy type, premium, covered vehicle, collision, comprehensive, liability, deductibles, rental reimbursement, roadside assistance, other coverage, key exclusions/limitations, policy form numbers (`formNumbers`, e.g. `9810C`; scopes the policy RAG).
 - Missing fields say **"Not found in the uploaded policy"**. Never guess.
-- Built: `/insurance` (no policy → pick insurer, then upload PDF or paste text; with policy → provider card, status, Retry/Replace, AI summary, coverage list; on `lg` insurer + policy | plain words + details side by side, then the checklist (two-column cards) and Coverage full width). `actions/insurance.ts` runs `analyzePolicy()` then `summarizePolicy()` on the extraction only (never the raw doc). Unrelated documents throw `NotAPolicyError`.
-- Originals open via `/insurance/original?vehicleId=` (owner-checked route that redirects to a fresh presigned URL), never a stored or pre-rendered URL.
+- Built: `/insurance` (no policy → pick insurer, then upload PDF or paste text; with policies → a tab per policy (`?policy=<id>`) plus **+ Add policy** (`?add=1`, same setup; saving opens the new tab); per policy: provider card, status, Retry/Replace/Remove, AI summary, coverage list; on `lg` insurer + policy | plain words + details side by side, then the checklist (two-column cards) and Coverage full width). `actions/insurance.ts` runs `analyzePolicy()` then `summarizePolicy()` on the extraction only (never the raw doc). Unrelated documents throw `NotAPolicyError`.
+- Originals open via `/insurance/original?vehicleId=&policyId=` (owner-checked route that redirects to a fresh presigned URL), never a stored or pre-rendered URL.
 - Pages whose actions call Gemini set `export const maxDuration` in the page file (not in `actions/*`). PDFs go to Gemini inline (base64); switch to the Files API if large PDFs fail.
-- **Coverage checklist (ADK):** after a policy is processed, `checkCoverage()` runs an ADK agent over the extraction (+ `search_insurance_law` for Florida rules) and returns one item per peril. `enforceEvidence()` then keeps "covered" only when the named policy field has a value (else "unknown", shown as "Not found") and drops statute citations we don't have. Retry: `recheckCoverage`. Creating a vehicle now lands on `/insurance`.
+- **Coverage checklist (ADK):** after a policy is processed, `checkCoverage()` runs an ADK agent over the extraction (+ `search_insurance_law` for Florida rules) and returns one item per peril. `enforceEvidence()` then keeps "covered" only when the named policy field has a value (else "unknown", shown as "Not found") and drops statute citations we don't have. Retry: `recheckCoverage(vehicleId, policyId)`. Creating a vehicle now lands on `/insurance`.
 - **Tuxemon attackers:** `CoverageChecklist.tsx` lists not-covered/unknown perils like the Damage list: the peril's Tuxemon on the left ("Agnidon may attack you"), details on the right; covered perils are a ✓ list. Sprites per peril in `components/insurance/peril-monsters.ts` (12 licensed Tuxemon, credits in `public/tuxemon/ATTRIBUTION.md`); the card must keep its sprite credits line.
 - **No policy on hand:** "Pick your Florida plan" (`FloridaPlanPicker`) → `chooseFloridaPlan(vehicleId, planId)`; the insurance page labels it "Example Florida plan, not your actual policy".
 - **Sample policies to upload (demo only):** `public/samples/state-farm-florida-{minimum,liability,full,full-extras}.pdf`, one per State Farm example plan, served at `/samples/…`. Built by `scripts/sample-policies.py` on State Farm's filed Florida declarations template (P1010023 FL, `data/state-farm/24-098215_619466.pdf`) with coverage symbols, limits and wording from booklet 9810C; fictional insured/vehicle/VIN (`…SAMPLE00n`)/policy number (`999000n-…`)/premiums, a SAMPLE watermark image and a "not issued by State Farm" banner + footer on every page.
 
 ## Crash mode
 
-`/crash` (red **Crash mode** button in the phone header). Step 1: Florida at-the-scene duties, most urgent first, each linking its statute: anyone hurt → Call 911 (`tel:911`, § 316.062), stay at the scene / clear the lanes (§ 316.061), call police if hurt or ≥ $2,000 damage (§ 316.065(1)), swap info (§ 316.062), no police report → own written report within 10 days (§ 316.066(1)(e)). Step 2 (`?step=photos`, `CrashPhotos`): a `<select>` of the user's vehicles (`selectVehicle`) + **Add photos**, which runs the normal `PhotoCapture` flow (seal, analysis, first photo opens the incident); "See my car" goes to `/garage`, **Exit to home** to `/` (Summary). Not in the `md`+ sidebar; on desktop it's reached from the Summary's **If something happens** card.
+`/crash` (red **Crash mode** button in the phone header). Step 1: Florida at-the-scene duties, most urgent first, each linking its statute: anyone hurt → Call 911 (`tel:911`, § 316.062), stay at the scene / clear the lanes (§ 316.061), call police if hurt or ≥ $2,000 damage (§ 316.065(1)), swap info (§ 316.062), no police report → own written report within 10 days (§ 316.066(1)(e)). Step 2 (`?step=photos`, `CrashPhotos`): a `<select>` of the user's vehicles (`selectVehicle`) + **Add photos**, which runs the normal `PhotoCapture` flow (seal, analysis, first photo opens the incident); "See my car" goes to `/garage`, **Exit to home** to `/` (Dashboard). Not in the `md`+ sidebar; on desktop it's reached from the Summary's **If something happens** card.
 
 ## Chat
 
-- One thread per vehicle. Context: vehicle info, policy + summary, photos, damage assessments, current incident, that vehicle's prior messages. The ADK agent can also read/act on the user's other vehicles through tools when the user names one (every tool checks `userId` ownership).
+- One thread per vehicle. Context: vehicle info (nickname + model), every policy + summary, `claimInsurer`, photos, damage assessments, current incident, that vehicle's prior messages. The ADK agent can also read/act on the user's other vehicles through tools when the user names one (every tool checks `userId` ownership).
 - Assistant is a friendly Tuxemon character (licensed asset, with attribution). Retro dialog-box bubbles. Friendly but not childish.
 - Answers are concise by default. No authoritative coverage determinations the policy doesn't clearly support.
 - Example questions: "What does my insurance cover?", "What's my deductible?", "Which parts look damaged?", "Do I need more photos?", "Where do I file my claim?", "Summarize everything that happened."
@@ -315,11 +317,15 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 - `sendChatMessage(vehicleId, text)`; retry = resend the same text (the server reuses an unanswered identical last message). Gemini context comes from `buildVehicleContext()` in `services/ai/chat.ts` (`loadClaimState` + Vehicle, VIN last 4 only, claim link/phone only from `providers.ts`).
 - The reply comes from the ADK agent (`runChatAgent`). Tools (`services/ai/agent-tools.ts`): read `list_vehicles`, `get_vehicle_status`, `list_photos`, `list_florida_plans`, `search_insurance_law`, `search_policy_forms`; write `update_incident_details`, `switch_vehicle`, `choose_florida_plan`, `set_insurer`; destructive `mark_claim_filed`, `close_incident`, `delete_photo`. Writes reuse the existing server actions, so their validation and state rules still apply. A write that needs the user's OK shows a Confirm/Cancel card under the reply (`resolveChatAction`).
 
+## Dashboard
+
+`/` (landing page, after login too). Stat tiles: Cars · Insured · Protected · Open cases. **Open cases** lists every car whose open incident has damage or is past `documenting`, with status, what happened, damaged parts, claim insurer and **Open case** (no next-step line or page description: keep it short). **Your cars**: one card per car with its insurers, a badge (Open case › Protected › Insured › Not insured) and a checklist from `readiness()` (`services/claims/todos.ts`, tested): policy on file (processed), coverage checked (any processed policy has a checklist), every side photographed (`documentedSides` over the open incident's assessments, 4/4). Protected = all three. Buttons: **Summary** and the first missing step, both via `OpenCar`. Loads `loadClaimState` per car.
+
 ## Summary tab and to-do list
 
-Short cards, no long paragraphs. The user should understand the situation in seconds. Header = the car (name, color, plate), then **Current status** (`StatusPanel`: status, a "What happened" recap of type · time · place, claim-step progress only while an incident is open, Next step). Then two cards that depend on the open incident:
-- **Incident open:** **Damage** (`DamageCard`: non-interactive `CarDamageMap2D`, damaged parts with severity + damage types, latest 4 photos showing damage → `/garage`) and **Am I covered?** (`InsuranceCard`: the incident type's `INCIDENT_PERIL` row from the policy's `coverageChecklist`, plus deductible and policy number; no type yet → link to `#incident`; `other` → no single peril).
-- **No incident:** **Your policy** (`InsuranceCard`: deductible, policy number, effective dates, top 3 uncovered/unknown perils with their Tuxemon + credits) and **If something happens** (Crash mode, call insurer, verified claims page).
+`/summary`. Short cards, no long paragraphs. The user should understand the situation in seconds. Car chips (`CarSwitcher`, 2+ cars) switch the car without leaving the page. Header = the car (nickname, model, color, plate), then **Current status** (`StatusPanel`: status, a "What happened" recap of type · time · place, claim-step progress only while an incident is open, Next step). Then two cards that depend on the open incident:
+- **Incident open:** **Damage** (`DamageCard`: non-interactive `CarDamageMap2D`, damaged parts with severity + damage types, latest 4 photos showing damage → `/garage`) and **Am I covered?** (`InsuranceCard`: the incident type's `INCIDENT_PERIL` row from each policy's `coverageChecklist`, covered first, each with its deductible; no type yet → link to `#incident`; `other` → no single peril).
+- **No incident:** **Your policy/policies** (`InsuranceCard`: each policy's deductible, number and dates, then the top 3 perils no policy covers (`combinedCoverage`) with their Tuxemon + credits) and **If something happens** (Crash mode, call + verified claims page per insurer).
 
 **To-do list** recalculates automatically (no manual regenerate) when: vehicle created, policy uploaded/analyzed, photo captured/uploaded, damage assessment completed, incident info added, claim status changes.
 
@@ -360,7 +366,7 @@ Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS =
 - `public/scenery/`: `ground.svg` (original art reused from the team's HouseToClaim project, no credit needed; used by `.pixel-scene`) and `car.svg` (original pixel car). Tuxemon sprites keep their attribution.
 - Login scene car: `components/auth/IdleCar.tsx`, `car.svg` inlined with round wheels; idles with a 1px body hop (`car-idle`) and two-frame spinning hubs (`wheel-a/b`), still under reduced motion.
 
-**Navigation:** no Home tab. **Summary** (`/`, the landing page) and **Chat**, plus the **Vehicles** list (tap a car → its Garage at `/garage` / add vehicle). Phones: frosted bottom nav Summary · Vehicles · Chat, where Vehicles opens a popover list above the nav. `md`+: road sidebar (`components/layout/AppSidebar.tsx`) with a "Vehicles" section above "Your car", and Profile, day/night and log out in its footer. The frosted header is phones-only (logo, red **Crash mode** button in the middle, day/night, profile avatar).
+**Navigation:** **Dashboard** (`/`, the landing page, all cars), **Summary** (`/summary`) and **Chat**, plus the **Vehicles** list (tap a car → its Garage at `/garage` / add vehicle). Phones: frosted bottom nav Dashboard · Summary · Vehicles · Chat, where Vehicles opens a popover list above the nav. `md`+: road sidebar (`components/layout/AppSidebar.tsx`) with Dashboard on top, then a "Vehicles" section above "Your car", and Profile, day/night and log out in its footer. The frosted header is phones-only (logo, red **Crash mode** button in the middle, day/night, profile avatar).
 
 **Pages** start with `PageHeader` (`components/layout/PageHeader.tsx`: eyebrow, title, description, action) inside `space-y-6`; main is `max-w-5xl`, two columns at `lg` where it helps.
 
@@ -376,7 +382,7 @@ Action buttons, grouped directly under the car, icon + short label:
 
 ## Auth
 
-Sign up, log in, log out, profile. Protect authenticated routes. After login, go to the user's last-selected/default vehicle.
+Sign up, log in, log out, profile. Protect authenticated routes. After login, go to the Dashboard; per-car pages use the last-selected/default vehicle.
 
 ## Security
 
@@ -391,8 +397,8 @@ Each state tells the user what to do next: camera denied, GPS denied, upload fai
 ## Demo data
 
 Fictional seed user with:
-- **2021 Peugeot 308** (`peugeot-308`, plate BCF2021): State Farm policy, a clean front/rear/left/right walkaround two weeks before the crash (`data/peugeot-308/normal`) and 3 front-left crash photos (`data/peugeot-308/crashed`, one a headlight close-up crop), all sealed with fake time + GPS, existing chat history. The seed stores the true views, not Gemini's, and re-encodes the renders to 1080px JPEG because `prepareImage` flags anything under 720px as low resolution.
-- **2019 Lamborghini SC18 Alston** (`lamborghini-sc18`): different insurer, no incident, no damage.
+- **2021 Peugeot 308** "Daily Pug" (`peugeot-308`, plate BCF2021): State Farm policy, a clean front/rear/left/right walkaround two weeks before the crash (`data/peugeot-308/normal`) and 3 front-left crash photos (`data/peugeot-308/crashed`, one a headlight close-up crop), all sealed with fake time + GPS, existing chat history. The seed stores the true views, not Gemini's, and re-encodes the renders to 1080px JPEG because `prepareImage` flags anything under 720px as low resolution.
+- **2019 Lamborghini SC18 Alston** "The Bull" (`lamborghini-sc18`): different insurer, no incident, no damage.
 
 Switching between them must visibly change the 3D damage state, photos, insurance, chat, summary and to-dos.
 

@@ -4,3 +4,4 @@ export { RetroBadge } from "./RetroBadge";
 export { PixelProgress } from "./PixelProgress";
 export { RetroDialog } from "./RetroDialog";
 export { RetroField, retroInputClass } from "./RetroField";
+export { RemoveButton } from "./RemoveButton";

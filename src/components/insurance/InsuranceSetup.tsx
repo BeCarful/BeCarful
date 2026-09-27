@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { DEFAULT_PROVIDER_ID } from "@/services/insurance/providers";
 import { FloridaPlanPicker } from "./FloridaPlanPicker";
@@ -23,6 +24,8 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 
 export function InsuranceSetup({ vehicleId }: { vehicleId: string }) {
   const [providerId, setProviderId] = useState(DEFAULT_PROVIDER_ID);
+  const router = useRouter();
+  const open = (policyId: string) => router.replace(`/insurance?policy=${policyId}`);
   return (
     <div className="grid items-start gap-6 lg:grid-cols-2">
       <Step n={1} title="Your insurer">
@@ -32,10 +35,10 @@ export function InsuranceSetup({ vehicleId }: { vehicleId: string }) {
         <p className="mb-4 text-sm text-ink-soft">
           Upload your policy or declarations page (PDF, up to 20 MB). We&apos;ll pull out what it covers.
         </p>
-        <PolicyUpload vehicleId={vehicleId} providerId={providerId} uploadLabel="Upload policy PDF" />
+        <PolicyUpload vehicleId={vehicleId} providerId={providerId} uploadLabel="Upload policy PDF" onSaved={open} />
         <details className="mt-4 rounded-xl border border-border bg-panel-shade/60 p-4 [&[open]>summary]:mb-3">
           <summary className="min-h-11 cursor-pointer content-center font-semibold text-accent">No policy on hand? Pick your Florida plan</summary>
-          <FloridaPlanPicker key={providerId} vehicleId={vehicleId} providerId={providerId} />
+          <FloridaPlanPicker key={providerId} vehicleId={vehicleId} providerId={providerId} onSaved={open} />
         </details>
       </Step>
     </div>

@@ -9,6 +9,7 @@ const optional = z
 
 export const VehicleInputSchema = z.object({
   modelId: z.enum(CAR_MODEL_IDS, "Pick your car"),
+  nickname: z.string().trim().min(1, "Give your car a nickname").max(30),
   color: z.string().trim().min(1, "Color is required").max(30),
   vin: optional.refine((v) => !v || /^[A-HJ-NPR-Z0-9]{17}$/i.test(v), "VIN must be 17 characters"),
   licensePlate: z.string().trim().min(1, "License plate is required").max(12),
