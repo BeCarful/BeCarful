@@ -349,6 +349,27 @@ body {
   animation: face-a 0.9s infinite reverse;
 }
 
+/* Idling login car (IdleCar): body hops one pixel, hubs swap + / × frames. */
+@keyframes car-idle {
+  0%,
+  49.9% {
+    transform: none;
+  }
+  50%,
+  100% {
+    transform: translateY(-1px);
+  }
+}
+@utility car-idle {
+  animation: car-idle 0.7s infinite;
+}
+@utility wheel-a {
+  animation: face-a 0.3s infinite;
+}
+@utility wheel-b {
+  animation: face-a 0.3s infinite reverse;
+}
+
 /* "A wild companion appears" slide-in. */
 @keyframes appear {
   0% {
@@ -411,7 +432,8 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  .face-b {
+  .face-b,
+  .wheel-b {
     opacity: 0;
   }
   .tux-wild {

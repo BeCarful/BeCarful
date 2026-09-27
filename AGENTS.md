@@ -334,6 +334,7 @@ Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS =
 - Light: 8-bit day sky (`components/layout/SceneBackground.tsx`: blue gradient from `--sky-top/--sky-bottom`, blocky `.pixel-cloud`s, square sun) + asphalt road sidebar (white edge lines, dashed yellow center line along the content edge that shifts one dash per page change, crosswalk at the bottom). Text placed directly on the sky uses `text-ink` (and the darker light-theme `--brand` for eyebrows) to pass AA.
 - Dark: night sky with twinkling square stars and a square moon, the same road at night, dark slate cards, night lighting on the 3D car. Not inverted colors.
 - `public/scenery/`: `ground.svg` (original art reused from the team's HouseToClaim project, no credit needed; used by `.pixel-scene`) and `car.svg` (original pixel car). Tuxemon sprites keep their attribution.
+- Login scene car: `components/auth/IdleCar.tsx`, `car.svg` inlined with round wheels; idles with a 1px body hop (`car-idle`) and two-frame spinning hubs (`wheel-a/b`), still under reduced motion.
 
 **Navigation:** three destinations: **Home**, **Chat**, **Summary**, plus the **Vehicles** list (switch car / add vehicle). Phones: frosted bottom nav Home · Vehicles · Chat · Summary, where Vehicles opens a popover list above the nav. `md`+: road sidebar (`components/layout/AppSidebar.tsx`) with a "Vehicles" section above "Your car", and Profile, day/night and log out in its footer. The frosted header is phones-only (logo, day/night, profile avatar).
 
