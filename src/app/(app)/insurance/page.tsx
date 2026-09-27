@@ -65,96 +65,104 @@ function PolicyScreen({ vehicleId, policy }: { vehicleId: string; policy: Hydrat
   const checklist = (policy.coverageChecklist as { items?: CoverageItem[] } | null)?.items ?? null;
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[1fr_1.25fr]">
-      <div className="space-y-6">
-        <RetroCard title="Your insurer">
-          {provider ? (
-            <>
-              <div className="flex items-center gap-3">
-                <ProviderMark provider={provider} className="size-12 text-base" />
-                <div className="min-w-0">
-                  <p className="text-lg leading-tight font-semibold">{provider.name}</p>
-                  <p className="text-sm text-ink-soft tabular-nums">Claims line {provider.phone}</p>
+    // lg+: short cards side by side up top; the checklist and Coverage (both long) get the full width below.
+    <div className="space-y-6">
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
+          <RetroCard title="Your insurer">
+            {provider ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <ProviderMark provider={provider} className="size-12 text-base" />
+                  <div className="min-w-0">
+                    <p className="text-lg leading-tight font-semibold">{provider.name}</p>
+                    <p className="text-sm text-ink-soft tabular-nums">Claims line {provider.phone}</p>
+                  </div>
                 </div>
-              </div>
-              <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-ok-soft px-2.5 py-0.5 text-xs font-semibold text-ok">
-                <span aria-hidden>✓</span> Official site: {provider.officialDomains[0]}
-              </p>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                {isOfficialUrl(provider, provider.claimsUrl) && (
-                  <a href={provider.claimsUrl} target="_blank" rel="noopener noreferrer" className={retroButtonClass("primary")}>
-                    Start a claim ↗
+                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-ok-soft px-2.5 py-0.5 text-xs font-semibold text-ok">
+                  <span aria-hidden>✓</span> Official site: {provider.officialDomains[0]}
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  {isOfficialUrl(provider, provider.claimsUrl) && (
+                    <a href={provider.claimsUrl} target="_blank" rel="noopener noreferrer" className={retroButtonClass("primary")}>
+                      Start a claim ↗
+                    </a>
+                  )}
+                  <a href={`tel:${provider.phone.replace(/[^\d+]/g, "")}`} className={retroButtonClass("secondary")}>
+                    Call
                   </a>
-                )}
-                <a href={`tel:${provider.phone.replace(/[^\d+]/g, "")}`} className={retroButtonClass("secondary")}>
-                  Call
-                </a>
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-ink-soft">Pick your insurer so we can link you to their official claims page.</p>
-          )}
-          <div className="mt-3">
-            <ChangeProvider vehicleId={vehicleId} policyId={policyId} providerId={policy.providerId} />
-          </div>
-        </RetroCard>
-
-        <RetroCard title="Your policy" action={<RetroBadge tone={status.tone}>{status.label}</RetroBadge>}>
-          <div className="flex items-center gap-3">
-            <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-lg bg-accent-soft font-display text-sm font-semibold text-accent">
-              {isText ? "TXT" : "PDF"}
-            </span>
-            <div className="min-w-0">
-              <p className="truncate font-semibold">{policy.fileName ?? "Policy"}</p>
-              {policy.uploadedAt && (
-                <p className="text-sm text-ink-soft">Added {policy.uploadedAt.toLocaleDateString("en-US", { dateStyle: "medium" })}</p>
-              )}
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-ink-soft">Pick your insurer so we can link you to their official claims page.</p>
+            )}
+            <div className="mt-3">
+              <ChangeProvider vehicleId={vehicleId} policyId={policyId} providerId={policy.providerId} />
             </div>
+          </RetroCard>
+
+          <RetroCard title="Your policy" action={<RetroBadge tone={status.tone}>{status.label}</RetroBadge>}>
+            <div className="flex items-center gap-3">
+              <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-lg bg-accent-soft font-display text-sm font-semibold text-accent">
+                {isText ? "TXT" : "PDF"}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{policy.fileName ?? "Policy"}</p>
+                {policy.uploadedAt && (
+                  <p className="text-sm text-ink-soft">Added {policy.uploadedAt.toLocaleDateString("en-US", { dateStyle: "medium" })}</p>
+                )}
+              </div>
+            </div>
+            {policy.planId && (
+              <p className="mt-4 rounded-lg bg-gold-soft px-3 py-2 text-sm text-ink">
+                Example Florida plan, not your actual policy. Upload your policy for your exact coverage.
+              </p>
+            )}
+            {policy.status !== "processed" && (
+              <p role="status" className={`mt-4 rounded-lg px-3 py-2 text-sm text-ink ${policy.status === "failed" ? "bg-danger-soft" : "bg-warn-soft"}`}>
+                {policy.status === "failed"
+                  ? (policy.error ?? "We couldn't read this policy. Tap Retry, or upload a clearer copy.")
+                  : "Still reading, or reading got interrupted. Tap Retry if this doesn't update."}
+              </p>
+            )}
+            <div className="mt-4 space-y-3">
+              <PolicyUpload
+                vehicleId={vehicleId}
+                providerId={policy.providerId}
+                policyId={policyId}
+                canRetry={policy.status !== "processed"}
+                uploadLabel="Replace PDF"
+              />
+            </div>
+          </RetroCard>
+        </div>
+
+        {data && (
+          <div className="space-y-6">
+            {policy.aiSummary && (
+              <RetroDialog speaker="In plain words" avatar={<TuxemonAvatar frame="front" scale={1} />}>
+                <p>{policy.aiSummary}</p>
+                <p className="mt-2 text-xs text-ink-soft">AI summary of what we found in your policy.</p>
+                <TuxemonAttribution />
+              </RetroDialog>
+            )}
+            <RetroCard title="Policy details">
+              <PolicyFields data={data} fields={DETAIL_FIELDS} />
+            </RetroCard>
           </div>
-          {policy.planId && (
-            <p className="mt-4 rounded-lg bg-gold-soft px-3 py-2 text-sm text-ink">
-              Example Florida plan, not your actual policy. Upload your policy for your exact coverage.
-            </p>
-          )}
-          {policy.status !== "processed" && (
-            <p role="status" className={`mt-4 rounded-lg px-3 py-2 text-sm text-ink ${policy.status === "failed" ? "bg-danger-soft" : "bg-warn-soft"}`}>
-              {policy.status === "failed"
-                ? (policy.error ?? "We couldn't read this policy. Tap Retry, or upload a clearer copy.")
-                : "Still reading, or reading got interrupted. Tap Retry if this doesn't update."}
-            </p>
-          )}
-          <div className="mt-4 space-y-3">
-            <PolicyUpload
-              vehicleId={vehicleId}
-              providerId={policy.providerId}
-              policyId={policyId}
-              canRetry={policy.status !== "processed"}
-              uploadLabel="Replace PDF"
-            />
-          </div>
-        </RetroCard>
+        )}
       </div>
 
       {data && (
-        <div className="space-y-6">
+        <>
           <CoverageChecklist vehicleId={vehicleId} items={checklist} />
-          {policy.aiSummary && (
-            <RetroDialog speaker="In plain words" avatar={<TuxemonAvatar frame="front" scale={1} />}>
-              <p>{policy.aiSummary}</p>
-              <p className="mt-2 text-xs text-ink-soft">AI summary of what we found in your policy.</p>
-              <TuxemonAttribution />
-            </RetroDialog>
-          )}
           <RetroCard title="Coverage">
             <PolicyFields data={data} fields={COVERAGE_FIELDS} />
             <p className="mt-4 rounded-lg bg-panel-shade px-3 py-2 text-xs text-ink-soft">
               Read by AI from your policy. Your policy document is the final word.
             </p>
           </RetroCard>
-          <RetroCard title="Policy details">
-            <PolicyFields data={data} fields={DETAIL_FIELDS} />
-          </RetroCard>
-        </div>
+        </>
       )}
     </div>
   );
