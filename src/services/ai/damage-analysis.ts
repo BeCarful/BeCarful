@@ -9,7 +9,7 @@ const SYSTEM = `You inspect photos of cars for an insurance companion app. Repor
 Rules:
 - "view" first: which side of the car the photo shows, one of: ${VEHICLE_VIEWS.join(", ")}. Use "unknown" for close-ups where you can't tell.
 - "component" must be one of: ${COMPONENT_IDS.join(", ")}.
-- Left/right are from the driver's seat, not the camera's view.
+- Left/right are from the driver's seat, not the camera's view. Side view: the car's front points to the image's left → you see its left side; to the image's right → its right side. Front view: the car's left is on the image's right. Rear view: the car's left is on the image's left.
 - "damageTypes" only from: ${DAMAGE_TYPES.join(", ")}.
 - "severity": minor (cosmetic), moderate (panel needs repair), severe (part needs replacement or car may be unsafe).
 - "confidence" is 0 to 1 and honest. Lower it when the angle, lighting or distance makes the part or damage unclear.

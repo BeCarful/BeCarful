@@ -1,5 +1,5 @@
 import type { AggregatedDamage, IncidentStatus, IncidentType, PolicyStatus, TodoItem } from "@/types";
-import { areaLabel } from "./damage";
+import { SIDES, areaLabel, damagePhotoCount } from "./damage";
 
 export const MIN_DAMAGE_PHOTOS = 3;
 
@@ -49,11 +49,12 @@ export function computeTodos(s: ClaimState): TodoList {
   });
 
   if (hasDamage) {
-    const enough = s.photoCount >= MIN_DAMAGE_PHOTOS;
+    const shots = damagePhotoCount(s.damage);
+    const enough = shots >= MIN_DAMAGE_PHOTOS;
     items.push({
       code: "ADD_DAMAGE_PHOTOS",
       title: enough ? "Damage documented from several angles" : `Add more photos of the damaged ${areaLabel(s.damage[0].component)}`,
-      detail: enough ? undefined : `${s.photoCount} of ${MIN_DAMAGE_PHOTOS} photos. Try a wide shot and a close-up.`,
+      detail: enough ? undefined : `${shots} of ${MIN_DAMAGE_PHOTOS} photos. Try a wide shot and a close-up.`,
       done: enough,
       href: "/garage",
     });
@@ -63,7 +64,7 @@ export function computeTodos(s: ClaimState): TodoList {
       code: "COMPLETE_INCIDENT_INFO",
       title: infoDone ? "Incident details added" : "Add what happened, when and where",
       done: infoDone,
-      href: "/#incident",
+      href: "/summary#incident",
     });
     const filed = i?.status === "filed" || i?.status === "closed";
     items.push({
@@ -72,7 +73,7 @@ export function computeTodos(s: ClaimState): TodoList {
         ? "Claim filed"
         : `File your claim${s.providerName ? ` with ${s.providerName}` : ""}`,
       done: filed,
-      href: "/#claim",
+      href: "/summary#claim",
     });
   }
 
@@ -89,4 +90,26 @@ export function nextIncidentStatus(s: ClaimState, todos: TodoList): IncidentStat
   if (todos.readyToFile) return "ready_to_file";
   if (s.damage.length > 0) return "action_required";
   return "documenting";
+}
+
+export type Readiness = { insured: boolean; covered: boolean; documented: boolean; protected: boolean; openCase: boolean; missing: { label: string; href: string }[] };
+
+/** Dashboard view of one car: insured, coverage checked, all sides photographed, and whether an incident is a real case. */
+export function readiness(s: {
+  policyStatus: PolicyStatus | null;
+  coverageChecked: boolean;
+  sides: number;
+  damageCount: number;
+  incident: { status: IncidentStatus } | null;
+}): Readiness {
+  const insured = s.policyStatus === "processed";
+  const covered = insured && s.coverageChecked;
+  const documented = s.sides >= SIDES.length;
+  const missing = [
+    !insured && { label: s.policyStatus ? "Finish your policy" : "Add insurance", href: "/insurance" },
+    insured && !covered && { label: "Check coverage", href: "/insurance" },
+    !documented && { label: "Photograph every side", href: "/garage" },
+  ].filter((m): m is { label: string; href: string } => Boolean(m));
+  const openCase = Boolean(s.incident && s.incident.status !== "closed" && (s.damageCount > 0 || s.incident.status !== "documenting"));
+  return { insured, covered, documented, protected: covered && documented, openCase, missing };
 }

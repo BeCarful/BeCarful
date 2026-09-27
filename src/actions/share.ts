@@ -35,7 +35,7 @@ export async function createShareLink(
     const { token, tokenHash } = newShareToken();
     const expiresAt = new Date(Date.now() + parsed.data.days * 24 * 60 * 60_000);
     const share = await EvidenceShare.create({ ...scope, tokenHash, label: parsed.data.label || undefined, expiresAt });
-    revalidatePath("/");
+    revalidatePath("/summary");
     return { ok: true, data: { id: share._id.toString(), token, expiresAt: expiresAt.toISOString() } };
   } catch {
     return { ok: false, error: SAVE_FAILED };
@@ -50,6 +50,6 @@ export async function stopShareLink(vehicleId: string, shareId: string): Promise
   } catch {
     return { ok: false, error: SAVE_FAILED };
   }
-  revalidatePath("/");
+  revalidatePath("/summary");
   return { ok: true, data: undefined };
 }

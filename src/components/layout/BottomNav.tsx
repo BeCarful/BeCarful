@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment } from "react";
 
+export const HOME = { href: "/", label: "Dashboard", icon: ["M4 4h7v7H4z", "M13 4h7v7h-7z", "M4 13h7v7H4z", "M13 13h7v7h-7z"] } as const;
+
 export const NAV = [
-  { href: "/", label: "Summary", icon: ["M7 4h10v17H7z", "M9.5 2.5h5v3h-5z", "m9.5 12 1.8 1.8 3.5-3.6", "M10 17h4"] },
+  { href: "/summary", label: "Summary", icon: ["M7 4h10v17H7z", "M9.5 2.5h5v3h-5z", "m9.5 12 1.8 1.8 3.5-3.6", "M10 17h4"] },
   { href: "/chat", label: "Chat", icon: ["M4 5h16v11H9l-5 4V5Z", "M8 9.5h8M8 12.5h5"] },
 ] as const;
 
@@ -33,8 +35,8 @@ export function BottomNav() {
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-panel/95 pb-[max(0.25rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden"
     >
-      <ul className="mx-auto grid max-w-md grid-cols-3">
-        {NAV.map((t, i) => {
+      <ul className="mx-auto grid max-w-md grid-cols-4">
+        {[HOME, ...NAV].map((t, i) => {
           const active = isActive(path, t.href);
           return (
             <Fragment key={t.href}>
@@ -49,7 +51,7 @@ export function BottomNav() {
                   {t.label}
                 </Link>
               </li>
-              {i === 0 && (
+              {i === 1 && (
                 <li>
                   <button
                     type="button"

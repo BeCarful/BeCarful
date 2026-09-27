@@ -35,12 +35,19 @@ export function aggregateDamage(assessments: AssessmentLike[]): AggregatedDamage
   return [...byComponent.values()].sort((a, b) => rank(b.severity) - rank(a.severity) || b.confidence - a.confidence);
 }
 
+export const damagePhotoCount = (damage: AggregatedDamage[]) => new Set(damage.flatMap((d) => d.photoIds)).size;
+
 export const SIDES = ["front", "rear", "left", "right"] as const;
 export type Side = (typeof SIDES)[number];
 
 const SIDE_PATTERN: Record<Side, RegExp> = { front: /front|hood|windshield|headlight/, rear: /rear|trunk|taillight/, left: /left/, right: /right/ };
 
 export const sidesOf = (idOrView: string): Side[] => SIDES.filter((s) => SIDE_PATTERN[s].test(idOrView));
+
+export const documentedSides = (assessments: { view?: string | null; damagedComponents: { component: string }[] }[]): Side[] =>
+  SIDES.filter((s) =>
+    assessments.some((a) => sidesOf(a.view && a.view !== "unknown" ? a.view : a.damagedComponents.map((c) => c.component).join(" ")).includes(s)),
+  );
 
 /** "front-left side", "rear", "roof"... for human copy. */
 export function areaLabel(component: ComponentId): string {

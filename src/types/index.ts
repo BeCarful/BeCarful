@@ -139,6 +139,17 @@ export const PERIL_LABELS: Record<Peril, string> = {
   roadside: "Breakdowns and towing",
 };
 
+export const INCIDENT_PERIL: Record<IncidentType, Peril | null> = {
+  collision: "collision",
+  flood: "flood",
+  theft: "theft",
+  vandalism: "vandalism",
+  hail: "storm",
+  fire: "fire",
+  weather: "storm",
+  other: null,
+};
+
 export const COVERAGE_STATUSES = ["covered", "not_covered", "unknown"] as const;
 export type CoverageStatus = (typeof COVERAGE_STATUSES)[number];
 

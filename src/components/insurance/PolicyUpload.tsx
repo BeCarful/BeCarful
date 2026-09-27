@@ -13,9 +13,16 @@ const MAX_TEXT = 60_000;
 
 const linkClass = "min-h-11 w-full rounded-lg text-sm font-semibold text-accent underline-offset-4 hover:underline";
 
-type Props = { vehicleId: string; providerId: string; policyId?: string; canRetry?: boolean; uploadLabel: string };
+type Props = {
+  vehicleId: string;
+  providerId: string;
+  policyId?: string;
+  canRetry?: boolean;
+  uploadLabel: string;
+  onSaved?: (policyId: string) => void;
+};
 
-export function PolicyUpload({ vehicleId, providerId, policyId, canRetry = false, uploadLabel }: Props) {
+export function PolicyUpload({ vehicleId, providerId, policyId, canRetry = false, uploadLabel, onSaved }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +40,7 @@ export function PolicyUpload({ vehicleId, providerId, policyId, canRetry = false
     return () => clearTimeout(t);
   }, [step, error]);
 
-  async function run(start: number, work: () => Promise<ActionResult<unknown>>) {
+  async function run(start: number, work: () => Promise<ActionResult<{ policyId: string } | undefined>>) {
     setError(null);
     setStep(start);
     try {
@@ -45,6 +52,7 @@ export function PolicyUpload({ vehicleId, providerId, policyId, canRetry = false
       setStep(STEPS.length);
       setPasting(false);
       setText("");
+      if (res.data) onSaved?.(res.data.policyId);
     } catch {
       setError("Something went wrong. Check your connection and try again.");
     }
@@ -57,7 +65,7 @@ export function PolicyUpload({ vehicleId, providerId, policyId, canRetry = false
       if (!presigned.ok) return presigned;
       await uploadToStorage(presigned.data, file);
       setStep(1);
-      return registerPolicy(vehicleId, { key: presigned.data.key, providerId, fileName: file.name });
+      return registerPolicy(vehicleId, { key: presigned.data.key, providerId, fileName: file.name, replaces: policyId });
     });
   }
 
@@ -99,7 +107,7 @@ export function PolicyUpload({ vehicleId, providerId, policyId, canRetry = false
             <RetroButton
               className="w-full"
               disabled={textLength < MIN_TEXT}
-              onClick={() => run(1, () => registerPolicyText(vehicleId, { providerId, text }))}
+              onClick={() => run(1, () => registerPolicyText(vehicleId, { providerId, text, replaces: policyId }))}
             >
               Read my policy
             </RetroButton>

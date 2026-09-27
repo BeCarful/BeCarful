@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useRef, useTransition } from "react";
+import { useRef, useTransition, type ReactNode } from "react";
 import { selectVehicle } from "@/actions/vehicles";
 import { CAR_ICON, NavIcon, VEHICLE_MENU_ID, isActive } from "./BottomNav";
 
@@ -14,6 +14,7 @@ export function VehicleSelector({
   item,
   current,
   idle,
+  list = "",
   onDone,
 }: {
   vehicles: VehicleOption[];
@@ -21,6 +22,7 @@ export function VehicleSelector({
   item: string;
   current: string;
   idle: string;
+  list?: string;
   onDone?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
@@ -28,38 +30,38 @@ export function VehicleSelector({
   const path = usePathname();
 
   return (
-    <ul className={`space-y-1 ${pending ? "animate-pulse" : ""}`} aria-busy={pending || undefined}>
-      {vehicles.map((v) => {
-        const selected = v.id === selectedId;
-        const active = selected && isActive(path, "/garage");
-        return (
-          <li key={v.id}>
-            <button
-              type="button"
-              aria-current={active ? "page" : undefined}
-              disabled={pending}
-              onClick={() => {
-                onDone?.();
-                startTransition(async () => {
-                  if (!selected) await selectVehicle(v.id);
-                  router.push("/garage");
-                });
-              }}
-              className={`${item} text-left ${active ? current : idle}`}
-            >
-              <NavIcon paths={CAR_ICON} active={active} />
-              <span className="min-w-0 truncate">{v.title}</span>
-            </button>
-          </li>
-        );
-      })}
-      <li>
-        <Link href="/vehicles/new" onClick={onDone} className={`${item} ${idle}`}>
-          <NavIcon paths={["M12 5v14M5 12h14"]} active={false} />
-          Add vehicle
-        </Link>
-      </li>
-    </ul>
+    <div className={pending ? "animate-pulse" : ""} aria-busy={pending || undefined}>
+      <ul className={`space-y-1 ${list}`}>
+        {vehicles.map((v) => {
+          const selected = v.id === selectedId;
+          const active = selected && isActive(path, "/garage");
+          return (
+            <li key={v.id}>
+              <button
+                type="button"
+                aria-current={active ? "page" : undefined}
+                disabled={pending}
+                onClick={() => {
+                  onDone?.();
+                  startTransition(async () => {
+                    if (!selected) await selectVehicle(v.id);
+                    router.push("/garage");
+                  });
+                }}
+                className={`${item} text-left ${active ? current : idle}`}
+              >
+                <NavIcon paths={CAR_ICON} active={active} />
+                <span className="min-w-0 truncate">{v.title}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <Link href="/vehicles/new" onClick={onDone} className={`${item} ${idle} mt-1`}>
+        <NavIcon paths={["M12 5v14M5 12h14"]} active={false} />
+        Add vehicle
+      </Link>
+    </div>
   );
 }
 
@@ -82,5 +84,26 @@ export function VehicleMenu({ vehicles, selectedId }: { vehicles: VehicleOption[
         onDone={() => menu.current?.hidePopover()}
       />
     </div>
+  );
+}
+
+export function OpenCar({ id, href, selected, className, children }: { id: string; href: string; selected: boolean; className: string; children: ReactNode }) {
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      aria-busy={pending || undefined}
+      className={className}
+      onClick={() =>
+        startTransition(async () => {
+          if (!selected) await selectVehicle(id);
+          router.push(href);
+        })
+      }
+    >
+      {pending ? "Opening…" : children}
+    </button>
   );
 }

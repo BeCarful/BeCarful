@@ -1,5 +1,6 @@
 // Fictional demo data. Run: npm run seed (needs MONGODB_URI, S3 and AUTH_SECRET in .env.local).
 import mongoose, { type Types } from "mongoose";
+import sharp, { type Region } from "sharp";
 import { hashPassword } from "@/lib/password";
 import { connectDB } from "@/lib/db";
 import { ChatMessage } from "@/models/ChatMessage";
@@ -10,12 +11,12 @@ import { InsurancePolicy } from "@/models/InsurancePolicy";
 import { User } from "@/models/User";
 import { Vehicle } from "@/models/Vehicle";
 import { env } from "@/lib/env";
-import { refreshIncidentStatus } from "@/services/claims/state";
+import { getOrCreateOpenIncident, refreshIncidentStatus } from "@/services/claims/state";
 import { sealPhoto, sha256Hex } from "@/services/photos/seal";
 import { carModel } from "@/services/vehicles/car-models";
-import { makeKey, putObject } from "@/services/storage/gcs";
+import { deleteObject, makeKey, putObject } from "@/services/storage/gcs";
 import type { CoverageItem } from "@/services/ai/coverage-rules";
-import { NOT_FOUND_IN_POLICY, type DamagedComponent } from "@/types";
+import { NOT_FOUND_IN_POLICY, type DamagedComponent, type VehicleView } from "@/types";
 
 const cov = (peril: CoverageItem["peril"], status: CoverageItem["status"], detail: string): CoverageItem => ({ peril, status, detail, law: null });
 
@@ -48,22 +49,132 @@ function minimalPdf(lines: string[]): Buffer {
   return Buffer.from(out);
 }
 
-function placeholderPhoto(label: string, dent: { x: number; y: number }): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" shape-rendering="crispEdges">
-<rect width="320" height="240" fill="#7a8a99"/><rect y="170" width="320" height="70" fill="#4b5563"/>
-<rect x="40" y="100" width="240" height="70" fill="#c0c7cf"/><rect x="90" y="64" width="140" height="40" fill="#aab3bd"/>
-<rect x="104" y="72" width="52" height="28" fill="#3b82f6"/><rect x="164" y="72" width="52" height="28" fill="#3b82f6"/>
-<rect x="60" y="160" width="40" height="40" fill="#111"/><rect x="220" y="160" width="40" height="40" fill="#111"/>
-<rect x="${dent.x}" y="${dent.y}" width="36" height="20" fill="#e43b44"/><rect x="${dent.x + 8}" y="${dent.y + 6}" width="20" height="8" fill="#7f1d1d"/>
-<rect x="8" y="8" width="304" height="22" fill="#1b1b2f"/><text x="16" y="24" font-family="monospace" font-size="12" fill="#fff">DEMO PHOTO · ${label}</text>
-</svg>`;
+const PHOTO_DIR = "data/peugeot-308";
+const HOME = { latitude: 30.2849, longitude: -97.7341, locationAccuracy: 9 };
+const CRASH_SITE = { latitude: 30.2686, longitude: -97.7555, locationAccuracy: 12 };
+const PEUGEOT_PLATE = "BCF2021";
+const PEUGEOT_INCIDENT = {
+  type: "collision",
+  location: "Lamar Blvd & W 5th St, Austin, TX",
+  notes: "Another car clipped my front-left corner while merging.",
+} as const;
+
+type SeedPhoto = {
+  file: string;
+  crop?: Region;
+  located?: false;
+  view: VehicleView;
+  damage: DamagedComponent[];
+  summary: string;
+};
+
+const WALKAROUND: SeedPhoto[] = [
+  { file: "normal/front.png", view: "front", damage: [], summary: "The front looks clean. No visible damage." },
+  { file: "normal/rear.png", view: "rear", damage: [], summary: "The rear looks clean. No visible damage." },
+  { file: "normal/left-front.png", view: "left", damage: [], summary: "The left side looks clean. No visible damage." },
+  { file: "normal/right-front.png", view: "right", damage: [], summary: "The right side looks clean. No visible damage." },
+];
+
+const CRASH: SeedPhoto[] = [
+  {
+    file: "crashed/front.png",
+    view: "front",
+    damage: [
+      { component: "front_bumper", damageTypes: ["dent", "broken"], severity: "severe", confidence: 0.95, description: "Bumper cover pushed in and torn loose on the left" },
+      { component: "hood", damageTypes: ["dent", "deformed"], severity: "severe", confidence: 0.93, description: "Hood crumpled upward at the front edge" },
+      { component: "left_headlight", damageTypes: ["broken"], severity: "severe", confidence: 0.9, description: "Left headlight smashed and pushed back" },
+    ],
+    summary: "Heavy damage across the front, worst on the left corner.",
+  },
+  {
+    file: "crashed/front.png",
+    crop: { left: 300, top: 40, width: 304, height: 300 },
+    view: "front_left",
+    damage: [
+      { component: "left_headlight", damageTypes: ["broken"], severity: "severe", confidence: 0.92, description: "Headlight housing shattered" },
+      { component: "front_left_fender", damageTypes: ["dent", "deformed"], severity: "severe", confidence: 0.86, description: "Fender bent back behind the headlight" },
+    ],
+    summary: "Close-up of the smashed left headlight and bent fender.",
+  },
+  {
+    file: "crashed/left-front.png",
+    located: false,
+    view: "front_left",
+    damage: [
+      { component: "front_left_fender", damageTypes: ["deformed"], severity: "severe", confidence: 0.95, description: "Fender crushed above the front wheel" },
+      { component: "hood", damageTypes: ["deformed"], severity: "severe", confidence: 0.95, description: "Hood buckled and lifted" },
+      { component: "front_left_door", damageTypes: ["scratch"], severity: "minor", confidence: 0.62, description: "Light scuff on the leading edge of the door" },
+    ],
+    summary: "Wide view: the damage is concentrated on the front-left corner.",
+  },
+];
+
+async function photoBytes(p: SeedPhoto) {
+  const img = sharp(`${PHOTO_DIR}/${p.file}`);
+  return (p.crop ? img.extract(p.crop) : img).flatten().resize({ height: 1080 }).jpeg({ quality: 90 }).toBuffer();
 }
 
-async function uploadPhoto(userId: Types.ObjectId, vehicleId: Types.ObjectId, svg: string) {
-  // Seed-only: real uploads are limited to JPEG/PNG/WebP. The key shape still matches makeKey.
-  const key = makeKey("photos", userId.toString(), vehicleId.toString(), "image/png").replace(/\.png$/, ".svg");
-  await putObject(key, svg, "image/svg+xml");
-  return key;
+async function seedPeugeotPhotos(userId: Types.ObjectId, vehicleId: Types.ObjectId, incidentId: Types.ObjectId, occurredAt: Date) {
+  const shots = [
+    ...WALKAROUND.map((p, i) => ({ ...p, at: new Date(occurredAt.getTime() - 14 * 24 * HOUR + i * 60_000), where: HOME })),
+    ...CRASH.map((p, i) => ({ ...p, at: new Date(occurredAt.getTime() + (i + 1) * 5 * 60_000), where: CRASH_SITE })),
+  ];
+  for (const p of shots) {
+    const bytes = await photoBytes(p);
+    const key = makeKey("photos", userId.toString(), vehicleId.toString(), "image/jpeg");
+    await putObject(key, bytes, "image/jpeg");
+    const evidence = {
+      sha256: sha256Hex(bytes),
+      capturedAt: p.at,
+      serverReceivedAt: new Date(p.at.getTime() + 4000),
+      ...(p.located !== false && p.where),
+    };
+    const photo = await DamagePhoto.create({
+      userId,
+      vehicleId,
+      incidentId,
+      s3Key: key,
+      contentType: "image/jpeg",
+      source: "camera",
+      ...evidence,
+      seal: sealPhoto({ vehicleId: vehicleId.toString(), ...evidence }, env().AUTH_SECRET),
+      analysisStatus: "done",
+    });
+    await DamageAssessment.create({
+      userId,
+      vehicleId,
+      incidentId,
+      photoId: photo._id,
+      view: p.view,
+      damagedComponents: p.damage,
+      summary: p.summary,
+      needsManualReview: false,
+      aiModel: "seed",
+    });
+  }
+}
+
+async function reseedPeugeotPhotos() {
+  const user = await User.findOne({ email: DEMO_EMAIL });
+  const peugeot = user && (await Vehicle.findOne({ userId: user._id, licensePlate: PEUGEOT_PLATE }));
+  if (!user || !peugeot) throw new Error("No demo Peugeot yet. Run npm run seed first.");
+  const scope = { userId: user._id, vehicleId: peugeot._id };
+  const seeded = await DamageAssessment.find({ ...scope, aiModel: "seed" });
+  const old = await DamagePhoto.find({ ...scope, _id: { $in: seeded.map((a) => a.photoId) } });
+  await Promise.all(old.map((p) => deleteObject(p.s3Key)));
+  await DamagePhoto.deleteMany({ ...scope, _id: { $in: old.map((p) => p._id) } });
+  await DamageAssessment.deleteMany({ ...scope, _id: { $in: seeded.map((a) => a._id) } });
+
+  const incident = await getOrCreateOpenIncident(user._id, peugeot._id);
+  incident.type ??= PEUGEOT_INCIDENT.type;
+  incident.occurredAt ??= new Date(Date.now() - 26 * HOUR);
+  incident.location ||= PEUGEOT_INCIDENT.location;
+  incident.notes ||= PEUGEOT_INCIDENT.notes;
+  await incident.save();
+
+  await seedPeugeotPhotos(user._id, peugeot._id, incident._id, incident.occurredAt);
+  await refreshIncidentStatus(user._id, peugeot._id);
+  console.log(`Reseeded ${old.length} → ${WALKAROUND.length + CRASH.length} photos on ${DEMO_EMAIL}'s ${title(PEUGEOT)} (${PEUGEOT_PLATE}).`);
 }
 
 const catalogCar = (id: string) => {
@@ -76,6 +187,7 @@ const title = (c: typeof PEUGEOT) => `${c.year} ${c.make} ${c.model}`;
 
 async function main() {
   await connectDB();
+  if (process.argv.includes("--peugeot")) return reseedPeugeotPhotos();
 
   const existing = await User.findOne({ email: DEMO_EMAIL });
   if (existing) {
@@ -95,14 +207,16 @@ async function main() {
   const peugeot = await Vehicle.create({
     userId: user._id,
     ...PEUGEOT,
+    nickname: "Daily Pug",
     color: "Artense Grey",
     vin: "VF3LBYHZPMS000001",
-    licensePlate: "BCF2021",
+    licensePlate: PEUGEOT_PLATE,
     state: "TX",
   });
   const lambo = await Vehicle.create({
     userId: user._id,
     ...LAMBO,
+    nickname: "The Bull",
     color: "Rosso Mars",
     licensePlate: "SC18ALS",
     state: "CA",
@@ -110,6 +224,8 @@ async function main() {
   user.lastVehicleId = peugeot._id;
   await user.save();
 
+  const day = (offset: number) => new Date(Date.now() + offset * 24 * HOUR).toISOString().slice(0, 10);
+  const policyPeriod = `${day(-60)} to ${day(122)}`;
   const sfKey = makeKey("policies", user._id.toString(), peugeot._id.toString(), "application/pdf");
   await putObject(
     sfKey,
@@ -119,7 +235,7 @@ async function main() {
       "Policy number: SF-DEMO-000123",
       "Named insured: Alex Rivera",
       `Vehicle: ${title(PEUGEOT)}`,
-      "Policy period: 2026-03-01 to 2026-09-01",
+      `Policy period: ${policyPeriod}`,
       "Total premium: $642.18 per 6 months",
       "Liability: $100,000 / $300,000 bodily injury; $100,000 property damage",
       "Collision: covered, $500 deductible",
@@ -142,7 +258,7 @@ async function main() {
       provider: "State Farm",
       policyNumber: "SF-DEMO-000123",
       policyType: "Personal auto",
-      effectiveDates: "2026-03-01 to 2026-09-01",
+      effectiveDates: policyPeriod,
       premium: "$642.18 per 6 months",
       coveredVehicle: title(PEUGEOT),
       collision: "Covered, $500 deductible",
@@ -238,82 +354,17 @@ async function main() {
     userId: user._id,
     vehicleId: peugeot._id,
     insurancePolicyId: peugeotPolicy._id,
-    type: "collision",
+    ...PEUGEOT_INCIDENT,
     occurredAt,
-    location: "Lamar Blvd & W 5th St, Austin, TX",
-    notes: "Another car clipped my front-left corner while merging.",
     status: "documenting",
   });
-
-  const photos: { label: string; dent: { x: number; y: number }; located: boolean; damage: DamagedComponent[]; summary: string }[] = [
-    {
-      label: "front-left close-up",
-      dent: { x: 44, y: 110 },
-      located: true,
-      damage: [
-        { component: "front_left_fender", damageTypes: ["dent", "scratch"], severity: "moderate", confidence: 0.88, description: "Visible dent and paint damage above the wheel arch" },
-        { component: "front_bumper", damageTypes: ["scratch"], severity: "minor", confidence: 0.74, description: "Scuffs on the left corner of the bumper" },
-      ],
-      summary: "Dent and scratches around the front-left fender and bumper corner.",
-    },
-    {
-      label: "front-left headlight",
-      dent: { x: 44, y: 128 },
-      located: true,
-      damage: [
-        { component: "left_headlight", damageTypes: ["crack"], severity: "minor", confidence: 0.66, description: "Hairline crack in the headlight lens" },
-        { component: "front_left_fender", damageTypes: ["dent"], severity: "moderate", confidence: 0.81, description: "Dent visible from a lower angle" },
-      ],
-      summary: "Cracked left headlight lens next to the dented fender.",
-    },
-    {
-      label: "wide shot, driver side",
-      dent: { x: 60, y: 120 },
-      located: false,
-      damage: [
-        { component: "front_left_door", damageTypes: ["scratch"], severity: "minor", confidence: 0.61, description: "Light scratch on the leading edge of the door" },
-      ],
-      summary: "Wide view shows the damage is limited to the front-left area.",
-    },
-  ];
-
-  for (const [i, p] of photos.entries()) {
-    const at = new Date(occurredAt.getTime() + (i + 1) * 5 * 60 * 1000);
-    const svg = placeholderPhoto(p.label, p.dent);
-    const evidence = {
-      sha256: sha256Hex(svg),
-      capturedAt: at,
-      serverReceivedAt: new Date(at.getTime() + 4000),
-      ...(p.located ? { latitude: 30.2686, longitude: -97.7555, locationAccuracy: 12 } : {}),
-    };
-    const photo = await DamagePhoto.create({
-      userId: user._id,
-      vehicleId: peugeot._id,
-      incidentId: incident._id,
-      s3Key: await uploadPhoto(user._id, peugeot._id, svg),
-      contentType: "image/svg+xml",
-      source: "camera",
-      ...evidence,
-      seal: sealPhoto({ vehicleId: peugeot.id, ...evidence }, env().AUTH_SECRET),
-      analysisStatus: "done",
-    });
-    await DamageAssessment.create({
-      userId: user._id,
-      vehicleId: peugeot._id,
-      incidentId: incident._id,
-      photoId: photo._id,
-      damagedComponents: p.damage,
-      summary: p.summary,
-      needsManualReview: false,
-      aiModel: "seed",
-    });
-  }
+  await seedPeugeotPhotos(user._id, peugeot._id, incident._id, occurredAt);
 
   const chat: [("user" | "assistant"), string][] = [
     ["user", "Someone clipped my front left corner. Am I covered?"],
     ["assistant", "Sorry that happened! Your State Farm policy lists collision coverage with a $500 deductible, so this kind of damage is likely covered after the deductible. State Farm makes the final call."],
     ["user", "Do I need more photos?"],
-    ["assistant", "You have 3 photos of the front-left area, which covers the basics. A close-up of the headlight crack in daylight would help too."],
+    ["assistant", "You have 3 photos of the front-left damage, including a close-up of the headlight, which covers the basics. Your walkaround from two weeks ago shows that corner was clean before."],
   ];
   for (const [i, [role, content]] of chat.entries()) {
     await ChatMessage.create({ userId: user._id, vehicleId: peugeot._id, role, content, createdAt: new Date(Date.now() - (chat.length - i) * 60_000) });

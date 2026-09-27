@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeTodos, nextIncidentStatus, type ClaimState } from "./todos";
-import { aggregateDamage, sidesOf } from "./damage";
+import { computeTodos, nextIncidentStatus, readiness, type ClaimState } from "./todos";
+import { aggregateDamage, documentedSides, sidesOf } from "./damage";
 
 const base: ClaimState = { policyStatus: null, providerName: null, photoCount: 0, damage: [], incident: null };
 const dent = aggregateDamage([
@@ -18,6 +18,13 @@ const dent = aggregateDamage([
     ],
   },
 ]);
+
+const dent3 = aggregateDamage(
+  ["p1", "p2", "p3"].map((photoId) => ({
+    photoId,
+    damagedComponents: [{ component: "front_left_fender" as const, damageTypes: ["dent" as const], severity: "moderate" as const, confidence: 0.8, description: "" }],
+  })),
+);
 
 const codes = (s: ClaimState) => computeTodos(s).items.filter((t) => !t.done).map((t) => t.code);
 
@@ -49,7 +56,7 @@ test("everything present: ready to file", () => {
     policyStatus: "processed",
     providerName: "State Farm",
     photoCount: 3,
-    damage: dent,
+    damage: dent3,
     incident: { type: "collision", occurredAt: new Date(), location: "Austin, TX", status: "action_required" },
   };
   const t = computeTodos(s);
@@ -57,6 +64,12 @@ test("everything present: ready to file", () => {
   assert.equal(t.readyToFile, true);
   assert.equal(nextIncidentStatus(s, t), "ready_to_file");
   assert.equal(t.items.at(-1)?.title, "File your claim with State Farm");
+});
+
+test("walkaround photos without damage don't count as damage angles", () => {
+  const s: ClaimState = { ...base, policyStatus: "processed", photoCount: 7, damage: dent, incident: { status: "action_required" } };
+  assert.ok(codes(s).includes("ADD_DAMAGE_PHOTOS"));
+  assert.match(computeTodos(s).items.find((t) => t.code === "ADD_DAMAGE_PHOTOS")?.detail ?? "", /^2 of 3/);
 });
 
 test("filed stays filed", () => {
@@ -76,4 +89,21 @@ test("sidesOf maps parts and photo views to car sides", () => {
   assert.deepEqual(sidesOf("front_left"), ["front", "left"]);
   assert.deepEqual(sidesOf("roof"), []);
   assert.deepEqual(sidesOf("unknown"), []);
+});
+
+test("documentedSides reads photo views, or damaged parts when the view is unknown", () => {
+  const photo = (view: string, component?: string) => ({ view, damagedComponents: component ? [{ component }] : [] });
+  assert.deepEqual(documentedSides([photo("front_left"), photo("rear"), photo("unknown", "right_taillight")]), ["front", "rear", "left", "right"]);
+  assert.deepEqual(documentedSides([photo("unknown")]), []);
+});
+
+test("readiness: protected needs a read policy, a coverage check and every side", () => {
+  const car = { policyStatus: "processed" as const, coverageChecked: true, sides: 4, damageCount: 0, incident: { status: "documenting" as const } };
+  assert.equal(readiness(car).protected, true);
+  assert.equal(readiness(car).openCase, false);
+  assert.deepEqual(readiness({ ...car, sides: 2 }).missing.map((m) => m.href), ["/garage"]);
+  assert.deepEqual(readiness({ ...car, policyStatus: null, coverageChecked: false }).missing.map((m) => m.label), ["Add insurance"]);
+  assert.equal(readiness({ ...car, damageCount: 2 }).openCase, true);
+  assert.equal(readiness({ ...car, incident: { status: "filed" } }).openCase, true);
+  assert.equal(readiness({ ...car, incident: null }).openCase, false);
 });

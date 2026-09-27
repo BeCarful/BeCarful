@@ -3,10 +3,11 @@ import { WithProviderLogo } from "@/components/insurance/ProviderPicker";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PhotoActions } from "@/components/photos/PhotoActions";
 import { RetroBadge, RetroLinkButton } from "@/components/retro";
+import { ClaimCheck } from "@/components/vehicle/ClaimCheck";
 import { DamageExplorer } from "@/components/vehicle/DamageExplorer";
-import { loadClaimState } from "@/services/claims/state";
+import { claimCheckFor, loadClaimState } from "@/services/claims/state";
 import { listPhotoViews } from "@/services/photos/view";
-import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
+import { getVehicleContext, vehicleModel, vehicleTitle } from "@/services/vehicles/context";
 import type { IncidentStatus, TaskCode } from "@/types";
 
 // Photo analysis runs inside a server action on this page; give Gemini room.
@@ -37,13 +38,14 @@ export default async function GaragePage() {
   const vehicleId = vehicle.id;
   const status = claim.incident ? STATUS[claim.incident.status] : undefined;
   const next = claim.todos.items.find((t) => !t.done);
+  const check = claimCheckFor(claim);
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Your garage"
         title={vehicleTitle(vehicle)}
-        description={[vehicle.color, vehicle.licensePlate, vehicle.state].filter(Boolean).join(" · ")}
+        description={[vehicle.nickname && vehicleModel(vehicle), vehicle.color, vehicle.licensePlate, vehicle.state].filter(Boolean).join(" · ")}
         action={status && <RetroBadge tone={status.tone}>{status.label}</RetroBadge>}
       />
       {next && (
@@ -60,6 +62,7 @@ export default async function GaragePage() {
           </RetroLinkButton>
         </section>
       )}
+      {check && <ClaimCheck verdict={check.verdict} items={check.items} />}
       <DamageExplorer
         key={vehicleId}
         vehicleId={vehicleId}

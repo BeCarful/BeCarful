@@ -1,192 +1,199 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import type { ReactNode } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { RetroBadge, RetroCard, RetroLinkButton } from "@/components/retro";
 import { ProviderName } from "@/components/insurance/ProviderPicker";
-import { ClaimActions } from "@/components/summary/ClaimActions";
-import { IncidentForm } from "@/components/summary/IncidentForm";
-import { ShareEvidence } from "@/components/summary/ShareEvidence";
-import { StatusPanel } from "@/components/summary/StatusPanel";
-import { TodoCard } from "@/components/summary/TodoCard";
-import type { PolicyExtraction } from "@/schemas/policy";
-import { areaLabel } from "@/services/claims/damage";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { OpenCar } from "@/components/layout/VehicleSelector";
+import { RetroBadge, RetroCard, retroButtonClass } from "@/components/retro";
+import { LocalTime } from "@/components/summary/LocalTime";
+import { STATUS_COPY } from "@/components/summary/StatusPanel";
+import { SIDES, documentedSides } from "@/services/claims/damage";
+import { combinedCoverage } from "@/services/claims/policies";
 import { loadClaimState } from "@/services/claims/state";
-import { listShareLinks } from "@/services/share/evidence";
-import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
-import { NOT_FOUND_IN_POLICY, componentLabel, type PolicyStatus, type Severity } from "@/types";
+import { readiness } from "@/services/claims/todos";
+import { getProvider, type InsuranceProvider } from "@/services/insurance/providers";
+import { getVehicleContext, vehicleModel, vehicleTitle } from "@/services/vehicles/context";
+import type { DamagedComponent } from "@/types";
 
-export const metadata: Metadata = { title: "Summary · BeCarful" };
-
-type Tone = "neutral" | "warn" | "danger" | "ok";
-
-const SEVERITY_TONE: Record<Severity, Tone> = { minor: "neutral", moderate: "warn", severe: "danger" };
-
-const POLICY_BADGE: Record<PolicyStatus, [Tone, string]> = {
-  processing: ["warn", "Reading"],
-  processed: ["ok", "On file"],
-  failed: ["danger", "Can't read"],
-};
+export const metadata: Metadata = { title: "Dashboard · BeCarful" };
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-export default async function SummaryPage() {
-  const { user, selected } = await getVehicleContext();
-  if (!selected) redirect("/vehicles/new");
+function Stat({ label, value, of, tone }: { label: string; value: number; of?: number; tone: string }) {
+  return (
+    <div className="surface-card p-4">
+      <p className="text-xs font-semibold text-ink-soft">{label}</p>
+      <p className={`mt-1 font-display text-3xl leading-none font-semibold tabular-nums ${tone}`}>
+        {value}
+        {of !== undefined && <span className="text-lg text-ink-soft"> / {of}</span>}
+      </p>
+    </div>
+  );
+}
 
-  const { todos, policy, provider, incident, photos, assessments, damage } = await loadClaimState(user._id, selected._id);
-  const vehicleId = selected._id.toString();
-  const extracted = policy?.extractedData as PolicyExtraction | null | undefined;
-  const top = damage[0];
-  const analyzing = photos.filter((p) => p.analysisStatus === "pending" || p.analysisStatus === "analyzing").length;
-  const needsReview = assessments.some((a) => a.needsManualReview);
-  const policyBadge = policy ? POLICY_BADGE[policy.status] : null;
-  const shareLinks = incident && photos.length > 0 ? await listShareLinks(user._id, selected._id, incident._id) : null;
+function Check({ ok, children }: { ok: boolean; children: ReactNode }) {
+  return (
+    <li className="flex items-center gap-2 text-sm">
+      <span
+        aria-hidden
+        className={`grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-bold ${ok ? "bg-ok text-white" : "border-2 border-input"}`}
+      >
+        {ok && "✓"}
+      </span>
+      <span className="sr-only">{ok ? "Done: " : "Missing: "}</span>
+      <span className={ok ? "text-ink" : "text-ink-soft"}>{children}</span>
+    </li>
+  );
+}
+
+export default async function DashboardPage() {
+  const { user, vehicles, selected } = await getVehicleContext();
+  if (!vehicles.length) redirect("/vehicles/new");
+
+  const cars = await Promise.all(
+    vehicles.map(async (v) => {
+      const claim = await loadClaimState(user._id, v._id);
+      const sides = documentedSides(
+        claim.assessments.map((a) => ({ view: a.view, damagedComponents: a.damagedComponents as DamagedComponent[] })),
+      );
+      const insurers = [...new Map(claim.policies.flatMap((p) => (getProvider(p.providerId) ? [[p.providerId, getProvider(p.providerId)!] as const] : []))).values()];
+      return {
+        id: v._id.toString(),
+        name: vehicleTitle(v),
+        model: v.nickname ? vehicleModel(v) : null,
+        plate: `${v.licensePlate} (${v.state})`,
+        selected: Boolean(selected?._id.equals(v._id)),
+        insurers: insurers as InsuranceProvider[],
+        sides: sides.length,
+        claim,
+        ready: readiness({
+          policyStatus: claim.state.policyStatus,
+          coverageChecked: combinedCoverage(claim.policies) !== null,
+          sides: sides.length,
+          damageCount: claim.damage.length,
+          incident: claim.incident,
+        }),
+      };
+    }),
+  );
+  const cases = cars.filter((c) => c.ready.openCase);
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Claim summary"
-        title="Your claim at a glance"
-        description={`${vehicleTitle(selected)}: what happened, what your policy says, and what to do next.`}
-      />
+      <PageHeader eyebrow="Dashboard" title={`Hi, ${user.name.split(" ")[0]}`} />
 
-      <StatusPanel status={incident?.status ?? null} items={todos.items} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Cars" value={cars.length} tone="text-ink" />
+        <Stat label="Insured" value={cars.filter((c) => c.ready.insured).length} of={cars.length} tone="text-accent" />
+        <Stat label="Protected" value={cars.filter((c) => c.ready.protected).length} of={cars.length} tone="text-ok" />
+        <Stat label="Open cases" value={cases.length} tone={cases.length ? "text-danger" : "text-ink"} />
+      </div>
 
-      <div className="@container">
-        <div className="grid gap-6 @xl:grid-cols-2 @4xl:grid-cols-3">
-          <RetroCard title="Your Car">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-lg leading-tight font-semibold">{vehicleTitle(selected)}</p>
-                <p className="mt-1 text-sm text-ink-soft">
-                  {selected.color} · {selected.licensePlate} ({selected.state})
+      {cases.length > 0 && (
+        <RetroCard title="Open cases" action={<RetroBadge tone="danger">{cases.length}</RetroBadge>}>
+          <ul className="divide-y divide-border">
+            {cases.map((c) => {
+              const { incident, damage, provider } = c.claim;
+              if (!incident || incident.status === "closed") return null;
+              const status = STATUS_COPY[incident.status];
+              return (
+                <li key={c.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
+                  <div className="min-w-0 flex-1 basis-56">
+                    <p className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-ink">{c.name}</span>
+                      <RetroBadge tone={status.tone}>{status.title}</RetroBadge>
+                    </p>
+                    <p className="mt-0.5 text-sm text-ink-soft">
+                      <span className="capitalize">{incident.type ?? "Incident"}</span>
+                      {incident.occurredAt && (
+                        <>
+                          {" · "}
+                          <LocalTime iso={incident.occurredAt.toISOString()} />
+                        </>
+                      )}
+                      {" · "}
+                      {plural(damage.length, "damaged part")}
+                      {provider && <> · {provider.name}</>}
+                    </p>
+                  </div>
+                  <OpenCar id={c.id} href="/summary" selected={c.selected} className={retroButtonClass("primary", "w-full sm:w-auto")}>
+                    Open case <span aria-hidden>→</span>
+                  </OpenCar>
+                </li>
+              );
+            })}
+          </ul>
+        </RetroCard>
+      )}
+
+      <section aria-labelledby="cars-title" className="space-y-3">
+        <h2 id="cars-title" className="section-title">
+          Your cars
+        </h2>
+        <div className="@container">
+          <ul className="grid gap-4 @xl:grid-cols-2">
+            {cars.map((c) => (
+              <li key={c.id} className="surface-card flex min-w-0 flex-col gap-3 p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-display text-lg leading-tight font-semibold text-ink">{c.name}</p>
+                    <p className="truncate text-sm text-ink-soft">{[c.model, c.plate].filter(Boolean).join(" · ")}</p>
+                  </div>
+                  {c.ready.openCase ? (
+                    <RetroBadge tone="danger">Open case</RetroBadge>
+                  ) : c.ready.protected ? (
+                    <RetroBadge tone="ok">Protected</RetroBadge>
+                  ) : c.ready.insured ? (
+                    <RetroBadge tone="accent">Insured</RetroBadge>
+                  ) : (
+                    <RetroBadge tone="warn">Not insured</RetroBadge>
+                  )}
+                </div>
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  {c.insurers.length ? (
+                    c.insurers.map((i) => (
+                      <span key={i.id} className="font-medium text-ink">
+                        <ProviderName provider={i} />
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-ink-soft">No insurance on file</span>
+                  )}
                 </p>
-              </div>
-              <Image src="/scenery/car.svg" alt="" width={96} height={44} unoptimized className="pixelated mt-1 w-20 shrink-0" />
-            </div>
-          </RetroCard>
-
-          <RetroCard title="Damage" action={needsReview && <RetroBadge tone="warn">Needs review</RetroBadge>}>
-            <div className="space-y-2">
-              {top ? (
-                <>
-                  <p className="flex items-baseline gap-2">
-                    <span className="font-display text-4xl leading-none font-semibold text-danger tabular-nums">{damage.length}</span>
-                    damaged {damage.length === 1 ? "part" : "parts"}
-                  </p>
-                  <p className="flex flex-wrap items-center gap-2 text-sm">
-                    Worst: <strong className="text-ink">{componentLabel(top.component)}</strong>
-                    <RetroBadge tone={SEVERITY_TONE[top.severity]}>{top.severity}</RetroBadge>
-                  </p>
-                  <p className="text-sm text-ink-soft">
-                    Around the {areaLabel(top.component)} · {plural(photos.length, "photo")}
-                  </p>
-                  {analyzing > 0 && <p className="text-sm text-ink-soft">Checking {plural(analyzing, "more photo")}…</p>}
-                </>
-              ) : (
-                <>
-                  <p className="font-semibold">No damage recorded</p>
-                  <p className="text-sm text-ink-soft">
-                    {analyzing > 0
-                      ? `Checking ${plural(analyzing, "photo")}…`
-                      : photos.length > 0
-                        ? `Nothing visible in ${plural(photos.length, "photo")}.`
-                        : "Take photos if something happened to your car."}
-                  </p>
-                </>
-              )}
-              {needsReview && (
-                <p className="rounded-lg bg-warn-soft px-3 py-2 text-sm text-ink">
-                  Some photos were unclear. An adjuster may need to inspect the car.
-                </p>
-              )}
-              <RetroLinkButton href="/garage" variant="secondary" className="mt-2 w-full">
-                {top ? "See it on your car" : "Add photos"}
-              </RetroLinkButton>
-            </div>
-          </RetroCard>
-
-          <RetroCard title="Insurance" action={policyBadge && <RetroBadge tone={policyBadge[0]}>{policyBadge[1]}</RetroBadge>}>
-            {policy ? (
-              <div className="space-y-3">
-                <p className="text-lg leading-tight font-semibold">{provider ? <ProviderName provider={provider} /> : "Unknown insurer"}</p>
-                {policy.status === "processed" ? (
-                  <dl className="divide-y divide-border text-sm">
-                    {(
-                      [
-                        ["Collision", extracted?.collision],
-                        ["Comprehensive", extracted?.comprehensive],
-                        ["Deductible", extracted?.deductibles],
-                      ] as const
-                    ).map(([label, value]) => (
-                      <div key={label} className="py-2 first:pt-0 last:pb-0">
-                        <dt className="text-xs font-medium text-ink-soft">{label}</dt>
-                        <dd className={`mt-0.5 break-words ${value ? "font-semibold text-ink tabular-nums" : "text-muted"}`}>
-                          {value || NOT_FOUND_IN_POLICY}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                ) : (
-                  <p className="text-sm text-ink-soft">
-                    {policy.status === "failed" ? "We couldn't read that PDF. Upload a clearer copy." : "Reading your policy…"}
-                  </p>
-                )}
-                <RetroLinkButton href="/insurance" variant="secondary" className="w-full">
-                  {policy.status === "failed" ? "Re-upload policy" : "Policy details"}
-                </RetroLinkButton>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="font-semibold">No policy yet</p>
-                <p className="text-sm text-ink-soft">Upload it so we can check your coverage and find your claim page.</p>
-                <RetroLinkButton href="/insurance" className="w-full">
-                  Add your insurance
-                </RetroLinkButton>
-              </div>
-            )}
-          </RetroCard>
+                <ul className="space-y-1.5">
+                  <Check ok={c.ready.insured}>{c.claim.policies.length > 1 ? `${c.claim.policies.length} policies on file` : "Policy on file"}</Check>
+                  <Check ok={c.ready.covered}>Coverage checked</Check>
+                  <Check ok={c.ready.documented}>
+                    Every side photographed ({c.sides}/{SIDES.length})
+                  </Check>
+                </ul>
+                <div className="mt-auto flex flex-wrap gap-2 pt-1">
+                  <OpenCar id={c.id} href="/summary" selected={c.selected} className={retroButtonClass("secondary", "flex-1")}>
+                    Summary
+                  </OpenCar>
+                  {c.ready.missing[0] && (
+                    <OpenCar id={c.id} href={c.ready.missing[0].href} selected={c.selected} className={retroButtonClass("primary", "flex-1")}>
+                      {c.ready.missing[0].label}
+                    </OpenCar>
+                  )}
+                </div>
+              </li>
+            ))}
+            <li>
+              <Link
+                href="/vehicles/new"
+                className="flex h-full min-h-40 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border p-5 font-semibold text-accent transition hover:bg-panel-shade"
+              >
+                <span aria-hidden className="text-3xl leading-none">
+                  +
+                </span>
+                Add a car
+              </Link>
+            </li>
+          </ul>
         </div>
-      </div>
-
-      <div className={`grid items-start gap-6 ${incident ? "lg:grid-cols-2" : ""}`}>
-        <TodoCard items={todos.items} provider={provider}>
-          <ClaimActions
-            vehicleId={vehicleId}
-            todos={todos}
-            provider={provider}
-            policyNumber={extracted?.policyNumber}
-            photoCount={photos.length}
-            incident={incident}
-          />
-        </TodoCard>
-
-        {incident && (
-          <RetroCard id="incident" title="Incident details" className="scroll-mt-24">
-            <p className="-mt-1 mb-4 text-sm text-ink-soft">Your insurer will ask for these.</p>
-            <IncidentForm
-              vehicleId={vehicleId}
-              now={new Date().toISOString()}
-              initial={{
-                type: incident.type ?? null,
-                occurredAt: incident.occurredAt?.toISOString() ?? null,
-                location: incident.location ?? "",
-                notes: incident.notes ?? "",
-              }}
-            />
-          </RetroCard>
-        )}
-
-        {shareLinks && (
-          <RetroCard id="share" title="Share evidence" className="scroll-mt-24">
-            <p className="-mt-1 mb-4 text-sm text-ink-soft">
-              Send your photos and incident details to an adjuster or the police. Anyone with the link can view them until it expires.
-            </p>
-            <ShareEvidence vehicleId={vehicleId} vehicleTitle={vehicleTitle(selected)} links={shareLinks} />
-          </RetroCard>
-        )}
-      </div>
+      </section>
     </div>
   );
 }
