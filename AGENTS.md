@@ -279,7 +279,7 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 - Users can also paste policy text instead of a PDF (`analyzePolicy({ text })` in `services/ai/policy-analysis.ts`, 200–60k chars). Store the pasted text in Cloud Storage as the original, same as a PDF.
 - Extract when present: provider, policy type, premium, covered vehicle, collision, comprehensive, liability, deductibles, rental reimbursement, roadside assistance, other coverage, key exclusions/limitations.
 - Missing fields say **"Not found in the uploaded policy"**. Never guess.
-- Built: `/insurance` (no policy → pick insurer, then upload PDF or paste text; with policy → provider card, status, Retry/Replace, AI summary, coverage list). `actions/insurance.ts` runs `analyzePolicy()` then `summarizePolicy()` on the extraction only (never the raw doc). Unrelated documents throw `NotAPolicyError`.
+- Built: `/insurance` (no policy → pick insurer, then upload PDF or paste text; with policy → provider card, status, Retry/Replace, AI summary, coverage list; on `lg` insurer + policy | plain words + details side by side, then the checklist (two-column cards) and Coverage full width). `actions/insurance.ts` runs `analyzePolicy()` then `summarizePolicy()` on the extraction only (never the raw doc). Unrelated documents throw `NotAPolicyError`.
 - Originals open via `/insurance/original?vehicleId=` (owner-checked route that redirects to a fresh presigned URL), never a stored or pre-rendered URL.
 - Pages whose actions call Gemini set `export const maxDuration` in the page file (not in `actions/*`). PDFs go to Gemini inline (base64); switch to the Files API if large PDFs fail.
 - **Coverage checklist (ADK):** after a policy is processed, `checkCoverage()` runs an ADK agent over the extraction (+ `search_insurance_law` for Florida rules) and returns one item per peril. `enforceEvidence()` then keeps "covered" only when the named policy field has a value (else "unknown", shown as "Not found") and drops statute citations we don't have. Retry: `recheckCoverage`. Creating a vehicle now lands on `/insurance`.
@@ -321,7 +321,7 @@ Examples:
 - Insurance + damage documented → *Review detected damage*, *Confirm your deductible*, *Start your insurance claim*
 - Ready → checklist all ✓, then **"File your claim with State Farm"** + **[Start Claim]** opening the verified `claimsUrl`
 
-Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS = 3`; `FILE_CLAIM` also needs a processed policy). AI-reworded to-dos are **not** built; the fixed copy is what users see. Claim status changes are user actions only: `markClaimFiled` requires the computed `readyToFile` → `filed`; `closeIncident` requires `filed` → `closed`; the next photo starts a new incident. Incident times go to the server as ISO strings; dates render with `components/summary/LocalTime` (user's timezone).
+Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS = 3`; `FILE_CLAIM` also needs a processed policy). AI-reworded to-dos are **not** built; the fixed copy is what users see. Claim status changes are user actions only: `markClaimFiled` requires the computed `readyToFile` → `filed`; `closeIncident` requires `filed` → `closed`; the next photo starts a new incident. Incident times go to the server as ISO strings; dates render with `components/summary/LocalTime` (user's timezone). There is no separate "Your claim" card: `ClaimActions` (Start Claim, Call, Have ready, I've filed, Close incident; anchor `#claim`) renders inside the To-do card only when ready to file or filed, and Incident details sits beside the To-do card on `lg`.
 
 ---
 
@@ -343,7 +343,7 @@ Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS =
 
 **Pages** start with `PageHeader` (`components/layout/PageHeader.tsx`: eyebrow, title, description, action) inside `space-y-6`; main is `max-w-5xl`, two columns at `lg` where it helps.
 
-**Home layout (top to bottom):** vehicle header → next step → garage scene with the 3D car → action buttons → photo gallery → damage list.
+**Home layout (top to bottom):** vehicle header → next step → garage scene with the 3D car → action buttons → photo gallery → damage list. On `lg`+ it's two columns: car + Photos on the left, buttons + Damage on the right; the Damage card is as tall as the left column and its list scrolls (tapping a part scrolls to its card).
 
 Action buttons, grouped directly under the car, icon + short label:
 

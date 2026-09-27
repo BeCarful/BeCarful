@@ -62,6 +62,7 @@ export function CoverageChecklist({ vehicleId, items }: { vehicleId: string; ite
       {threats.length > 0 && (
         <RetroCard
           title="Wild Tuxemon on your route"
+          className="@container"
           action={
             <RetroBadge tone="danger">
               {threats.length} may attack
@@ -69,7 +70,7 @@ export function CoverageChecklist({ vehicleId, items }: { vehicleId: string; ite
           }
         >
           <p className="mb-3 text-sm text-ink-soft">Risks your policy doesn&apos;t cover, or doesn&apos;t mention.</p>
-          <ul className="space-y-2">
+          <ul className="grid gap-2 @2xl:grid-cols-2">
             {threats.map((t, i) => {
               const m = PERIL_MONSTERS[t.peril];
               return (
@@ -99,8 +100,8 @@ export function CoverageChecklist({ vehicleId, items }: { vehicleId: string; ite
       )}
 
       {covered.length > 0 && (
-        <RetroCard title="You're protected against" action={<RetroBadge tone="ok">{covered.length} covered</RetroBadge>}>
-          <ul className="space-y-2">
+        <RetroCard title="You're protected against" className="@container" action={<RetroBadge tone="ok">{covered.length} covered</RetroBadge>}>
+          <ul className="grid gap-2 @2xl:grid-cols-2">
             {covered.map((c) => (
               <li key={c.peril} className="flex gap-3 rounded-lg bg-ok-soft/60 px-3 py-2">
                 <span aria-hidden className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-ok text-[11px] font-bold text-white">

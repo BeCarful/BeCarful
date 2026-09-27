@@ -3,7 +3,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RetroBadge, RetroCard, RetroLinkButton } from "@/components/retro";
-import { ClaimSection } from "@/components/summary/ClaimSection";
+import { ClaimActions } from "@/components/summary/ClaimActions";
 import { IncidentForm } from "@/components/summary/IncidentForm";
 import { StatusPanel } from "@/components/summary/StatusPanel";
 import { TodoCard } from "@/components/summary/TodoCard";
@@ -38,7 +38,6 @@ export default async function SummaryPage() {
   const analyzing = photos.filter((p) => p.analysisStatus === "pending" || p.analysisStatus === "analyzing").length;
   const needsReview = assessments.some((a) => a.needsManualReview);
   const policyBadge = policy ? POLICY_BADGE[policy.status] : null;
-  const showClaim = damage.length > 0 || incident?.status === "filed";
 
   return (
     <div className="space-y-6">
@@ -147,29 +146,9 @@ export default async function SummaryPage() {
         </div>
       </div>
 
-      <div className={`grid items-start gap-6 ${showClaim ? "lg:grid-cols-[1.15fr_1fr]" : ""}`}>
-        <div className="space-y-6">
-          <TodoCard items={todos.items} />
-
-          {incident && (
-            <RetroCard id="incident" title="Incident details" className="scroll-mt-24">
-              <p className="-mt-1 mb-4 text-sm text-ink-soft">Your insurer will ask for these.</p>
-              <IncidentForm
-                vehicleId={vehicleId}
-                now={new Date().toISOString()}
-                initial={{
-                  type: incident.type ?? null,
-                  occurredAt: incident.occurredAt?.toISOString() ?? null,
-                  location: incident.location ?? "",
-                  notes: incident.notes ?? "",
-                }}
-              />
-            </RetroCard>
-          )}
-        </div>
-
-        {showClaim && (
-          <ClaimSection
+      <div className={`grid items-start gap-6 ${incident ? "lg:grid-cols-2" : ""}`}>
+        <TodoCard items={todos.items}>
+          <ClaimActions
             vehicleId={vehicleId}
             todos={todos}
             provider={provider}
@@ -177,6 +156,22 @@ export default async function SummaryPage() {
             photoCount={photos.length}
             incident={incident}
           />
+        </TodoCard>
+
+        {incident && (
+          <RetroCard id="incident" title="Incident details" className="scroll-mt-24">
+            <p className="-mt-1 mb-4 text-sm text-ink-soft">Your insurer will ask for these.</p>
+            <IncidentForm
+              vehicleId={vehicleId}
+              now={new Date().toISOString()}
+              initial={{
+                type: incident.type ?? null,
+                occurredAt: incident.occurredAt?.toISOString() ?? null,
+                location: incident.location ?? "",
+                notes: incident.notes ?? "",
+              }}
+            />
+          </RetroCard>
         )}
       </div>
     </div>
