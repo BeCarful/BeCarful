@@ -2,13 +2,14 @@ import "server-only";
 import { GoogleGenAI, type ContentListUnion } from "@google/genai";
 import { z } from "zod";
 import { env } from "@/lib/env";
+import { googleAuthOptions } from "@/lib/gcp";
 
 export const GEMINI_MODEL = "gemini-2.5-flash";
 
 export const genaiAuth = () => ({ vertexai: true, project: env().GOOGLE_CLOUD_PROJECT, location: "global" });
 
 let client: GoogleGenAI | undefined;
-export const gemini = () => (client ??= new GoogleGenAI(genaiAuth()));
+export const gemini = () => (client ??= new GoogleGenAI({ ...genaiAuth(), googleAuthOptions: googleAuthOptions() }));
 
 function jsonSchemaFor(schema: z.ZodType) {
   const json = z.toJSONSchema(schema) as Record<string, unknown>;

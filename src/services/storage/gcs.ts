@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { Storage } from "@google-cloud/storage";
 import { env } from "@/lib/env";
+import { googleAuthOptions } from "@/lib/gcp";
 
 export type UploadKind = "photos" | "policies";
 
@@ -13,7 +14,7 @@ export const UPLOAD_RULES: Record<UploadKind, { types: Record<string, string>; m
 export const VIEW_URL_TTL_SECONDS = 60 * 60;
 
 let client: Storage | undefined;
-const file = (key: string) => (client ??= new Storage({ projectId: env().GOOGLE_CLOUD_PROJECT })).bucket(env().GCS_BUCKET_NAME).file(key);
+const file = (key: string) => (client ??= new Storage({ projectId: env().GOOGLE_CLOUD_PROJECT, ...googleAuthOptions() })).bucket(env().GCS_BUCKET_NAME).file(key);
 
 const keyPrefix = (kind: UploadKind, userId: string, vehicleId: string) => `users/${userId}/vehicles/${vehicleId}/${kind}/`;
 

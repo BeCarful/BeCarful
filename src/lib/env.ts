@@ -6,6 +6,8 @@ const EnvSchema = z.object({
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
   GOOGLE_CLOUD_PROJECT: z.string().min(1),
   GCS_BUCKET_NAME: z.string().min(1),
+  GCP_WORKLOAD_IDENTITY_PROVIDER: z.string().min(1).optional(),
+  GCP_SERVICE_ACCOUNT_EMAIL: z.string().min(1).optional(),
   TYPESAFE_API_KEY: z.string().min(1).optional(),
 });
 

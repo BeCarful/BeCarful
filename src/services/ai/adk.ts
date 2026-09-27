@@ -1,9 +1,15 @@
 import "server-only";
 import { Gemini, InMemoryRunner, createEvent, isFinalResponse, type LlmAgent } from "@google/adk";
 import type { Content } from "@google/genai";
-import { GEMINI_MODEL, genaiAuth } from "./gemini";
+import { GEMINI_MODEL, gemini, genaiAuth } from "./gemini";
 
-export const adkModel = () => new Gemini({ model: GEMINI_MODEL, ...genaiAuth() });
+class SharedClientGemini extends Gemini {
+  override get apiClient() {
+    return gemini();
+  }
+}
+
+export const adkModel = () => new SharedClientGemini({ model: GEMINI_MODEL, ...genaiAuth() });
 
 type Turn = { role: "user" | "assistant"; content: string };
 
