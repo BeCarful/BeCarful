@@ -45,7 +45,7 @@ export function computeTodos(s: ClaimState): TodoList {
     code: "ADD_PHOTOS",
     title: s.photoCount > 0 ? "Photos added" : "Take photos of your vehicle",
     done: s.photoCount > 0,
-    href: "/",
+    href: "/garage",
   });
 
   if (hasDamage) {
@@ -55,7 +55,7 @@ export function computeTodos(s: ClaimState): TodoList {
       title: enough ? "Damage documented from several angles" : `Add more photos of the damaged ${areaLabel(s.damage[0].component)}`,
       detail: enough ? undefined : `${s.photoCount} of ${MIN_DAMAGE_PHOTOS} photos. Try a wide shot and a close-up.`,
       done: enough,
-      href: "/",
+      href: "/garage",
     });
     const i = s.incident;
     const infoDone = Boolean(i?.type && i.occurredAt && i.location);
@@ -63,7 +63,7 @@ export function computeTodos(s: ClaimState): TodoList {
       code: "COMPLETE_INCIDENT_INFO",
       title: infoDone ? "Incident details added" : "Add what happened, when and where",
       done: infoDone,
-      href: "/summary#incident",
+      href: "/#incident",
     });
     const filed = i?.status === "filed" || i?.status === "closed";
     items.push({
@@ -72,7 +72,7 @@ export function computeTodos(s: ClaimState): TodoList {
         ? "Claim filed"
         : `File your claim${s.providerName ? ` with ${s.providerName}` : ""}`,
       done: filed,
-      href: "/summary#claim",
+      href: "/#claim",
     });
   }
 

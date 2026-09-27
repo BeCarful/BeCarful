@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useRef, useTransition } from "react";
 import { selectVehicle } from "@/actions/vehicles";
-import { CAR_ICON, NavIcon, VEHICLE_MENU_ID } from "./BottomNav";
+import { CAR_ICON, NavIcon, VEHICLE_MENU_ID, isActive } from "./BottomNav";
 
 export type VehicleOption = { id: string; title: string };
 
@@ -23,20 +24,26 @@ export function VehicleSelector({
   onDone?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const path = usePathname();
 
   return (
     <ul className={`space-y-1 ${pending ? "animate-pulse" : ""}`} aria-busy={pending || undefined}>
       {vehicles.map((v) => {
-        const active = v.id === selectedId;
+        const selected = v.id === selectedId;
+        const active = selected && isActive(path, "/garage");
         return (
           <li key={v.id}>
             <button
               type="button"
-              aria-current={active || undefined}
+              aria-current={active ? "page" : undefined}
               disabled={pending}
               onClick={() => {
                 onDone?.();
-                if (!active) startTransition(() => selectVehicle(v.id));
+                startTransition(async () => {
+                  if (!selected) await selectVehicle(v.id);
+                  router.push("/garage");
+                });
               }}
               className={`${item} text-left ${active ? current : idle}`}
             >

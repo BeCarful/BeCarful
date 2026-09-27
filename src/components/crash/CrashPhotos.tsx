@@ -40,7 +40,7 @@ export function CrashPhotos({ vehicles, selectedId }: { vehicles: VehicleOption[
           Add photos
         </RetroButton>
       </div>
-      <PhotoCapture key={selectedId} vehicleId={selectedId} exitHref="/" />
+      <PhotoCapture key={selectedId} vehicleId={selectedId} exitHref="/garage" />
     </>
   );
 }

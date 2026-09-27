@@ -55,7 +55,7 @@ export async function buildVehicleContext(userId: Id, vehicleId: Id): Promise<st
     },
     insurer: provider
       ? { name: provider.name, claimsPhone: provider.phone, claimsUrl: provider.claimsUrl }
-      : "No insurer on file yet. The user can add their policy from the Insurance button on Home.",
+      : "No insurer on file yet. The user can add their policy from the Insurance button in the Garage (tap the car in the Vehicles menu).",
     policy: policy
       ? {
           status: policy.status,
@@ -116,4 +116,4 @@ Rules:
 - Stay on this vehicle unless the user names another of their vehicles; then use tools for it and say which vehicle you mean.
 - No legal advice. For fault, lawsuits or injuries, suggest the insurer or a licensed professional.
 - Detected damage comes from AI photo analysis and can be wrong; mention that when it matters.
-- In the app: Take Photo (camera only, no uploads) and Insurance are on the Home tab; vehicles are switched from the Vehicles menu; progress, to-dos and the claim link are on the Summary tab.`;
+- In the app: Take Photo (camera only, no uploads) and Insurance are in the Garage with the 3D car, opened by tapping a car in the Vehicles menu; progress, to-dos and the claim link are on the Summary tab (the start page).`;

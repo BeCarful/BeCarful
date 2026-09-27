@@ -62,7 +62,7 @@ python3 scripts/tuxemon-idle.py   # regenerate public/tuxemon/*-idle.png (needs 
 | Presigned URLs | Never stored; `getViewUrl(key)` on read (1 h). DB stores `s3Key` only (no `imageUrl`/`documentUrl` fields). |
 | Insurer metadata | Static `services/insurance/providers.ts` (not a DB collection); `InsurancePolicy.providerId` is its string id. |
 | To-dos | Computed on read by `computeTodos()` (pure, tested); no stored `TodoState`. Incident status synced by `refreshIncidentStatus()`. |
-| Selected vehicle | `User.lastVehicleId`, changed by `selectVehicle()`; pages read it via `getVehicleContext()`. Switched from the "Vehicles" list (`VehicleSelector`): a sidebar section on `md`+, a bottom-nav tab that opens a native `popover` (`VehicleMenu`) on phones. |
+| Selected vehicle | `User.lastVehicleId`, changed by `selectVehicle()`; pages read it via `getVehicleContext()`. Switched from the "Vehicles" list (`VehicleSelector`): a sidebar section on `md`+, a bottom-nav tab that opens a native `popover` (`VehicleMenu`) on phones. Tapping a car selects it and opens `/garage` (the only way to the 3D car). |
 | Car models | Static demo catalog `services/vehicles/car-models.ts` (`CAR_MODELS`: id, year/make/model, GLB url, axes, credit), not a DB collection. New vehicles must pick one (`Vehicle.modelId`, year/make/model copied from the catalog); vehicles without `modelId` show the first model. |
 | Photo evidence | Camera only: in-app `getUserMedia` camera (`PhotoCapture`), no file input anywhere, and `registerPhoto` rejects `source: "upload"`. On receipt the server stores `sha256` of the stored bytes and `seal` = HMAC-SHA256 (`AUTH_SECRET`) over vehicleId + sha256 + capturedAt + serverReceivedAt + location (`services/photos/seal.ts`, tested). It proves the bytes and metadata are unchanged since BeCarful received them, not that the device clock/GPS were true. No verify UI yet. |
 | 3D car | R3F + drei GLB viewer (`Car3D.tsx`) behind `CarDamageView`, one GLB per catalog model. Parts come from named collections where the GLB has them (`namedPart`: "Left Door", "Headlight - Right", "Windshield"…), else position zones (`car-zones.ts`). The team's prototype (`3d_model_update/`) was folded in and removed: its collection highlight, "damage skips glass/interior" rule, transparency toggle (now **X-ray**) and per-part photo panel (now **+ Take a close-up**, camera only). 2D map (`CarDamageMap2D.tsx`) is the toggle + error fallback. |
@@ -122,7 +122,7 @@ Feature-oriented. All application code lives in `src/` (Next.js `src` folder; `@
 ```
 src/app/(auth)/        login, signup
 src/app/(app)/         authed shell (layout: sky, road sidebar md+ with the Vehicles list, frosted header on phones, bottom nav + Vehicles popover on phones)
-  page.tsx             Home        chat/  summary/  insurance/  profile/  vehicles/new/  crash/
+  page.tsx             Summary (landing)   garage/ (3D car)  chat/  insurance/  profile/  vehicles/new/  crash/
 src/actions/           server actions per feature: auth vehicles photos insurance chat incidents
 src/components/        retro/ layout/ auth/ vehicle/ photos/ insurance/ chat/ summary/ crash/
 src/lib/               env (zod, lazy), gcp (Vercel WIF credentials), db (cached mongoose), session (jose), auth, upload-client
@@ -216,7 +216,7 @@ Store stable object keys, not just URLs.
 
 ## Photos
 
-**Take Photo** flow: Home → Camera → Review → Upload → AI Processing → Damage Visualization.
+**Take Photo** flow: Garage → Camera → Review → Upload → AI Processing → Damage Visualization.
 
 - Request camera + location. Capture client timestamp, GPS lat/lng/accuracy, vehicleId. Server records `serverReceivedAt`.
 - Location denied → still allow the photo, show **"Location unavailable"**.
@@ -276,7 +276,7 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 
 ## Insurance
 
-- The **Insurance** button sits on Home next to the photo buttons (label **"Add Insurance"** when the vehicle has no policy).
+- The **Insurance** button sits in the Garage next to the photo buttons (label **"Add Insurance"** when the vehicle has no policy).
 - Screen shows provider, policy info, uploaded PDF, upload/replace, AI summary, relevant coverage.
 - PDF → private Cloud Storage → reference in MongoDB → Gemini extraction → structured data → simple summary.
 - Users can also paste policy text instead of a PDF (`analyzePolicy({ text })` in `services/ai/policy-analysis.ts`, 200–60k chars). Store the pasted text in Cloud Storage as the original, same as a PDF.
@@ -291,7 +291,7 @@ Three.js deterministically turns matching meshes (today: position zones, see bel
 
 ## Crash mode
 
-`/crash` (red **Crash mode** button in the phone header). Step 1: Florida at-the-scene duties, most urgent first, each linking its statute: anyone hurt → Call 911 (`tel:911`, § 316.062), stay at the scene / clear the lanes (§ 316.061), call police if hurt or ≥ $2,000 damage (§ 316.065(1)), swap info (§ 316.062), no police report → own written report within 10 days (§ 316.066(1)(e)). Step 2 (`?step=photos`, `CrashPhotos`): a `<select>` of the user's vehicles (`selectVehicle`) + **Add photos**, which runs the normal `PhotoCapture` flow (seal, analysis, first photo opens the incident); "See my car" and **Exit to home** go to `/`. Not in the `md`+ sidebar yet.
+`/crash` (red **Crash mode** button in the phone header). Step 1: Florida at-the-scene duties, most urgent first, each linking its statute: anyone hurt → Call 911 (`tel:911`, § 316.062), stay at the scene / clear the lanes (§ 316.061), call police if hurt or ≥ $2,000 damage (§ 316.065(1)), swap info (§ 316.062), no police report → own written report within 10 days (§ 316.066(1)(e)). Step 2 (`?step=photos`, `CrashPhotos`): a `<select>` of the user's vehicles (`selectVehicle`) + **Add photos**, which runs the normal `PhotoCapture` flow (seal, analysis, first photo opens the incident); "See my car" goes to `/garage`, **Exit to home** to `/` (Summary). Not in the `md`+ sidebar yet.
 
 ## Chat
 
@@ -346,11 +346,11 @@ Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS =
 - `public/scenery/`: `ground.svg` (original art reused from the team's HouseToClaim project, no credit needed; used by `.pixel-scene`) and `car.svg` (original pixel car). Tuxemon sprites keep their attribution.
 - Login scene car: `components/auth/IdleCar.tsx`, `car.svg` inlined with round wheels; idles with a 1px body hop (`car-idle`) and two-frame spinning hubs (`wheel-a/b`), still under reduced motion.
 
-**Navigation:** three destinations: **Home**, **Chat**, **Summary**, plus the **Vehicles** list (switch car / add vehicle). Phones: frosted bottom nav Home · Vehicles · Chat · Summary, where Vehicles opens a popover list above the nav. `md`+: road sidebar (`components/layout/AppSidebar.tsx`) with a "Vehicles" section above "Your car", and Profile, day/night and log out in its footer. The frosted header is phones-only (logo, red **Crash mode** button in the middle, day/night, profile avatar).
+**Navigation:** no Home tab. **Summary** (`/`, the landing page) and **Chat**, plus the **Vehicles** list (tap a car → its Garage at `/garage` / add vehicle). Phones: frosted bottom nav Summary · Vehicles · Chat, where Vehicles opens a popover list above the nav. `md`+: road sidebar (`components/layout/AppSidebar.tsx`) with a "Vehicles" section above "Your car", and Profile, day/night and log out in its footer. The frosted header is phones-only (logo, red **Crash mode** button in the middle, day/night, profile avatar).
 
 **Pages** start with `PageHeader` (`components/layout/PageHeader.tsx`: eyebrow, title, description, action) inside `space-y-6`; main is `max-w-5xl`, two columns at `lg` where it helps.
 
-**Home layout (top to bottom):** vehicle header → next step → garage scene with the 3D car → action buttons → photo gallery → damage list. On `lg`+ it's two columns: car + Photos on the left, buttons + Damage on the right; the Damage card is as tall as the left column and its list scrolls (tapping a part scrolls to its card).
+**Garage layout (`/garage`, top to bottom):** vehicle header → next step → garage scene with the 3D car → action buttons → photo gallery → damage list. On `lg`+ it's two columns: car + Photos on the left, buttons + Damage on the right; the Damage card is as tall as the left column and its list scrolls (tapping a part scrolls to its card).
 
 Action buttons, grouped directly under the car, icon + short label:
 
