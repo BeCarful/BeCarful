@@ -4,7 +4,7 @@ import { RetroBadge, retroButtonClass } from "@/components/retro";
 import type { IncidentStatus, IncidentType, TodoItem } from "@/types";
 import { LocalTime } from "./LocalTime";
 
-const COPY: Record<Exclude<IncidentStatus, "closed">, { title: string; detail: string; tone: "neutral" | "warn" | "ok" | "accent" }> = {
+export const STATUS_COPY: Record<Exclude<IncidentStatus, "closed">, { title: string; detail: string; tone: "neutral" | "warn" | "ok" | "accent" }> = {
   documenting: { title: "Documenting", detail: "Take photos so we can check for damage.", tone: "neutral" },
   analyzing: { title: "Checking photos", detail: "We're looking for visible damage.", tone: "neutral" },
   action_required: { title: "Action needed", detail: "Finish the to-dos below to get ready to file.", tone: "warn" },
@@ -15,7 +15,7 @@ const COPY: Record<Exclude<IncidentStatus, "closed">, { title: string; detail: s
 type Incident = { status: IncidentStatus; type?: IncidentType | null; occurredAt?: Date | null; location?: string | null };
 
 export function StatusPanel({ incident, items }: { incident: Incident | null; items: TodoItem[] }) {
-  const copy = incident && incident.status !== "closed" ? COPY[incident.status] : null;
+  const copy = incident && incident.status !== "closed" ? STATUS_COPY[incident.status] : null;
   const recap = copy
     ? [
         incident?.type && <span className="capitalize">{incident.type}</span>,

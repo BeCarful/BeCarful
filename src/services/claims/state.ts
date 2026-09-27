@@ -8,12 +8,12 @@ import { InsurancePolicy } from "@/models/InsurancePolicy";
 import { getProvider } from "@/services/insurance/providers";
 import type { DamagedComponent } from "@/types";
 import { aggregateDamage } from "./damage";
+import { claimPolicy, policiesStatus } from "./policies";
 import { computeTodos, nextIncidentStatus, type ClaimState } from "./todos";
 
 type Id = Types.ObjectId | string;
 
-export const getActivePolicy = (userId: Id, vehicleId: Id) =>
-  InsurancePolicy.findOne({ userId, vehicleId }).sort({ uploadedAt: -1 });
+export const getPolicies = (userId: Id, vehicleId: Id) => InsurancePolicy.find({ userId, vehicleId }).sort({ uploadedAt: 1 });
 
 /** The open incident is the newest one that isn't closed. */
 export const getOpenIncident = (userId: Id, vehicleId: Id) =>
@@ -22,14 +22,13 @@ export const getOpenIncident = (userId: Id, vehicleId: Id) =>
 export async function getOrCreateOpenIncident(userId: Id, vehicleId: Id) {
   const open = await getOpenIncident(userId, vehicleId);
   if (open) return open;
-  const policy = await getActivePolicy(userId, vehicleId);
-  return Incident.create({ userId, vehicleId, insurancePolicyId: policy?._id, status: "documenting" });
+  return Incident.create({ userId, vehicleId, status: "documenting" });
 }
 
 /** Everything the summary, to-dos and chat need for one vehicle, scoped by owner + vehicle. */
 export async function loadClaimState(userId: Id, vehicleId: Id) {
   await connectDB();
-  const [policy, incident] = await Promise.all([getActivePolicy(userId, vehicleId), getOpenIncident(userId, vehicleId)]);
+  const [policies, incident] = await Promise.all([getPolicies(userId, vehicleId), getOpenIncident(userId, vehicleId)]);
   const [photos, assessments] = incident
     ? await Promise.all([
         DamagePhoto.find({ userId, vehicleId, incidentId: incident._id }).sort({ createdAt: -1 }),
@@ -39,9 +38,10 @@ export async function loadClaimState(userId: Id, vehicleId: Id) {
   const damage = aggregateDamage(
     assessments.map((a) => ({ photoId: a.photoId, damagedComponents: a.damagedComponents as DamagedComponent[] })),
   );
+  const policy = claimPolicy(policies, incident?.type);
   const provider = getProvider(policy?.providerId);
   const state: ClaimState = {
-    policyStatus: policy?.status ?? null,
+    policyStatus: policiesStatus(policies),
     providerName: provider?.name ?? null,
     photoCount: photos.length,
     damage,
@@ -50,7 +50,7 @@ export async function loadClaimState(userId: Id, vehicleId: Id) {
       : null,
   };
   const todos = computeTodos(state);
-  return { state, todos, policy, provider, incident, photos, assessments, damage };
+  return { state, todos, policies, policy, provider, incident, photos, assessments, damage };
 }
 
 /** Call after any change that can affect the to-do list (photo, analysis, policy, incident info). */

@@ -6,13 +6,20 @@ import { RetroButton, RetroField } from "@/components/retro";
 import { CAR_MODELS } from "@/services/vehicles/car-models";
 
 const FIELDS = [
+  { name: "nickname", label: "Nickname", placeholder: "Daily driver", maxLength: 30, required: true },
   { name: "color", label: "Color", placeholder: "Silver", required: true },
   { name: "licensePlate", label: "License plate", placeholder: "ABC1234", required: true },
   { name: "state", label: "State", placeholder: "TX", maxLength: 2, required: true },
   { name: "vin", label: "VIN (optional)", placeholder: "17 characters", maxLength: 17 },
 ] as const;
 
-const SPANS: Record<(typeof FIELDS)[number]["name"], string> = { color: "col-span-3", licensePlate: "col-span-4", state: "col-span-4", vin: "col-span-8" };
+const SPANS: Record<(typeof FIELDS)[number]["name"], string> = {
+  nickname: "col-span-3",
+  color: "col-span-3",
+  licensePlate: "col-span-3",
+  state: "col-span-2",
+  vin: "col-span-8",
+};
 
 const CARS = [...CAR_MODELS]
   .sort((a, b) => `${a.make} ${a.model}`.localeCompare(`${b.make} ${b.model}`))

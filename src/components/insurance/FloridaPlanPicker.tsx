@@ -8,7 +8,7 @@ import { FLORIDA_PLANS } from "@/services/insurance/florida-plans";
 const STEPS = ["Saving your plan…", "Checking the law…", "Spotting wild Tuxemon…"];
 
 /** For drivers without their policy document: pick the closest example Florida configuration. */
-export function FloridaPlanPicker({ vehicleId, providerId }: { vehicleId: string; providerId: string }) {
+export function FloridaPlanPicker({ vehicleId, providerId, onSaved }: { vehicleId: string; providerId: string; onSaved?: (policyId: string) => void }) {
   const plans = FLORIDA_PLANS.filter((p) => p.providerId === providerId);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export function FloridaPlanPicker({ vehicleId, providerId }: { vehicleId: string
     if (!res?.ok) {
       setError(res?.error ?? "Something went wrong. Check your connection and try again.");
       setBusy(null);
-    }
+    } else onSaved?.(res.data.policyId);
   }
 
   if (busy) return <PixelProgress steps={STEPS} current={1} />;

@@ -207,6 +207,7 @@ async function main() {
   const peugeot = await Vehicle.create({
     userId: user._id,
     ...PEUGEOT,
+    nickname: "Daily Pug",
     color: "Artense Grey",
     vin: "VF3LBYHZPMS000001",
     licensePlate: PEUGEOT_PLATE,
@@ -215,6 +216,7 @@ async function main() {
   const lambo = await Vehicle.create({
     userId: user._id,
     ...LAMBO,
+    nickname: "The Bull",
     color: "Rosso Mars",
     licensePlate: "SC18ALS",
     state: "CA",

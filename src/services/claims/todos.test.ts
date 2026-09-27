@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeTodos, nextIncidentStatus, type ClaimState } from "./todos";
-import { aggregateDamage, sidesOf } from "./damage";
+import { computeTodos, nextIncidentStatus, readiness, type ClaimState } from "./todos";
+import { aggregateDamage, documentedSides, sidesOf } from "./damage";
 
 const base: ClaimState = { policyStatus: null, providerName: null, photoCount: 0, damage: [], incident: null };
 const dent = aggregateDamage([
@@ -89,4 +89,21 @@ test("sidesOf maps parts and photo views to car sides", () => {
   assert.deepEqual(sidesOf("front_left"), ["front", "left"]);
   assert.deepEqual(sidesOf("roof"), []);
   assert.deepEqual(sidesOf("unknown"), []);
+});
+
+test("documentedSides reads photo views, or damaged parts when the view is unknown", () => {
+  const photo = (view: string, component?: string) => ({ view, damagedComponents: component ? [{ component }] : [] });
+  assert.deepEqual(documentedSides([photo("front_left"), photo("rear"), photo("unknown", "right_taillight")]), ["front", "rear", "left", "right"]);
+  assert.deepEqual(documentedSides([photo("unknown")]), []);
+});
+
+test("readiness: protected needs a read policy, a coverage check and every side", () => {
+  const car = { policyStatus: "processed" as const, coverageChecked: true, sides: 4, damageCount: 0, incident: { status: "documenting" as const } };
+  assert.equal(readiness(car).protected, true);
+  assert.equal(readiness(car).openCase, false);
+  assert.deepEqual(readiness({ ...car, sides: 2 }).missing.map((m) => m.href), ["/garage"]);
+  assert.deepEqual(readiness({ ...car, policyStatus: null, coverageChecked: false }).missing.map((m) => m.label), ["Add insurance"]);
+  assert.equal(readiness({ ...car, damageCount: 2 }).openCase, true);
+  assert.equal(readiness({ ...car, incident: { status: "filed" } }).openCase, true);
+  assert.equal(readiness({ ...car, incident: null }).openCase, false);
 });

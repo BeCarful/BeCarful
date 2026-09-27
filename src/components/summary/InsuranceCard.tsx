@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { TuxemonAvatar } from "@/components/chat/TuxemonAssistant";
 import { Law, MonsterCredits } from "@/components/insurance/CoverageChecklist";
 import { PERIL_MONSTERS } from "@/components/insurance/peril-monsters";
@@ -9,6 +10,8 @@ import type { InsuranceProvider } from "@/services/insurance/providers";
 import { INCIDENT_PERIL, NOT_FOUND_IN_POLICY, PERIL_LABELS, type CoverageStatus, type IncidentType, type PolicyStatus } from "@/types";
 
 type Tone = "neutral" | "warn" | "danger" | "ok";
+
+export type PolicyView = { id: string; status: PolicyStatus; provider?: InsuranceProvider; extracted: PolicyExtraction | null; checklist: CoverageItem[] | null };
 
 const POLICY_BADGE: Record<PolicyStatus, [Tone, string]> = {
   processing: ["warn", "Reading"],
@@ -22,52 +25,82 @@ const COVERAGE_BADGE: Record<CoverageStatus, [Tone, string]> = {
   unknown: ["warn", "Not found"],
 };
 
+const COVERAGE_ORDER: CoverageStatus[] = ["covered", "unknown", "not_covered"];
+
 const MAX_THREATS = 3;
+
+const Badge = ({ tone }: { tone: [Tone, string] }) => <RetroBadge tone={tone[0]}>{tone[1]}</RetroBadge>;
 
 function Facts({ rows }: { rows: [string, string | null | undefined][] }) {
   return (
-    <dl className="divide-y divide-border text-sm">
+    <dl className="mt-2 space-y-1 text-sm">
       {rows.map(([label, value]) => (
-        <div key={label} className="py-2 first:pt-0 last:pb-0">
-          <dt className="text-xs font-medium text-ink-soft">{label}</dt>
-          <dd className={`mt-0.5 break-words ${value ? "font-semibold text-ink tabular-nums" : "text-muted"}`}>{value || NOT_FOUND_IN_POLICY}</dd>
+        <div key={label} className="flex flex-wrap gap-x-2">
+          <dt className="text-ink-soft">{label}:</dt>
+          <dd className={`min-w-0 break-words ${value ? "font-semibold text-ink tabular-nums" : "text-muted"}`}>{value || NOT_FOUND_IN_POLICY}</dd>
         </div>
       ))}
     </dl>
   );
 }
 
-function IncidentCoverage({ type, checklist }: { type?: IncidentType | null; checklist: CoverageItem[] | null }) {
-  const peril = type ? INCIDENT_PERIL[type] : null;
+function PolicyRow({ policy, badge, children }: { policy: PolicyView; badge: ReactNode; children?: ReactNode }) {
+  return (
+    <li className="rounded-lg border border-border p-3">
+      <p className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-semibold text-ink">{policy.provider ? <ProviderName provider={policy.provider} /> : "Unknown insurer"}</span>
+        {badge}
+      </p>
+      {children}
+    </li>
+  );
+}
+
+function IncidentCoverage({ type, policies }: { type?: IncidentType | null; policies: PolicyView[] }) {
   if (!type) {
     return (
       <p className="rounded-lg bg-panel-shade px-3 py-2 text-sm text-ink">
         <a href="#incident" className="font-semibold text-accent underline underline-offset-2">
           Tell us what happened
         </a>{" "}
-        to check if your policy covers it.
+        to check if your {policies.length > 1 ? "policies cover" : "policy covers"} it.
       </p>
     );
   }
+  const peril = INCIDENT_PERIL[type];
   if (!peril) return <p className="rounded-lg bg-panel-shade px-3 py-2 text-sm text-ink">This doesn&apos;t match one coverage type. Check your policy details.</p>;
-  if (!checklist) return <p className="rounded-lg bg-panel-shade px-3 py-2 text-sm text-ink">We haven&apos;t checked your coverage yet. Open your policy details to run the check.</p>;
 
-  const row = checklist.find((i) => i.peril === peril) ?? { peril, status: "unknown", detail: NOT_FOUND_IN_POLICY, law: null };
-  const [tone, label] = COVERAGE_BADGE[row.status];
+  const rows = policies
+    .map((p) => ({ p, row: p.checklist ? (p.checklist.find((i) => i.peril === peril) ?? { peril, status: "unknown" as const, detail: NOT_FOUND_IN_POLICY, law: null }) : null }))
+    .sort((a, b) => (a.row ? COVERAGE_ORDER.indexOf(a.row.status) : 9) - (b.row ? COVERAGE_ORDER.indexOf(b.row.status) : 9));
   return (
-    <div className="rounded-lg border border-border p-3">
-      <p className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-semibold text-ink">{PERIL_LABELS[peril]}</span>
-        <RetroBadge tone={tone}>{label}</RetroBadge>
-      </p>
-      <p className="mt-1 text-sm text-ink-soft">{row.detail}</p>
-      <Law law={row.law} />
-    </div>
+    <>
+      <p className="text-sm font-semibold text-ink">{PERIL_LABELS[peril]}</p>
+      <ul className="space-y-2">
+        {rows.map(({ p, row }) => (
+          <PolicyRow
+            key={p.id}
+            policy={p}
+            badge={<Badge tone={p.status !== "processed" ? POLICY_BADGE[p.status] : row ? COVERAGE_BADGE[row.status] : ["neutral", "Not checked"]} />}
+          >
+            {row ? (
+              <>
+                <p className="mt-1 text-sm text-ink-soft">{row.detail}</p>
+                <Law law={row.law} />
+              </>
+            ) : (
+              p.status === "processed" && <p className="mt-1 text-sm text-ink-soft">Coverage not checked yet. Open the policy to run the check.</p>
+            )}
+            {p.status === "processed" && <Facts rows={[["Deductible", p.extracted?.deductibles]]} />}
+          </PolicyRow>
+        ))}
+      </ul>
+    </>
   );
 }
 
-function CoverageGaps({ checklist }: { checklist: CoverageItem[] | null }) {
-  if (!checklist) return <p className="text-sm text-ink-soft">We haven&apos;t checked which risks your policy covers yet.</p>;
+function CoverageGaps({ checklist, many }: { checklist: CoverageItem[] | null; many: boolean }) {
+  if (!checklist) return <p className="text-sm text-ink-soft">We haven&apos;t checked which risks your {many ? "policies cover" : "policy covers"} yet.</p>;
   const threats = checklist.filter((i) => i.status !== "covered");
   if (!threats.length) {
     return <p className="rounded-lg bg-ok-soft px-3 py-2 text-sm font-semibold text-ok">✓ Covered for all {checklist.length} risks we check</p>;
@@ -76,12 +109,11 @@ function CoverageGaps({ checklist }: { checklist: CoverageItem[] | null }) {
   return (
     <div>
       <p className="text-sm font-semibold text-ink">
-        {threats.length} {threats.length === 1 ? "risk isn't" : "risks aren't"} covered or mentioned
+        {threats.length} {threats.length === 1 ? "risk" : "risks"} {many ? "none of your policies cover or mention" : "your policy doesn't cover or mention"}
       </p>
       <ul className="mt-2 space-y-2">
         {shown.map((t) => {
           const m = PERIL_MONSTERS[t.peril];
-          const [tone, label] = COVERAGE_BADGE[t.status];
           return (
             <li key={t.peril} className="flex items-center gap-3">
               <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg bg-panel-shade">
@@ -93,7 +125,7 @@ function CoverageGaps({ checklist }: { checklist: CoverageItem[] | null }) {
                   <span className="font-display">{m.name}</span> may attack
                 </span>
               </span>
-              <RetroBadge tone={tone}>{label}</RetroBadge>
+              <Badge tone={COVERAGE_BADGE[t.status]} />
             </li>
           );
         })}
@@ -104,17 +136,12 @@ function CoverageGaps({ checklist }: { checklist: CoverageItem[] | null }) {
   );
 }
 
-type Props = {
-  policy: { status: PolicyStatus } | null;
-  provider?: InsuranceProvider;
-  extracted?: PolicyExtraction | null;
-  checklist: CoverageItem[] | null;
-  incident: { type?: IncidentType | null } | null;
-};
+type Props = { policies: PolicyView[]; combined: CoverageItem[] | null; incident: { type?: IncidentType | null } | null };
 
-export function InsuranceCard({ policy, provider, extracted, checklist, incident }: Props) {
-  const title = incident ? "Am I covered?" : "Your policy";
-  if (!policy) {
+export function InsuranceCard({ policies, combined, incident }: Props) {
+  const many = policies.length > 1;
+  const title = incident ? "Am I covered?" : many ? "Your policies" : "Your policy";
+  if (!policies.length) {
     return (
       <RetroCard title={title}>
         <div className="space-y-3">
@@ -128,39 +155,37 @@ export function InsuranceCard({ policy, provider, extracted, checklist, incident
     );
   }
 
-  const [tone, label] = POLICY_BADGE[policy.status];
   return (
-    <RetroCard title={title} action={<RetroBadge tone={tone}>{label}</RetroBadge>}>
+    <RetroCard title={title} action={many && <RetroBadge tone="neutral">{policies.length} active</RetroBadge>}>
       <div className="space-y-3">
-        <p className="text-lg leading-tight font-semibold">{provider ? <ProviderName provider={provider} /> : "Unknown insurer"}</p>
-        {policy.status !== "processed" ? (
-          <p className="text-sm text-ink-soft">
-            {policy.status === "failed" ? "We couldn't read that PDF. Upload a clearer copy." : "Reading your policy…"}
-          </p>
-        ) : incident ? (
-          <>
-            <IncidentCoverage type={incident.type} checklist={checklist} />
-            <Facts
-              rows={[
-                ["Deductible", extracted?.deductibles],
-                ["Policy number", extracted?.policyNumber],
-              ]}
-            />
-          </>
+        {incident ? (
+          <IncidentCoverage type={incident.type} policies={policies} />
         ) : (
           <>
-            <Facts
-              rows={[
-                ["Deductible", extracted?.deductibles],
-                ["Policy number", extracted?.policyNumber],
-                ["Effective dates", extracted?.effectiveDates],
-              ]}
-            />
-            <CoverageGaps checklist={checklist} />
+            <ul className="space-y-2">
+              {policies.map((p) => (
+                <PolicyRow key={p.id} policy={p} badge={<Badge tone={POLICY_BADGE[p.status]} />}>
+                  {p.status === "processed" ? (
+                    <Facts
+                      rows={[
+                        ["Deductible", p.extracted?.deductibles],
+                        ["Policy number", p.extracted?.policyNumber],
+                        ["Effective", p.extracted?.effectiveDates],
+                      ]}
+                    />
+                  ) : (
+                    <p className="mt-1 text-sm text-ink-soft">
+                      {p.status === "failed" ? "We couldn't read that PDF. Upload a clearer copy." : "Reading your policy…"}
+                    </p>
+                  )}
+                </PolicyRow>
+              ))}
+            </ul>
+            <CoverageGaps checklist={combined} many={many} />
           </>
         )}
         <RetroLinkButton href="/insurance" variant="secondary" className="w-full">
-          {policy.status === "failed" ? "Re-upload policy" : "Policy details"}
+          {many ? "Manage policies" : "Policy details"}
         </RetroLinkButton>
       </div>
     </RetroCard>
