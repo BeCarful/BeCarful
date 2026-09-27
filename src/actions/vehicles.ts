@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { ChatMessage } from "@/models/ChatMessage";
 import { DamageAssessment } from "@/models/DamageAssessment";
 import { DamagePhoto } from "@/models/DamagePhoto";
+import { EvidenceShare } from "@/models/EvidenceShare";
 import { Incident } from "@/models/Incident";
 import { InsurancePolicy } from "@/models/InsurancePolicy";
 import { Vehicle } from "@/models/Vehicle";
@@ -46,6 +47,7 @@ export async function deleteVehicle(vehicleId: string): Promise<ActionResult> {
   const { user, vehicle } = await requireVehicle(vehicleId);
   const scope = { userId: user._id, vehicleId: vehicle._id };
   try {
+    await EvidenceShare.deleteMany(scope);
     await deleteVehicleObjects(String(user._id), String(vehicle._id));
     await Promise.all([
       DamageAssessment.deleteMany(scope),

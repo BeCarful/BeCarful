@@ -6,11 +6,13 @@ import { RetroBadge, RetroCard, RetroLinkButton } from "@/components/retro";
 import { ProviderName } from "@/components/insurance/ProviderPicker";
 import { ClaimActions } from "@/components/summary/ClaimActions";
 import { IncidentForm } from "@/components/summary/IncidentForm";
+import { ShareEvidence } from "@/components/summary/ShareEvidence";
 import { StatusPanel } from "@/components/summary/StatusPanel";
 import { TodoCard } from "@/components/summary/TodoCard";
 import type { PolicyExtraction } from "@/schemas/policy";
 import { areaLabel } from "@/services/claims/damage";
 import { loadClaimState } from "@/services/claims/state";
+import { listShareLinks } from "@/services/share/evidence";
 import { getVehicleContext, vehicleTitle } from "@/services/vehicles/context";
 import { NOT_FOUND_IN_POLICY, componentLabel, type PolicyStatus, type Severity } from "@/types";
 
@@ -39,6 +41,7 @@ export default async function SummaryPage() {
   const analyzing = photos.filter((p) => p.analysisStatus === "pending" || p.analysisStatus === "analyzing").length;
   const needsReview = assessments.some((a) => a.needsManualReview);
   const policyBadge = policy ? POLICY_BADGE[policy.status] : null;
+  const shareLinks = incident && photos.length > 0 ? await listShareLinks(user._id, selected._id, incident._id) : null;
 
   return (
     <div className="space-y-6">
@@ -172,6 +175,15 @@ export default async function SummaryPage() {
                 notes: incident.notes ?? "",
               }}
             />
+          </RetroCard>
+        )}
+
+        {shareLinks && (
+          <RetroCard id="share" title="Share evidence" className="scroll-mt-24">
+            <p className="-mt-1 mb-4 text-sm text-ink-soft">
+              Send your photos and incident details to an adjuster or the police. Anyone with the link can view them until it expires.
+            </p>
+            <ShareEvidence vehicleId={vehicleId} vehicleTitle={vehicleTitle(selected)} links={shareLinks} />
           </RetroCard>
         )}
       </div>

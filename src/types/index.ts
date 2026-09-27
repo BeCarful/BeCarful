@@ -100,6 +100,8 @@ export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; e
 
 export const NOT_FOUND_IN_POLICY = "Not found in the uploaded policy";
 
+export const SHARE_DAYS = [1, 7, 30] as const;
+
 export function componentLabel(id: ComponentId): string {
   const s = id.replace(/_/g, " ");
   return s.charAt(0).toUpperCase() + s.slice(1);

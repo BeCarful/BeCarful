@@ -44,7 +44,7 @@ npm run dev         # http://localhost:3000
 npm run build
 npm run lint
 npm run typecheck   # next typegen + tsc
-npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, car sides, 3D zones, statute search, policy form search, Jev guard, coverage rules, photo seal, image prep)
+npm test            # node:test via tsx (all **/*.test.ts: claim rules, damage merge, car sides, 3D zones, statute search, policy form search, Jev guard, coverage rules, photo seal, share tokens, image prep)
 python3 scripts/tuxemon-idle.py   # regenerate public/tuxemon/*-idle.png (needs Pillow + numpy)
 python3 scripts/sample-policies.py   # regenerate public/samples/state-farm-florida-*.pdf (needs Google Chrome + Pillow)
 ```
@@ -58,7 +58,7 @@ python3 scripts/sample-policies.py   # regenerate public/samples/state-farm-flor
 
 | Topic | Decision |
 |---|---|
-| Auth library | None: `jose` HS256 JWT in an httpOnly `session` cookie + `bcryptjs` (`lib/session.ts`, `lib/auth.ts`). `proxy.ts` only sends signed-out visitors to /login (cookie signature check); the auth layout sends signed-in users home via the DB-backed `getCurrentUser()`, so a signed cookie for a deleted user (e.g. after `npm run seed`) can't loop /login ↔ /. Every page/action still calls `requireUser()`/`requireVehicle()`. |
+| Auth library | None: `jose` HS256 JWT in an httpOnly `session` cookie + `bcryptjs` (`lib/session.ts`, `lib/auth.ts`). `proxy.ts` only sends signed-out visitors to /login (cookie signature check; `/login`, `/signup` and `/share/*` are public); the auth layout sends signed-in users home via the DB-backed `getCurrentUser()`, so a signed cookie for a deleted user (e.g. after `npm run seed`) can't loop /login ↔ /. Every page/action still calls `requireUser()`/`requireVehicle()`. |
 | Schema validation (Gemini output, API input) | Zod v4. Gemini uses `responseJsonSchema: z.toJSONSchema(schema)` and the same schema validates the reply (`services/ai/gemini.ts#generateJson`). |
 | Mutations / data loading | Server Actions in `actions/*.ts` (return `ActionResult<T>`), server components read via services. No REST API. |
 | Uploads | Browser → Cloud Storage signed POST policy (V4; the bucket enforces type + size, avoids Vercel's 4.5 MB body limit) → action registers the key after `isOwnedKey` + `headObject`. |
@@ -68,6 +68,7 @@ python3 scripts/sample-policies.py   # regenerate public/samples/state-farm-flor
 | Selected vehicle | `User.lastVehicleId`, changed by `selectVehicle()`; pages read it via `getVehicleContext()`. Switched from the "Vehicles" list (`VehicleSelector`): a sidebar section on `md`+, a bottom-nav tab that opens a native `popover` (`VehicleMenu`) on phones. Tapping a car selects it and opens `/garage` (the only way to the 3D car). |
 | Car models | Static demo catalog `services/vehicles/car-models.ts` (`CAR_MODELS`: id, year/make/model, GLB url, axes, credit), not a DB collection. New vehicles must pick one (`Vehicle.modelId`, year/make/model copied from the catalog) in `VehicleForm`'s type-to-filter picker (native `<input list>` + `<datalist>`, a hidden `modelId` holds the matched id); vehicles without `modelId` show the first model. Besides the 4 cars with their own GLB, `STAND_INS` adds ~20 demo cars (Corolla, Mustang, 911…) that borrow the closest real model's GLB + credit so the picker looks full. |
 | Photo evidence | Camera only: in-app `getUserMedia` camera (`PhotoCapture`), no file input anywhere, and `registerPhoto` rejects `source: "upload"`. On receipt the server stores `sha256` of the stored bytes and `seal` = HMAC-SHA256 (`AUTH_SECRET`) over vehicleId + sha256 + capturedAt + serverReceivedAt + location (`services/photos/seal.ts`, tested). It proves the bytes and metadata are unchanged since BeCarful received them, not that the device clock/GPS were true. No verify UI yet. |
+| Evidence sharing | Bearer link `/share/<token>` per incident, not an emailed code (no email provider): 32 random bytes, only the SHA-256 is stored, so the owner sees a link once. Expires after 1/7/30 days (Mongo TTL index deletes it), **Stop sharing** deletes it. The page is public, `noindex` + `no-referrer`, and shows photos (fresh 1 h signed URLs), incident, vehicle (VIN last 4) and the AI damage list as an estimate. Sent from the user's own share sheet / clipboard / `mailto:`. |
 | 3D car | R3F + drei GLB viewer (`Car3D.tsx`) behind `CarDamageView`, one GLB per catalog model. Parts come from named collections where the GLB has them (`namedPart`: "Left Door", "Headlight - Right", "Windshield"…), else position zones (`car-zones.ts`). The team's prototype (`3d_model_update/`) was folded in and removed: its collection highlight, "damage skips glass/interior" rule, transparency toggle (now **X-ray**) and per-part photo panel (now **+ Take a close-up**, camera only). 2D map (`CarDamageMap2D.tsx`) is the toggle + error fallback. |
 | Design system | HouseToClaim-style tokens + Tailwind v4 `@utility` classes in `globals.css`; no component library. Fonts: Rubik (body) + Tektur (display) via `next/font`. |
 | Agents | Google ADK for TypeScript (`@google/adk`): chat (`services/ai/chat-agent.ts`) and coverage checklist (`services/ai/coverage.ts`) are `LlmAgent`s with `FunctionTool`s. `runAgent()` (`services/ai/adk.ts`) rebuilds an in-memory ADK session per request from MongoDB history. `serverExternalPackages: ["@google/adk"]` (its optional peer deps break bundling). |
@@ -125,6 +126,7 @@ Feature-oriented. All application code lives in `src/` (Next.js `src` folder; `@
 
 ```
 src/app/(auth)/        login, signup
+src/app/share/[token]/ public evidence page for a share link (no auth, outside both route groups)
 src/app/(app)/         authed shell (layout: sky, road sidebar md+ with the Vehicles list, frosted header on phones, bottom nav + Vehicles popover on phones)
   page.tsx             Summary (landing)   garage/ (3D car)  chat/  insurance/  profile/  vehicles/new/  crash/
 src/actions/           server actions per feature: auth vehicles photos insurance chat incidents
@@ -132,7 +134,7 @@ src/components/        retro/ layout/ auth/ vehicle/ photos/ insurance/ chat/ su
 src/lib/               env (zod, lazy), gcp (Vercel WIF credentials), db (cached mongoose), session (jose), auth, upload-client
 src/models/            User Vehicle InsurancePolicy Incident DamagePhoto DamageAssessment ChatMessage Statute PolicyForm
 src/schemas/           zod: damage, policy, vehicle
-src/services/          ai/ storage/ insurance/ vehicles/ claims/ law/
+src/services/          ai/ storage/ insurance/ vehicles/ claims/ law/ share/
 src/types/             shared constants + types (component IDs, statuses, task codes)
 src/proxy.ts           optimistic auth redirect (Next 16 name for middleware)
 scripts/seed.ts        demo data
@@ -156,6 +158,7 @@ Key service files:
 - `services/vehicles/context.ts` — `getVehicleContext()` for pages, `requireVehicle(vehicleId)` ownership gate for every vehicle-scoped action
 - `services/vehicles/car-models.ts` — demo car catalog (`CAR_MODELS`, `carModel(id)`), shared by the form, actions, seed and `Car3D`
 - `services/photos/seal.ts` — `sha256Hex` + `sealPhoto` (photo evidence HMAC)
+- `services/share/token.ts` (share token + expiry, pure, tested), `evidence.ts` (`loadSharedEvidence` for the public page, `listShareLinks`)
 
 ## Environment variables
 
@@ -175,7 +178,7 @@ TYPESAFE_API_KEY=      # optional, Jev classifier; without it every agent write 
 
 ## Data model
 
-Mongoose models in `models/`: `User`, `Vehicle`, `InsurancePolicy`, `Incident`, `DamagePhoto`, `DamageAssessment`, `ChatMessage`, plus `Statute` (shared law text, not user data: `{ citation, url, jurisdiction, text }`) and `PolicyForm` (insurer standard wording, not user data: `{ providerId, product, form, citation, section, term?, source, text, embedding }`). Insurer metadata is code (`services/insurance/providers.ts`), to-dos are computed (no `TodoState`), chat is one thread per vehicle (no `ChatSession`).
+Mongoose models in `models/`: `User`, `Vehicle`, `InsurancePolicy`, `Incident`, `DamagePhoto`, `DamageAssessment`, `ChatMessage`, `EvidenceShare`, plus `Statute` (shared law text, not user data: `{ citation, url, jurisdiction, text }`) and `PolicyForm` (insurer standard wording, not user data: `{ providerId, product, form, citation, section, term?, source, text, embedding }`). Insurer metadata is code (`services/insurance/providers.ts`), to-dos are computed (no `TodoState`), chat is one thread per vehicle (no `ChatSession`).
 
 - Every vehicle-related query enforces **both `userId` ownership and `vehicleId`**. A vehicle's data must never leak into another vehicle's context (especially chat). Every child doc stores `userId` + `vehicleId`; actions get both from `requireVehicle(vehicleId)`.
 - Use references, not duplicated data. Add indexes (e.g. `{ userId, vehicleId }`).
@@ -184,7 +187,7 @@ Mongoose models in `models/`: `User`, `Vehicle`, `InsurancePolicy`, `Incident`, 
 **User:** email (unique), name, passwordHash (`select: false`), lastVehicleId.
 
 **Vehicle:** userId, modelId (catalog id), year, make, model, trim?, color, vin?, licensePlate, state.
-Deleting one (`deleteVehicle`, **Remove** on Profile → Garage, inline confirm) removes its Cloud Storage prefix `users/<userId>/vehicles/<vehicleId>/` first, then its photos, assessments, incidents, policies and chat, then the vehicle; `lastVehicleId` moves to the newest remaining vehicle (or null). No cascade in Mongo itself, and no transaction (works on a standalone `mongo:7`); a failed delete can simply be retried.
+Deleting one (`deleteVehicle`, **Remove** on Profile → Garage, inline confirm) deletes its share links, then its Cloud Storage prefix `users/<userId>/vehicles/<vehicleId>/`, then its photos, assessments, incidents, policies and chat, then the vehicle; `lastVehicleId` moves to the newest remaining vehicle (or null). No cascade in Mongo itself, and no transaction (works on a standalone `mongo:7`); a failed delete can simply be retried.
 
 **DamagePhoto:**
 ```ts
@@ -209,6 +212,8 @@ The newest `uploadedAt` per vehicle is the active policy (`getActivePolicy`); ol
 
 **Incident:** userId, vehicleId, insurancePolicyId, type (`INCIDENT_TYPES`), occurredAt, location, notes, status, filedAt. Photos/assessments reference it by `incidentId`.
 Statuses: `documenting` → `analyzing` → `action_required` → `ready_to_file` → `filed` → `closed`. The open incident is the newest non-`closed` one; the first photo creates it (`getOrCreateOpenIncident`). `filed`/`closed` are set only by explicit user actions; the rest by `refreshIncidentStatus()`.
+
+**EvidenceShare:** `{ userId, vehicleId, incidentId, tokenHash (unique), label?, expiresAt (TTL index), openCount, lastOpenedAt? }`. One per share link; the page shows that incident's photos live, so deleted photos disappear from it. Max 10 live links per incident. `openCount` includes mail-app link previews.
 
 **ChatMessage:** `{ userId, vehicleId, role: "user" | "assistant", content, action? }`, survives refreshes and new sessions. `action = { tool, args, label, status: pending | running | done | failed | cancelled, result? }` is a guarded write waiting for the user's tap; a new user message cancels pending ones.
 
@@ -338,7 +343,7 @@ Examples:
 - Insurance + damage documented → *Review detected damage*, *Confirm your deductible*, *Start your insurance claim*
 - Ready → checklist all ✓, then **"File your claim with State Farm"** + **[Start Claim]** opening the verified `claimsUrl`
 
-Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS = 3`; `FILE_CLAIM` also needs a processed policy). AI-reworded to-dos are **not** built; the fixed copy is what users see. Claim status changes are user actions only: `markClaimFiled` requires the computed `readyToFile` → `filed`; `closeIncident` requires `filed` → `closed`; the next photo starts a new incident. Incident times go to the server as ISO strings; dates render with `components/summary/LocalTime` (user's timezone). There is no separate "Your claim" card: `ClaimActions` (Start Claim, Call, Have ready, I've filed, Close incident; anchor `#claim`) renders inside the To-do card only when ready to file or filed, and Incident details sits beside the To-do card on `lg`.
+Built: rules in `services/claims/todos.ts` (`computeTodos`, `MIN_DAMAGE_PHOTOS = 3`; `FILE_CLAIM` also needs a processed policy). AI-reworded to-dos are **not** built; the fixed copy is what users see. Claim status changes are user actions only: `markClaimFiled` requires the computed `readyToFile` → `filed`; `closeIncident` requires `filed` → `closed`; the next photo starts a new incident. Incident times go to the server as ISO strings; dates render with `components/summary/LocalTime` (user's timezone). There is no separate "Your claim" card: `ClaimActions` (Start Claim, Call, Have ready, I've filed, Close incident; anchor `#claim`) renders inside the To-do card only when ready to file or filed, and Incident details sits beside the To-do card on `lg`. **Share evidence** (anchor `#share`, shown once the open incident has photos): optional "who's it for" label + 1/7/30 days → `createShareLink` → the link once with Share… (`navigator.share`), Copy link and Email (`mailto:`); active links list opens and **Stop sharing** (`stopShareLink`).
 
 ---
 
