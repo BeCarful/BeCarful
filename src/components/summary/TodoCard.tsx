@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { RetroBadge, RetroCard } from "@/components/retro";
 import type { TodoItem } from "@/types";
 
@@ -15,7 +16,7 @@ function Marker({ state }: { state: "done" | "next" | "open" }) {
   );
 }
 
-export function TodoCard({ items }: { items: TodoItem[] }) {
+export function TodoCard({ items, children }: { items: TodoItem[]; children?: ReactNode }) {
   const left = items.filter((t) => !t.done).length;
   const next = items.find((t) => !t.done);
   return (
@@ -48,6 +49,7 @@ export function TodoCard({ items }: { items: TodoItem[] }) {
           );
         })}
       </ul>
+      {children}
     </RetroCard>
   );
 }

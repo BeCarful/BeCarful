@@ -41,6 +41,7 @@ export function DamageExplorer({
   children: ReactNode;
 }) {
   const stage = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<ComponentId | null>(null);
   const [viewer, setViewer] = useState<{ photos: PhotoView[]; index: number } | null>(null);
 
@@ -50,6 +51,17 @@ export function DamageExplorer({
   function focus(id: ComponentId) {
     setSelected(id);
     stage.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // Tapping a part on the car brings its card into view in the (lg+) scrolling list without moving the page.
+  function selectOnCar(id: ComponentId) {
+    setSelected(id);
+    const box = list.current;
+    const card = box?.querySelector(`[data-component="${id}"]`);
+    if (!box || !card) return;
+    const outer = box.getBoundingClientRect();
+    const inner = card.getBoundingClientRect();
+    if (inner.top < outer.top || inner.bottom > outer.bottom) box.scrollBy({ top: inner.top - outer.top - 8, behavior: "smooth" });
   }
 
   const badge =
@@ -64,7 +76,7 @@ export function DamageExplorer({
     ) : null;
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[1.3fr_1fr]">
+    <div className="grid items-start gap-6 lg:grid-cols-[1.3fr_1fr] lg:grid-rows-[auto_auto_1fr]">
       <div ref={stage} className="scroll-mt-24 space-y-4 lg:col-start-1 lg:row-span-2 lg:row-start-1">
         <Garage
           badge={badge}
@@ -74,7 +86,7 @@ export function DamageExplorer({
             </p>
           }
         >
-          <CarDamageView modelId={modelId} damage={damage} focused={selected} onSelect={setSelected} />
+          <CarDamageView modelId={modelId} damage={damage} focused={selected} onSelect={selectOnCar} />
         </Garage>
 
         {selected && (
@@ -133,52 +145,55 @@ export function DamageExplorer({
       </div>
 
       {incidentPhotoCount > 0 && (
-        <RetroCard
-          title="Damage"
-          className="lg:col-start-2 lg:row-span-2 lg:row-start-2"
-          action={damage.length > 0 && <span className="text-sm text-ink-soft">{damage.length} {damage.length === 1 ? "part" : "parts"}</span>}
-        >
-          <div className="space-y-3">
-            {failedCount > 0 && (
-              <Note>
-                {failedCount === 1 ? "1 photo" : `${failedCount} photos`} couldn&apos;t be analyzed. Open it in Photos and tap Retry
-                analysis.
-              </Note>
-            )}
-            {needsReview && (
-              <Note>
-                Some photos were hard to read. {RETAKE_HINT}
-                {damage[0] && ` Start with the ${areaLabel(damage[0].component)}.`}
-              </Note>
-            )}
-            {damage.length === 0 && !needsReview && failedCount === 0 && (
-              <Note tone="muted">No visible damage found in your photos. If you can see damage, take a close-up of it.</Note>
-            )}
-            {damage.length > 0 && (
-              <ul className="space-y-2">
-                {damage.map((d) => (
-                  <li key={d.component}>
-                    <button
-                      type="button"
-                      onClick={() => focus(d.component)}
-                      aria-pressed={selected === d.component}
-                      className={`w-full rounded-xl border border-border bg-panel p-4 text-left transition hover:border-accent/50 ${selected === d.component ? "ring-2 ring-accent" : ""}`}
-                    >
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="font-semibold">{componentLabel(d.component)}</span>
-                        <SeverityBadge severity={d.severity} />
-                      </span>
-                      <span className="mt-2 block text-sm text-ink-soft">
-                        <span className="capitalize">{typesLabel(d) || "Damage"}</span> · AI confidence {confidenceLabel(d.confidence)}
-                      </span>
-                      {d.confidence < LOW_CONFIDENCE && <span className="mt-1 block text-sm text-warn">Low confidence. Add a close-up.</span>}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </RetroCard>
+        // lg+: the card fills the space beside the car + Photos and its list scrolls, instead of stretching the page.
+        <div className="lg:relative lg:col-start-2 lg:row-span-2 lg:row-start-2 lg:min-h-96 lg:self-stretch">
+          <RetroCard
+            title="Damage"
+            className="lg:absolute lg:inset-0 lg:flex lg:flex-col"
+            action={damage.length > 0 && <span className="text-sm text-ink-soft">{damage.length} {damage.length === 1 ? "part" : "parts"}</span>}
+          >
+            <div ref={list} className="space-y-3 lg:-m-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:p-1">
+              {failedCount > 0 && (
+                <Note>
+                  {failedCount === 1 ? "1 photo" : `${failedCount} photos`} couldn&apos;t be analyzed. Open it in Photos and tap Retry
+                  analysis.
+                </Note>
+              )}
+              {needsReview && (
+                <Note>
+                  Some photos were hard to read. {RETAKE_HINT}
+                  {damage[0] && ` Start with the ${areaLabel(damage[0].component)}.`}
+                </Note>
+              )}
+              {damage.length === 0 && !needsReview && failedCount === 0 && (
+                <Note tone="muted">No visible damage found in your photos. If you can see damage, take a close-up of it.</Note>
+              )}
+              {damage.length > 0 && (
+                <ul className="space-y-2">
+                  {damage.map((d) => (
+                    <li key={d.component} data-component={d.component}>
+                      <button
+                        type="button"
+                        onClick={() => focus(d.component)}
+                        aria-pressed={selected === d.component}
+                        className={`w-full rounded-xl border border-border bg-panel p-4 text-left transition hover:border-accent/50 ${selected === d.component ? "ring-2 ring-accent" : ""}`}
+                      >
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="font-semibold">{componentLabel(d.component)}</span>
+                          <SeverityBadge severity={d.severity} />
+                        </span>
+                        <span className="mt-2 block text-sm text-ink-soft">
+                          <span className="capitalize">{typesLabel(d) || "Damage"}</span> · AI confidence {confidenceLabel(d.confidence)}
+                        </span>
+                        {d.confidence < LOW_CONFIDENCE && <span className="mt-1 block text-sm text-warn">Low confidence. Add a close-up.</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </RetroCard>
+        </div>
       )}
 
       {viewer && <PhotoViewer vehicleId={vehicleId} photos={viewer.photos} startIndex={viewer.index} onClose={() => setViewer(null)} />}
